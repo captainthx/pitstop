@@ -1,0 +1,46 @@
+[
+  {
+    "label": "first-observed",
+    "binarySha256": "2bf151592688d60aa603c33091c59a458037ffd0420436b96a3c16ffc8ff280e",
+    "exitCode": 0,
+    "durationSeconds": 50.12,
+    "reportPath": "/Users/thanyatab/Library/Caches/pitstop/runs/1791218143174604000/report.json",
+    "jobs": [
+      {
+        "id": "verify",
+        "status": "passed",
+        "provenance": "engine_exit",
+        "durationMs": 48941,
+        "engineExitCode": 0,
+        "failureCategory": null,
+        "reasonCode": null,
+        "reason": null,
+        "steps": [],
+        "logPath": "/Users/thanyatab/Library/Caches/pitstop/runs/1791218143174604000/verify.stdout.jsonl"
+      }
+    ],
+    "error": null
+  },
+  {
+    "label": "warm",
+    "binarySha256": "2bf151592688d60aa603c33091c59a458037ffd0420436b96a3c16ffc8ff280e",
+    "exitCode": 0,
+    "durationSeconds": 48.57,
+    "reportPath": "/Users/thanyatab/Library/Caches/pitstop/runs/1791218192771011000/report.json",
+    "jobs": [
+      {
+        "id": "verify",
+        "status": "passed",
+        "provenance": "engine_exit",
+        "durationMs": 47858,
+        "engineExitCode": 0,
+        "failureCategory": null,
+        "reasonCode": null,
+        "reason": null,
+        "steps": [],
+        "logPath": "/Users/thanyatab/Library/Caches/pitstop/runs/1791218192771011000/verify.stdout.jsonl"
+      }
+    ],
+    "error": null
+  }
+]

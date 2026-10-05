@@ -1,0 +1,30 @@
+name: parent acceptance
+on: pull_request
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          test "$(cat marker.txt)" = working-tree
+          test "$(cat .env)" = tracked-working
+          test ! -e deleted.txt
+          test -f 'new source.txt'
+          test -x executable.sh
+          test ! -e ignored/leak.txt
+          test ! -e .env.local
+          test -z "$PITSTOP_HOST_TOKEN"
+          test -z "$PITSTOP_BAD"
+  failure:
+    runs-on: ubuntu-latest
+    steps:
+      - run: exit 7
+  blocked:
+    runs-on: ubuntu-latest
+    if: false
+    steps:
+      - run: echo should-not-run
+  cancel:
+    runs-on: ubuntu-latest
+    steps:
+      - run: sleep 600

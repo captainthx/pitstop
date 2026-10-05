@@ -1,0 +1,107 @@
+[
+  {
+    "label": "default",
+    "binarySha256": "80b73aa7c6e2e8e063befaa34d0d03a121a22040123fc4523ce41103cb7fab6c",
+    "exitCode": 2,
+    "expectedExit": 2,
+    "durationSeconds": 42.32,
+    "reportPath": "/Users/thanyatab/Library/Caches/pitstop/runs/1791220323384641000/report.json",
+    "jobs": [
+      {
+        "id": "lint",
+        "status": "passed",
+        "provenance": "engine_exit",
+        "durationMs": 16067,
+        "engineExitCode": 0,
+        "failureCategory": null,
+        "reasonCode": null,
+        "reason": null,
+        "steps": [],
+        "logPath": "/Users/thanyatab/Library/Caches/pitstop/runs/1791220323384641000/lint.stdout.jsonl"
+      },
+      {
+        "id": "test",
+        "status": "passed",
+        "provenance": "engine_exit",
+        "durationMs": 25225,
+        "engineExitCode": 0,
+        "failureCategory": null,
+        "reasonCode": null,
+        "reason": null,
+        "steps": [],
+        "logPath": "/Users/thanyatab/Library/Caches/pitstop/runs/1791220323384641000/test.stdout.jsonl"
+      },
+      {
+        "id": "integration",
+        "status": "blocked",
+        "provenance": "preflight",
+        "durationMs": 0,
+        "engineExitCode": null,
+        "failureCategory": null,
+        "reasonCode": "WORKFLOW_UNSUPPORTED",
+        "reason": "job conditions are unsupported; dependency-bearing jobs require adapter",
+        "steps": [],
+        "logPath": ""
+      }
+    ],
+    "adjustments": [],
+    "error": null,
+    "selectedCoverage": "partial",
+    "workflowCoverage": "partial",
+    "engine": {
+      "name": "act",
+      "version": "act version 0.2.89",
+      "architecture": "linux/arm64",
+      "image": "catthehacker/ubuntu:act-latest",
+      "imageDigest": "sha256:c58e2b364da03b0c804c7d660f2ecbedf2f221a382b9baa0b344b0144780ff43"
+    }
+  },
+  {
+    "label": "forced",
+    "binarySha256": "80b73aa7c6e2e8e063befaa34d0d03a121a22040123fc4523ce41103cb7fab6c",
+    "exitCode": 0,
+    "expectedExit": 0,
+    "durationSeconds": 38.97,
+    "reportPath": "/Users/thanyatab/Library/Caches/pitstop/runs/1791220365740860000/report.json",
+    "jobs": [
+      {
+        "id": "integration",
+        "status": "passed",
+        "provenance": "engine_exit",
+        "durationMs": 37932,
+        "engineExitCode": 0,
+        "failureCategory": null,
+        "reasonCode": null,
+        "reason": null,
+        "steps": [],
+        "logPath": "/Users/thanyatab/Library/Caches/pitstop/runs/1791220365740860000/integration.stdout.jsonl"
+      }
+    ],
+    "adjustments": [
+      {
+        "jobId": "integration",
+        "operation": "remove",
+        "yamlPath": "jobs.integration.needs",
+        "before": "changes",
+        "after": ""
+      },
+      {
+        "jobId": "integration",
+        "operation": "remove",
+        "yamlPath": "jobs.integration.if",
+        "before": "needs.changes.outputs.persistence == 'true'",
+        "after": ""
+      }
+    ],
+    "error": null,
+    "selectedCoverage": "complete",
+    "workflowCoverage": "partial",
+    "engine": {
+      "name": "act",
+      "version": "act version 0.2.89",
+      "architecture": "linux/arm64",
+      "image": "catthehacker/ubuntu:act-latest",
+      "imageDigest": "sha256:c58e2b364da03b0c804c7d660f2ecbedf2f221a382b9baa0b344b0144780ff43"
+    }
+  }
+]

@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "command": "run",
+  "exitCode": 0,
+  "result": {
+    "runId": "1791218192771011000",
+    "repo": "/Users/thanyatab/Desktop/project/my-lab/pitstop/.pitstop-work/parent-probes/app-react",
+    "source": {
+      "head": "c65e803404e1538c96d2162014eb7e03ee942881",
+      "snapshotSha256": "c5fc9cf919402ca6266dafc6f0fcd82683abe2e37a965e3761f6b85370e90201",
+      "dirty": true,
+      "excludedPaths": [],
+      "checkoutMode": "local-source-copy"
+    },
+    "engine": {
+      "name": "act",
+      "version": "act version 0.2.89",
+      "architecture": "linux/arm64",
+      "image": "catthehacker/ubuntu:act-latest",
+      "imageDigest": null
+    },
+    "jobs": [
+      {
+        "id": "verify",
+        "status": "passed",
+        "provenance": "engine_exit",
+        "durationMs": 47858,
+        "engineExitCode": 0,
+        "failureCategory": null,
+        "reasonCode": null,
+        "reason": null,
+        "steps": [],
+        "logPath": "/Users/thanyatab/Library/Caches/pitstop/runs/1791218192771011000/verify.stdout.jsonl"
+      }
+    ],
+    "coverage": {
+      "selectedCoverage": "complete",
+      "workflowCoverage": "complete"
+    },
+    "adjustments": [],
+    "warnings": [],
+    "durationMs": 48481,
+    "reportPath": "/Users/thanyatab/Library/Caches/pitstop/runs/1791218192771011000/report.json"
+  }
+}

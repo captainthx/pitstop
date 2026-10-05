@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "command": "run",
+  "exitCode": 2,
+  "result": {
+    "runId": "1791220325699768000",
+    "repo": "/private/var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T/pitstop-audit-composite-eq9k0kql",
+    "source": {
+      "head": "65028d78cfc1b8e4fe00c4a7467048c08bb8dc53",
+      "snapshotSha256": "2b4926bb030f5380dcf1430bb1ae12389206ba3e2f7e387aae24f7402911b990",
+      "dirty": true,
+      "excludedPaths": [],
+      "checkoutMode": "local-source-copy"
+    },
+    "engine": {
+      "name": "act",
+      "version": "act version 0.2.89",
+      "architecture": "linux/arm64",
+      "image": "catthehacker/ubuntu:act-latest",
+      "imageDigest": "sha256:c58e2b364da03b0c804c7d660f2ecbedf2f221a382b9baa0b344b0144780ff43"
+    },
+    "jobs": [
+      {
+        "id": "verify",
+        "status": "blocked",
+        "provenance": "preflight",
+        "durationMs": 0,
+        "engineExitCode": null,
+        "failureCategory": null,
+        "reasonCode": "WORKFLOW_UNSUPPORTED",
+        "reason": "local composite conditional steps are unsupported",
+        "steps": [],
+        "logPath": ""
+      }
+    ],
+    "selectedCoverage": "partial",
+    "workflowCoverage": "partial",
+    "adjustments": [],
+    "warnings": [],
+    "durationMs": 253,
+    "reportPath": "/Users/thanyatab/Library/Caches/pitstop/runs/1791220325699768000/report.json"
+  }
+}

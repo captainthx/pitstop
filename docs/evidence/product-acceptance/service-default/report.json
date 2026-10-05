@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "command": "run",
+  "exitCode": 2,
+  "result": {
+    "runId": "1791220323384641000",
+    "repo": "/Users/thanyatab/Desktop/project/my-lab/pitstop/.pitstop-work/parent-probes/app-service",
+    "source": {
+      "head": "e58f8403f675e49e3e9681ad9492d158622bb0c2",
+      "snapshotSha256": "4ccf076a2d389e9916af72ca12511c2676d979b6a2377e9b16bef71f98817e76",
+      "dirty": true,
+      "excludedPaths": [],
+      "checkoutMode": "local-source-copy"
+    },
+    "engine": {
+      "name": "act",
+      "version": "act version 0.2.89",
+      "architecture": "linux/arm64",
+      "image": "catthehacker/ubuntu:act-latest",
+      "imageDigest": "sha256:c58e2b364da03b0c804c7d660f2ecbedf2f221a382b9baa0b344b0144780ff43"
+    },
+    "jobs": [
+      {
+        "id": "lint",
+        "status": "passed",
+        "provenance": "engine_exit",
+        "durationMs": 16067,
+        "engineExitCode": 0,
+        "failureCategory": null,
+        "reasonCode": null,
+        "reason": null,
+        "steps": [],
+        "logPath": "/Users/thanyatab/Library/Caches/pitstop/runs/1791220323384641000/lint.stdout.jsonl"
+      },
+      {
+        "id": "test",
+        "status": "passed",
+        "provenance": "engine_exit",
+        "durationMs": 25225,
+        "engineExitCode": 0,
+        "failureCategory": null,
+        "reasonCode": null,
+        "reason": null,
+        "steps": [],
+        "logPath": "/Users/thanyatab/Library/Caches/pitstop/runs/1791220323384641000/test.stdout.jsonl"
+      },
+      {
+        "id": "integration",
+        "status": "blocked",
+        "provenance": "preflight",
+        "durationMs": 0,
+        "engineExitCode": null,
+        "failureCategory": null,
+        "reasonCode": "WORKFLOW_UNSUPPORTED",
+        "reason": "job conditions are unsupported; dependency-bearing jobs require adapter",
+        "steps": [],
+        "logPath": ""
+      }
+    ],
+    "selectedCoverage": "partial",
+    "workflowCoverage": "partial",
+    "adjustments": [],
+    "warnings": [],
+    "durationMs": 42270,
+    "reportPath": "/Users/thanyatab/Library/Caches/pitstop/runs/1791220323384641000/report.json"
+  }
+}

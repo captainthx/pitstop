@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "command": "run",
+  "exitCode": 0,
+  "result": {
+    "runId": "1791220365740860000",
+    "repo": "/Users/thanyatab/Desktop/project/my-lab/pitstop/.pitstop-work/parent-probes/app-service",
+    "source": {
+      "head": "e58f8403f675e49e3e9681ad9492d158622bb0c2",
+      "snapshotSha256": "4ccf076a2d389e9916af72ca12511c2676d979b6a2377e9b16bef71f98817e76",
+      "dirty": true,
+      "excludedPaths": [],
+      "checkoutMode": "local-source-copy"
+    },
+    "engine": {
+      "name": "act",
+      "version": "act version 0.2.89",
+      "architecture": "linux/arm64",
+      "image": "catthehacker/ubuntu:act-latest",
+      "imageDigest": "sha256:c58e2b364da03b0c804c7d660f2ecbedf2f221a382b9baa0b344b0144780ff43"
+    },
+    "jobs": [
+      {
+        "id": "integration",
+        "status": "passed",
+        "provenance": "engine_exit",
+        "durationMs": 37932,
+        "engineExitCode": 0,
+        "failureCategory": null,
+        "reasonCode": null,
+        "reason": null,
+        "steps": [],
+        "logPath": "/Users/thanyatab/Library/Caches/pitstop/runs/1791220365740860000/integration.stdout.jsonl"
+      }
+    ],
+    "selectedCoverage": "complete",
+    "workflowCoverage": "partial",
+    "adjustments": [
+      {
+        "jobId": "integration",
+        "operation": "remove",
+        "yamlPath": "jobs.integration.needs",
+        "before": "changes",
+        "after": ""
+      },
+      {
+        "jobId": "integration",
+        "operation": "remove",
+        "yamlPath": "jobs.integration.if",
+        "before": "needs.changes.outputs.persistence == 'true'",
+        "after": ""
+      }
+    ],
+    "warnings": [],
+    "durationMs": 38916,
+    "reportPath": "/Users/thanyatab/Library/Caches/pitstop/runs/1791220365740860000/report.json"
+  }
+}

@@ -1,0 +1,58 @@
+[
+  {
+    "label": "version",
+    "actualExit": 0,
+    "expectedExit": 0,
+    "problems": [],
+    "durationSeconds": 0.0
+  },
+  {
+    "label": "bad-flags",
+    "actualExit": 2,
+    "expectedExit": 2,
+    "problems": [],
+    "durationSeconds": 0.0
+  },
+  {
+    "label": "list",
+    "actualExit": 0,
+    "expectedExit": 0,
+    "problems": [],
+    "durationSeconds": 0.01
+  },
+  {
+    "label": "blocked",
+    "actualExit": 2,
+    "expectedExit": 2,
+    "problems": [],
+    "durationSeconds": 0.22
+  },
+  {
+    "label": "failure",
+    "actualExit": 1,
+    "expectedExit": 1,
+    "problems": [],
+    "durationSeconds": 0.76
+  },
+  {
+    "label": "snapshot",
+    "actualExit": 0,
+    "expectedExit": 0,
+    "problems": [],
+    "durationSeconds": 1.37
+  },
+  {
+    "label": "timeout",
+    "actualExit": 1,
+    "expectedExit": 1,
+    "problems": [],
+    "durationSeconds": 2.69
+  },
+  {
+    "label": "cancel",
+    "actualExit": 130,
+    "expectedExit": 130,
+    "problems": [],
+    "durationSeconds": 3.18
+  }
+]

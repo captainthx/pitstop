@@ -1,0 +1,30 @@
+{
+  "binarySha256": "80b73aa7c6e2e8e063befaa34d0d03a121a22040123fc4523ce41103cb7fab6c",
+  "exitCode": 0,
+  "durationSeconds": 74.91,
+  "reportPath": "/Users/thanyatab/Library/Caches/pitstop/runs/1791220322660677000/report.json",
+  "selectedCoverage": "complete",
+  "workflowCoverage": "complete",
+  "engine": {
+    "name": "act",
+    "version": "act version 0.2.89",
+    "architecture": "linux/arm64",
+    "image": "catthehacker/ubuntu:act-latest",
+    "imageDigest": "sha256:c58e2b364da03b0c804c7d660f2ecbedf2f221a382b9baa0b344b0144780ff43"
+  },
+  "jobs": [
+    {
+      "id": "verify",
+      "status": "passed",
+      "provenance": "engine_exit",
+      "durationMs": 73643,
+      "engineExitCode": 0,
+      "failureCategory": null,
+      "reasonCode": null,
+      "reason": null,
+      "steps": [],
+      "logPath": "/Users/thanyatab/Library/Caches/pitstop/runs/1791220322660677000/verify.stdout.jsonl"
+    }
+  ],
+  "error": null
+}

@@ -1,0 +1,87 @@
+[
+  {
+    "case": "empty-workflow",
+    "exitCode": 2,
+    "expectedExit": 2,
+    "jsonDocument": true,
+    "jobs": null,
+    "error": {
+      "code": "WORKFLOW_UNSUPPORTED",
+      "message": "WORKFLOW_UNSUPPORTED: workflow document is empty"
+    }
+  },
+  {
+    "case": "conditional-only",
+    "exitCode": 2,
+    "expectedExit": 2,
+    "jsonDocument": true,
+    "jobs": [
+      {
+        "id": "verify",
+        "status": "blocked",
+        "provenance": "preflight",
+        "durationMs": 0,
+        "engineExitCode": null,
+        "failureCategory": null,
+        "reasonCode": "WORKFLOW_UNSUPPORTED",
+        "reason": "job has no unconditional executable steps; conditional or continue-on-error steps are unsupported; conditional steps are unsupported",
+        "steps": [],
+        "logPath": ""
+      }
+    ],
+    "error": null
+  },
+  {
+    "case": "empty-steps",
+    "exitCode": 2,
+    "expectedExit": 2,
+    "jsonDocument": true,
+    "jobs": [
+      {
+        "id": "verify",
+        "status": "blocked",
+        "provenance": "preflight",
+        "durationMs": 0,
+        "engineExitCode": null,
+        "failureCategory": null,
+        "reasonCode": "WORKFLOW_UNSUPPORTED",
+        "reason": "job has no unconditional executable steps",
+        "steps": [],
+        "logPath": ""
+      }
+    ],
+    "error": null
+  },
+  {
+    "case": "local-composite-secret",
+    "exitCode": 2,
+    "expectedExit": 2,
+    "jsonDocument": true,
+    "jobs": [
+      {
+        "id": "verify",
+        "status": "blocked",
+        "provenance": "preflight",
+        "durationMs": 0,
+        "engineExitCode": null,
+        "failureCategory": null,
+        "reasonCode": "WORKFLOW_UNSUPPORTED",
+        "reason": "secret references require credentials",
+        "steps": [],
+        "logPath": ""
+      }
+    ],
+    "error": null
+  },
+  {
+    "case": "adapter-command-drift",
+    "exitCode": 2,
+    "expectedExit": 2,
+    "jsonDocument": true,
+    "jobs": null,
+    "error": {
+      "code": "ADAPTER_SHAPE_CHANGED",
+      "message": "ADAPTER_SHAPE_CHANGED: integration shape changed in /Users/thanyatab/Library/Caches/pitstop/runs/1791220401763823000/snapshot/.github/workflows/ci.yml"
+    }
+  }
+]

@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "command": "run",
+  "exitCode": 0,
+  "result": {
+    "runId": "1791219956873858000",
+    "repo": "/private/var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T/pitstop-audit-composite-eq9k0kql",
+    "source": {
+      "head": "65028d78cfc1b8e4fe00c4a7467048c08bb8dc53",
+      "snapshotSha256": "25c36ba88a2da170bddef4a67423b2016d367ff8dba0826ed0151cf999d5a35f",
+      "dirty": false,
+      "excludedPaths": [],
+      "checkoutMode": "local-source-copy"
+    },
+    "engine": {
+      "name": "act",
+      "version": "act version 0.2.89",
+      "architecture": "linux/arm64",
+      "image": "catthehacker/ubuntu:act-latest",
+      "imageDigest": "sha256:c58e2b364da03b0c804c7d660f2ecbedf2f221a382b9baa0b344b0144780ff43"
+    },
+    "jobs": [
+      {
+        "id": "verify",
+        "status": "passed",
+        "provenance": "engine_exit",
+        "durationMs": 854,
+        "engineExitCode": 0,
+        "failureCategory": null,
+        "reasonCode": null,
+        "reason": null,
+        "steps": [],
+        "logPath": "/Users/thanyatab/Library/Caches/pitstop/runs/1791219956873858000/verify.stdout.jsonl"
+      }
+    ],
+    "selectedCoverage": "complete",
+    "workflowCoverage": "complete",
+    "adjustments": [],
+    "warnings": [],
+    "durationMs": 1082,
+    "reportPath": "/Users/thanyatab/Library/Caches/pitstop/runs/1791219956873858000/report.json"
+  }
+}

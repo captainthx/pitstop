@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-go
+      - name: gofmt check
+        run: |
+          fmt_out="$(gofmt -l .)"
+          if [ -n "$fmt_out" ]; then
+            echo "The following files are not gofmt'ed:"
+            echo "$fmt_out"
+            exit 1
+          fi
+      - name: go vet
+        run: go vet ./...
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: latest
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-go
+      - name: go test (unit)
+        run: go test -race ./...
+
+  # Runs only when persistence code or migrations change; a handler or policy
+  # edit cannot break a repository test. Needs Docker, which ubuntu-latest has.
+  integration:
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.persistence == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-go
+      - name: go test (integration)
+        run: go test -race -tags integration ./...
+
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      persistence: ${{ steps.filter.outputs.persistence }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            persistence:
+              - 'migrations/**'
+              - 'internal/**/infrastructure/**'
+              - 'internal/platform/database/**'
+              - 'internal/platform/pgtest/**'
+              - 'go.mod'
+              - 'go.sum'
+              - '.github/**'

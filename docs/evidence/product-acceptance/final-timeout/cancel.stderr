@@ -1,0 +1,2 @@
+{"level":"info","msg":"Using docker host 'unix:///Users/thanyatab/.orbstack/run/docker.sock', and daemon socket '-'","time":"2026-10-06T00:12:07+07:00"}
+Error: Job 'cancel' failed

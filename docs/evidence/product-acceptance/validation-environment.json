@@ -1,0 +1,13 @@
+{
+  "binarySha256": "80b73aa7c6e2e8e063befaa34d0d03a121a22040123fc4523ce41103cb7fab6c",
+  "go": "go version go1.27.1 darwin/arm64",
+  "baselineGo": "go version go1.26.5 darwin/arm64",
+  "act": "act version 0.2.89",
+  "testFunctions": 35,
+  "ownedRunnerResiduals": "",
+  "unrelatedContainers": [
+    "ad2f80e8bfc3 recruit100-service-postgres-1 Up 11 days (healthy)",
+    "664c9333515e recruit100-service-minio-1 Up 11 days (healthy)"
+  ],
+  "codeCommit": "1c940c6"
+}

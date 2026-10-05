@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "command": "run",
+  "exitCode": 2,
+  "result": {
+    "runId": "1791220324566882000",
+    "repo": "/Users/thanyatab/Desktop/project/my-lab/pitstop/.pitstop-work/parent-acceptance/source repo",
+    "source": {
+      "head": "fdb1a2094697ed786f67b4590004929eb3aa5ccf",
+      "snapshotSha256": "84481f58d066812a7a12ed293c5b5302501ed319a9824fe4da6b2c5f0766b9c0",
+      "dirty": true,
+      "excludedPaths": [
+        ".env.local"
+      ],
+      "checkoutMode": "local-source-copy"
+    },
+    "engine": {
+      "name": "act",
+      "version": "act version 0.2.89",
+      "architecture": "linux/arm64",
+      "image": "catthehacker/ubuntu:act-latest",
+      "imageDigest": "sha256:c58e2b364da03b0c804c7d660f2ecbedf2f221a382b9baa0b344b0144780ff43"
+    },
+    "jobs": [
+      {
+        "id": "blocked",
+        "status": "blocked",
+        "provenance": "preflight",
+        "durationMs": 0,
+        "engineExitCode": null,
+        "failureCategory": null,
+        "reasonCode": "WORKFLOW_UNSUPPORTED",
+        "reason": "conditional steps are unsupported; job conditions are unsupported",
+        "steps": [],
+        "logPath": ""
+      }
+    ],
+    "selectedCoverage": "partial",
+    "workflowCoverage": "partial",
+    "adjustments": [],
+    "warnings": [],
+    "durationMs": 217,
+    "reportPath": "/Users/thanyatab/Library/Caches/pitstop/runs/1791220324566882000/report.json"
+  }
+}

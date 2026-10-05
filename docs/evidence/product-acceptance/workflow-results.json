@@ -1,0 +1,87 @@
+[
+  {
+    "case": "empty-workflow",
+    "exitCode": 2,
+    "expectedExit": 2,
+    "jsonDocument": true,
+    "jobs": null,
+    "error": {
+      "code": "WORKFLOW_UNSUPPORTED",
+      "message": "WORKFLOW_UNSUPPORTED: workflow document is empty"
+    }
+  },
+  {
+    "case": "conditional-only",
+    "exitCode": 0,
+    "expectedExit": 2,
+    "jsonDocument": true,
+    "jobs": [
+      {
+        "id": "verify",
+        "status": "passed",
+        "provenance": "engine_exit",
+        "durationMs": 883,
+        "engineExitCode": 0,
+        "failureCategory": null,
+        "reasonCode": null,
+        "reason": null,
+        "steps": [],
+        "logPath": "/Users/thanyatab/Library/Caches/pitstop/runs/1791218007135403000/verify.stdout.jsonl"
+      }
+    ],
+    "error": null
+  },
+  {
+    "case": "empty-steps",
+    "exitCode": 2,
+    "expectedExit": 2,
+    "jsonDocument": true,
+    "jobs": [
+      {
+        "id": "verify",
+        "status": "skipped",
+        "provenance": "unknown",
+        "durationMs": 812,
+        "engineExitCode": 0,
+        "failureCategory": null,
+        "reasonCode": "ENGINE_OUTCOME_UNKNOWN",
+        "reason": "act exited successfully without selected-job evidence",
+        "steps": [],
+        "logPath": "/Users/thanyatab/Library/Caches/pitstop/runs/1791218008148378000/verify.stdout.jsonl"
+      }
+    ],
+    "error": null
+  },
+  {
+    "case": "local-composite-secret",
+    "exitCode": 1,
+    "expectedExit": 2,
+    "jsonDocument": true,
+    "jobs": [
+      {
+        "id": "verify",
+        "status": "failed",
+        "provenance": "engine_exit",
+        "durationMs": 359,
+        "engineExitCode": 1,
+        "failureCategory": "engine",
+        "reasonCode": null,
+        "reason": "act exited with code 1",
+        "steps": [],
+        "logPath": "/Users/thanyatab/Library/Caches/pitstop/runs/1791218009097511000/verify.stdout.jsonl"
+      }
+    ],
+    "error": null
+  },
+  {
+    "case": "adapter-command-drift",
+    "exitCode": 2,
+    "expectedExit": 2,
+    "jsonDocument": true,
+    "jobs": null,
+    "error": {
+      "code": "ADAPTER_SHAPE_CHANGED",
+      "message": "ADAPTER_SHAPE_CHANGED: integration shape changed in /Users/thanyatab/Desktop/project/my-lab/pitstop/.pitstop-work/parent-acceptance/workflow boundaries/.github/workflows/ci.yml"
+    }
+  }
+]
