@@ -1,0 +1,2 @@
+{"level":"info","msg":"Using docker host 'unix:///Users/thanyatab/.orbstack/run/docker.sock', and daemon socket '-'","time":"2026-10-05T23:09:53+07:00"}
+{"level":"info","module":"artifactcache","msg":"deleted cache: \u0026{ID:1 Key:node-cache-linux-arm64-pnpm-868581eb24352a48c5c6d5dcdf1b97f58a39f41d98c06302657f1e63ac5dfc34 Version:c2808ff5e47de63c2b28e7728f5f3f46a988ca478bf975fc543cfac996b0c835 Size:293331815 Complete:true UsedAt:1791195385 CreatedAt:1791195355}","time":"2026-10-05T23:09:53+07:00"}

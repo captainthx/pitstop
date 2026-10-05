@@ -1,0 +1,12 @@
+name: Fixture
+on: [pull_request]
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    steps: []
+  integration:
+    needs: changes
+    if: needs.changes.outputs.persistence == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - run: go test -race -tags integration ./...

@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "workflow": ".github/workflows/ci.yml",
+  "event": "pull_request",
+  "jobs": ["lint", "test", "integration"],
+  "runner": {"label": "ubuntu-latest", "image": "catthehacker/ubuntu:act-latest", "architecture": "linux/arm64"},
+  "adapter": "recruit100-service-integration-v1"
+}

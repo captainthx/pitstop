@@ -1,0 +1,2 @@
+{"level":"info","msg":"Using docker host 'unix:///Users/thanyatab/.orbstack/run/docker.sock', and daemon socket '-'","time":"2026-10-05T23:13:34+07:00"}
+Error: Job 'changes' failed

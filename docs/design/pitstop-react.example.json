@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "workflow": ".github/workflows/ci.yml",
+  "event": "pull_request",
+  "jobs": ["verify"],
+  "runner": {
+    "label": "ubuntu-latest",
+    "image": "catthehacker/ubuntu:act-latest",
+    "architecture": "linux/arm64"
+  }
+}

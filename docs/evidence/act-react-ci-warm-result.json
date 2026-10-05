@@ -1,0 +1,33 @@
+{
+  "act_version": "act version 0.2.89",
+  "architecture": "linux/arm64",
+  "exit_code": 0,
+  "duration_seconds": 45.86,
+  "command": [
+    "act",
+    "pull_request",
+    "-W",
+    ".github/workflows/ci.yml",
+    "-j",
+    "verify",
+    "-P",
+    "ubuntu-latest=catthehacker/ubuntu:act-latest",
+    "--container-architecture",
+    "linux/arm64",
+    "--env-file",
+    "/dev/null",
+    "--secret-file",
+    "/dev/null",
+    "--var-file",
+    "/dev/null",
+    "--input-file",
+    "/dev/null",
+    "--container-daemon-socket",
+    "-",
+    "--rm",
+    "--action-offline-mode",
+    "--pull=false"
+  ],
+  "source_repo": "/Users/thanyatab/Desktop/project/techcombine/recruit100-react",
+  "commit": "c65e803404e1538c96d2162014eb7e03ee942881"
+}
