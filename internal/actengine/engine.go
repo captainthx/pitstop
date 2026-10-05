@@ -41,9 +41,15 @@ func Run(ctx context.Context, env Environment, snapshot model.Snapshot, plan mod
 	}
 	cacheRoot, _ := os.UserCacheDir()
 	cache := filepath.Join(cacheRoot, "pitstop", "cache")
-	_ = os.WriteFile(filepath.Join(runDir, "engine-meta.json"), []byte(fmt.Sprintf(`{"dockerHost":%q,"label":%q}`, env.DockerHost, "com.pitstop.run="+filepath.Base(runDir))), 0600)
-	_ = os.MkdirAll(filepath.Join(cache, "actions"), 0700)
-	_ = os.MkdirAll(filepath.Join(cache, "dependencies"), 0700)
+	if e := os.WriteFile(filepath.Join(runDir, "engine-meta.json"), []byte(fmt.Sprintf(`{"dockerHost":%q,"label":%q}`, env.DockerHost, "com.pitstop.run="+filepath.Base(runDir))), 0600); e != nil {
+		return model.JobResult{}, e
+	}
+	if e := os.MkdirAll(filepath.Join(cache, "actions"), 0700); e != nil {
+		return model.JobResult{}, e
+	}
+	if e := os.MkdirAll(filepath.Join(cache, "dependencies"), 0700); e != nil {
+		return model.JobResult{}, e
+	}
 	socket := "-"
 	if plan.ForceIntegration && job.ID == "integration" && strings.HasPrefix(env.DockerHost, "unix://") {
 		socket = env.DockerHost

@@ -40,6 +40,9 @@ func Check(ctx context.Context) (Environment, error) {
 	if contextName != "" {
 		out, _ := exec.CommandContext(ctx, "docker", "context", "inspect", "--format", "{{.Endpoints.docker.Host}}", contextName).Output()
 		host = strings.TrimSpace(string(out))
+		if host == "" {
+			return Environment{}, model.Err("DOCKER_UNAVAILABLE", "configured Docker context has no endpoint", nil)
+		}
 	} else {
 		host = os.Getenv("DOCKER_HOST")
 		if host == "" {
