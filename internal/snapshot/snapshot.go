@@ -21,7 +21,9 @@ func CaptureContext(ctx context.Context, repo, runDir string) (model.Snapshot, e
 	if err := ctx.Err(); err != nil {
 		return model.Snapshot{}, model.Err("CANCELLED", "snapshot capture cancelled", err)
 	}
-	if out, err := exec.CommandContext(ctx, "git", "-C", repo, "diff", "--name-only", "--diff-filter=U").Output(); err == nil && len(out) > 0 {
+	if out, err := exec.CommandContext(ctx, "git", "-C", repo, "diff", "--name-only", "--diff-filter=U").Output(); err != nil {
+		return model.Snapshot{}, model.Err("SNAPSHOT_CHANGED", "cannot inspect merge state", err)
+	} else if len(out) > 0 {
 		return model.Snapshot{}, model.Err("SNAPSHOT_CHANGED", "unresolved merge state", nil)
 	}
 	headBytes, err := exec.CommandContext(ctx, "git", "-C", repo, "rev-parse", "HEAD").Output()
@@ -31,6 +33,10 @@ func CaptureContext(ctx context.Context, repo, runDir string) (model.Snapshot, e
 	root, absErr := filepath.Abs(repo)
 	if absErr != nil {
 		return model.Snapshot{}, model.Err("SNAPSHOT_CHANGED", "cannot resolve repository path", absErr)
+	}
+	indexBefore, ie := exec.CommandContext(ctx, "git", "-C", root, "ls-files", "--stage", "-z").Output()
+	if ie != nil {
+		return model.Snapshot{}, model.Err("SNAPSHOT_CHANGED", "cannot inspect index", ie)
 	}
 	if sub, e := exec.CommandContext(ctx, "git", "-C", root, "ls-files", "--stage").Output(); e != nil {
 		return model.Snapshot{}, model.Err("SNAPSHOT_CHANGED", "cannot inspect submodules", e)
@@ -49,17 +55,23 @@ func CaptureContext(ctx context.Context, repo, runDir string) (model.Snapshot, e
 	if statusErr != nil {
 		return model.Snapshot{}, statusErr
 	}
+	before, err := manifest(ctx, root, tracked, allowed)
+	if err != nil {
+		return model.Snapshot{}, err
+	}
 	clone := filepath.Join(runDir, "snapshot")
+	success := false
+	defer func() {
+		if !success {
+			_ = os.RemoveAll(clone)
+		}
+	}()
 	if err := os.MkdirAll(runDir, 0700); err != nil {
 		return model.Snapshot{}, err
 	}
 	if out, err := exec.CommandContext(ctx, "git", "clone", "--no-hardlinks", "--local", root, clone).CombinedOutput(); err != nil {
 		_ = os.RemoveAll(clone)
 		return model.Snapshot{}, model.Err("SNAPSHOT_CHANGED", "cannot clone source", fmt.Errorf("%v: %s", err, out))
-	}
-	before, err := manifest(ctx, root, tracked, allowed)
-	if err != nil {
-		return model.Snapshot{}, err
 	}
 	entries, e := os.ReadDir(clone)
 	if e != nil {
@@ -92,7 +104,19 @@ func CaptureContext(ctx context.Context, repo, runDir string) (model.Snapshot, e
 	if se != nil {
 		return model.Snapshot{}, se
 	}
-	if before != after || !sameSet(tracked, trackedAfter) || !sameSet(allowed, allowedAfter) || statusBefore != statusAfter {
+	headAfter, he := exec.CommandContext(ctx, "git", "-C", root, "rev-parse", "HEAD").Output()
+	if he != nil {
+		return model.Snapshot{}, he
+	}
+	indexAfter, ie := exec.CommandContext(ctx, "git", "-C", root, "ls-files", "--stage", "-z").Output()
+	if ie != nil {
+		return model.Snapshot{}, ie
+	}
+	cloneHead, ce := exec.CommandContext(ctx, "git", "-C", clone, "rev-parse", "HEAD").Output()
+	if ce != nil {
+		return model.Snapshot{}, ce
+	}
+	if before != after || string(headBytes) != string(headAfter) || string(indexBefore) != string(indexAfter) || string(headBytes) != string(cloneHead) || !sameSet(tracked, trackedAfter) || !sameSet(allowed, allowedAfter) || statusBefore != statusAfter {
 		return model.Snapshot{}, model.Err("SNAPSHOT_CHANGED", "working tree changed while capturing", nil)
 	}
 	captured, err := manifest(ctx, clone, tracked, allowed)
@@ -105,6 +129,7 @@ func CaptureContext(ctx context.Context, repo, runDir string) (model.Snapshot, e
 	}
 	sum := sha256.Sum256([]byte(before))
 	dirty := strings.TrimSpace(statusAfter) != ""
+	success = true
 	return model.Snapshot{Path: clone, ManifestPath: path, SourceManifestPath: path, Head: strings.TrimSpace(string(headBytes)), SnapshotSHA256: hex.EncodeToString(sum[:]), Dirty: dirty, ExcludedPaths: excluded, CheckoutMode: "local-source-copy"}, nil
 }
 func hasSubmodule(s string) bool {
@@ -223,6 +248,9 @@ func overlay(ctx context.Context, src, dst, rel string, excluded *[]string, trac
 			}
 			continue
 		}
+		if !info.Mode().IsRegular() {
+			return model.Err("SNAPSHOT_CHANGED", "unsupported special file: "+r, nil)
+		}
 		if err := os.MkdirAll(filepath.Dir(dp), 0700); err != nil {
 			return err
 		}
@@ -235,7 +263,7 @@ func overlay(ctx context.Context, src, dst, rel string, excluded *[]string, trac
 			in.Close()
 			return err
 		}
-		_, copyErr := io.Copy(out, in)
+		_, copyErr := copyContext(ctx, out, in)
 		in.Close()
 		closeErr := out.Close()
 		if copyErr != nil {
@@ -249,6 +277,32 @@ func overlay(ctx context.Context, src, dst, rel string, excluded *[]string, trac
 		}
 	}
 	return nil
+}
+func copyContext(ctx context.Context, dst io.Writer, src io.Reader) (int64, error) {
+	buf := make([]byte, 64*1024)
+	var n int64
+	for {
+		if err := ctx.Err(); err != nil {
+			return n, err
+		}
+		nr, er := src.Read(buf)
+		if nr > 0 {
+			nw, ew := dst.Write(buf[:nr])
+			n += int64(nw)
+			if ew != nil {
+				return n, ew
+			}
+			if nw != nr {
+				return n, io.ErrShortWrite
+			}
+		}
+		if er == io.EOF {
+			return n, nil
+		}
+		if er != nil {
+			return n, er
+		}
+	}
 }
 func conventional(p string) bool {
 	base := filepath.Base(p)

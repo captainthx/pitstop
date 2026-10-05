@@ -97,6 +97,9 @@ func Inspect(repo, path string) (model.Inventory, error) {
 		if steps := lookup(n, "steps"); steps == nil || steps.Kind != yaml.SequenceNode || len(steps.Content) == 0 || !hasRunnableStep(steps) {
 			j.CapabilityReasons = append(j.CapabilityReasons, "job has no unconditional executable steps")
 		}
+		if steps := lookup(n, "steps"); steps != nil && stepHasUnsupportedControl(steps) {
+			j.CapabilityReasons = append(j.CapabilityReasons, "conditional or continue-on-error steps are unsupported")
+		}
 		if containsSecret(n) {
 			j.SecretReferences = append(j.SecretReferences, "job")
 		}
@@ -201,6 +204,26 @@ func hasRunnableStep(n *yaml.Node) bool {
 	}
 	return false
 }
+func stepHasUnsupportedControl(n *yaml.Node) bool {
+	if n == nil {
+		return false
+	}
+	for _, step := range n.Content {
+		if step.Kind == yaml.AliasNode && step.Alias != nil {
+			step = step.Alias
+		}
+		if step.Kind != yaml.MappingNode {
+			continue
+		}
+		if v := lookup(step, "if"); v != nil && strings.TrimSpace(v.Value) != "" && strings.TrimSpace(v.Value) != "true" {
+			return true
+		}
+		if lookup(step, "continue-on-error") != nil {
+			return true
+		}
+	}
+	return false
+}
 func lookup(n *yaml.Node, key string) *yaml.Node {
 	if n == nil || n.Kind != yaml.MappingNode {
 		return nil
@@ -283,8 +306,18 @@ func containsSecretSeen(n *yaml.Node, seen map[*yaml.Node]bool) bool {
 	return false
 }
 func hasFalseCondition(n *yaml.Node) bool {
+	return hasFalseConditionSeen(n, map[*yaml.Node]bool{})
+}
+func hasFalseConditionSeen(n *yaml.Node, seen map[*yaml.Node]bool) bool {
 	if n == nil {
 		return false
+	}
+	if seen[n] {
+		return false
+	}
+	seen[n] = true
+	if n.Kind == yaml.AliasNode && n.Alias != nil {
+		return hasFalseConditionSeen(n.Alias, seen)
 	}
 	if n.Kind == yaml.MappingNode {
 		for i := 0; i+1 < len(n.Content); i += 2 {
@@ -294,7 +327,7 @@ func hasFalseCondition(n *yaml.Node) bool {
 		}
 	}
 	for _, c := range n.Content {
-		if hasFalseCondition(c) {
+		if hasFalseConditionSeen(c, seen) {
 			return true
 		}
 	}
@@ -302,8 +335,13 @@ func hasFalseCondition(n *yaml.Node) bool {
 }
 func localActions(n *yaml.Node) []string {
 	var out []string
+	seen := map[*yaml.Node]bool{}
 	var walk func(*yaml.Node)
 	walk = func(x *yaml.Node) {
+		if x == nil || seen[x] {
+			return
+		}
+		seen[x] = true
 		if x.Kind == yaml.AliasNode && x.Alias != nil {
 			walk(x.Alias)
 			return
