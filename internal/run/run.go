@@ -56,19 +56,28 @@ func acquireLock(repo string) (*lock, error) {
 	return &lock{f: f}, nil
 }
 func Execute(ctx context.Context, o Options) (model.Envelope, error) {
+	fail := func(err error) (model.Envelope, error) {
+		if ctx.Err() != nil {
+			err = model.Err("CANCELLED", "run cancelled", ctx.Err())
+		}
+		return errorEnvelope("run", err), err
+	}
+	if ctx.Err() != nil {
+		return fail(ctx.Err())
+	}
 	started := time.Now()
 	repo, err := config.ResolveRepo(o.Repo)
 	if err != nil {
-		return errorEnvelope("run", err), err
+		return fail(err)
 	}
 	l, err := acquireLock(repo)
 	if err != nil {
-		return errorEnvelope("run", err), err
+		return fail(err)
 	}
 	defer l.Release()
 	cfg, err := config.Load(repo)
 	if err != nil {
-		return errorEnvelope("run", err), err
+		return fail(err)
 	}
 	initialConfigBytes, _ := json.Marshal(cfg)
 	if o.Architecture != "" {
@@ -83,49 +92,49 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 		}
 		if !found {
 			e := model.Err("CONFIG_INVALID", "job is not in configured selection: "+j, nil)
-			return errorEnvelope("run", e), e
+			return fail(e)
 		}
 	}
 	workflowPath, err := config.ResolveWorkflow(repo, cfg.Workflow)
 	if err != nil {
-		return errorEnvelope("run", err), err
+		return fail(err)
 	}
 	inv, err := workflow.Inspect(repo, workflowPath)
 	if err != nil {
-		return errorEnvelope("run", err), err
+		return fail(err)
 	}
 	if len(o.Jobs) > 0 {
 		cfg.Jobs = o.Jobs
 	}
 	if err := cfg.Validate(); err != nil {
-		return errorEnvelope("run", err), err
+		return fail(err)
 	}
 	if o.ForceIntegration && (cfg.Adapter != "recruit100-service-integration-v1" || !contains(cfg.Jobs, "integration")) {
 		e := model.Err("CONFIG_INVALID", "--force-integration requires the service adapter and selected integration job", nil)
-		return errorEnvelope("run", e), e
+		return fail(e)
 	}
 	plan, err := workflow.Plan(repo, cfg, inv, o.ForceIntegration)
 	if err != nil {
-		return errorEnvelope("run", err), err
+		return fail(err)
 	}
 	env, err := actengine.Check(ctx)
 	if err != nil {
-		return errorEnvelope("run", err), err
+		return fail(err)
 	}
 	env.Info.Image = cfg.Runner.Image
 	env.Info.Architecture = cfg.Runner.Architecture
 	runID := fmt.Sprintf("%d", time.Now().UnixNano())
 	cache, err := os.UserCacheDir()
 	if err != nil {
-		return errorEnvelope("run", err), err
+		return fail(err)
 	}
 	runDir := filepath.Join(cache, "pitstop", "runs", runID)
 	if err := os.MkdirAll(runDir, 0700); err != nil {
-		return errorEnvelope("run", err), err
+		return fail(err)
 	}
 	env.Home = filepath.Join(runDir, "home")
 	if err := os.MkdirAll(filepath.Join(env.Home, ".config"), 0700); err != nil {
-		return errorEnvelope("run", err), err
+		return fail(err)
 	}
 	defer os.RemoveAll(env.Home)
 	// Every exit after runner creation gets a fresh cleanup context.
@@ -140,32 +149,32 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 		}
 	}()
 	if err := os.WriteFile(filepath.Join(runDir, "event.json"), []byte(`{}`+"\n"), 0600); err != nil {
-		return errorEnvelope("run", err), err
+		return fail(err)
 	}
 	snap, err := snapshot.CaptureContext(ctx, repo, runDir)
 	if err != nil {
-		return errorEnvelope("run", err), err
+		return fail(err)
 	}
 	defer snapshot.Remove(snap)
 	snap.CheckoutMode = "local-source-copy"
 	snap.ExcludedPaths = nonNil(snap.ExcludedPaths)
 	capturedConfig, err := config.Load(snap.Path)
 	if err != nil {
-		return errorEnvelope("run", err), err
+		return fail(err)
 	}
 	capturedBytes, _ := json.Marshal(capturedConfig)
 	if string(capturedBytes) != string(initialConfigBytes) {
 		err := model.Err("SNAPSHOT_CHANGED", "config changed before capture", nil)
-		return errorEnvelope("run", err), err
+		return fail(err)
 	}
 	sourceWorkflow := filepath.Join(snap.Path, cfg.Workflow)
 	capturedInv, capturedErr := workflow.Inspect(snap.Path, sourceWorkflow)
 	if capturedErr != nil {
-		return errorEnvelope("run", capturedErr), capturedErr
+		return fail(capturedErr)
 	}
 	capturedPlan, capturedErr := workflow.Plan(snap.Path, cfg, capturedInv, o.ForceIntegration)
 	if capturedErr != nil {
-		return errorEnvelope("run", capturedErr), capturedErr
+		return fail(capturedErr)
 	}
 	inv = capturedInv
 	plan = capturedPlan
@@ -180,10 +189,10 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 	originalCopy := filepath.Join(runDir, "original-workflow.yml")
 	originalBytes, err := os.ReadFile(sourceWorkflow)
 	if err != nil {
-		return errorEnvelope("run", err), err
+		return fail(err)
 	}
 	if err := os.WriteFile(originalCopy, originalBytes, 0600); err != nil {
-		return errorEnvelope("run", err), err
+		return fail(err)
 	}
 	preparedCopy := filepath.Join(runDir, "prepared-workflow.yml")
 	adjustments := []model.Adjustment{}
@@ -191,13 +200,13 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 		prepared := preparedCopy
 		a, e := workflow.PrepareIntegration(sourceWorkflow, prepared)
 		if e != nil {
-			return errorEnvelope("run", e), e
+			return fail(e)
 		}
 		adjustments = a
 		plan.ExecutionWorkflowPath = prepared
 	} else {
 		if err := os.WriteFile(preparedCopy, originalBytes, 0600); err != nil {
-			return errorEnvelope("run", err), err
+			return fail(err)
 		}
 		plan.ExecutionWorkflowPath = preparedCopy
 	}
@@ -214,7 +223,11 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 		}
 		r, e := actengine.Run(ctx, env, snap, plan, j, runDir, o.Timeout, o.Progress)
 		if e != nil {
-			return errorEnvelope("run", e), e
+			reason := e.Error()
+			r = model.JobResult{ID: j.ID, Status: "skipped", Provenance: "unknown", ReasonCode: model.Reason("ENGINE_OUTCOME_UNKNOWN"), Reason: &reason, Steps: []model.StepResult{}}
+			if ctx.Err() != nil {
+				r.ReasonCode = model.Reason("CANCELLED")
+			}
 		}
 		results = append(results, r)
 		if ctx.Err() != nil {
@@ -268,13 +281,18 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 	envl := model.Envelope{SchemaVersion: 1, Command: "run", ExitCode: code, Result: rr}
 	b, marshalErr := json.MarshalIndent(envl, "", "  ")
 	if marshalErr != nil {
-		return errorEnvelope("run", marshalErr), marshalErr
+		return fail(marshalErr)
 	}
-	if err := writeMetadata(runDir, runID, started, originalCopy, preparedCopy); err != nil {
-		return errorEnvelope("run", err), err
+	persistErr := writeMetadata(runDir, runID, started, originalCopy, preparedCopy)
+	if persistErr == nil {
+		persistErr = writeAtomic(rr.ReportPath, append(b, '\n'))
 	}
-	if err := writeAtomic(rr.ReportPath, append(b, '\n')); err != nil {
-		return errorEnvelope("run", err), err
+	if persistErr != nil {
+		if envl.ExitCode == 0 {
+			envl.ExitCode = 2
+		}
+		envl.Error = &model.ErrorInfo{Code: "REPORT_WRITE_FAILED", Message: persistErr.Error()}
+		return envl, persistErr
 	}
 	return envl, nil
 }

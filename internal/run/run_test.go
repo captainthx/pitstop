@@ -136,3 +136,59 @@ func TestExecuteRetainsHashesAndCoverageAfterSnapshotCleanup(t *testing.T) {
 		t.Fatalf("unsafe integration endpoint: %#v", blocked)
 	}
 }
+
+func TestLaterLaunchErrorPreservesEarlierFailureAndReport(t *testing.T) {
+	d := t.TempDir()
+	if out, e := exec.Command("git", "init", "-q", d).CombinedOutput(); e != nil {
+		t.Fatal(string(out), e)
+	}
+	os.MkdirAll(filepath.Join(d, ".github/workflows"), 0700)
+	os.WriteFile(filepath.Join(d, ".github/workflows/ci.yml"), []byte("on: pull_request\njobs:\n  first:\n    runs-on: ubuntu-latest\n    steps:\n      - run: exit 7\n  second:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo second\n"), 0600)
+	os.WriteFile(filepath.Join(d, ".pitstop.json"), []byte(`{"schemaVersion":1,"workflow":".github/workflows/ci.yml","event":"pull_request","jobs":["first","second"],"runner":{"label":"ubuntu-latest","image":"test-image","architecture":"linux/arm64"}}`), 0600)
+	for _, a := range [][]string{{"-C", d, "add", "."}, {"-C", d, "-c", "user.name=Test", "-c", "user.email=test@localhost", "commit", "-qm", "fixture"}} {
+		if out, e := exec.Command("git", a...).CombinedOutput(); e != nil {
+			t.Fatal(string(out), e)
+		}
+	}
+	tools := t.TempDir()
+	os.WriteFile(filepath.Join(tools, "act"), []byte("#!/bin/sh\nif [ \"$1\" = --version ]; then echo 'act version 0.2.89';exit 0;fi\nprintf '{\"jobID\":\"first\",\"jobResult\":\"failure\"}\\n'\nrm \"$0\"\nexit 7\n"), 0755)
+	os.WriteFile(filepath.Join(tools, "docker"), []byte("#!/bin/sh\ncase \"$*\" in *version*) echo 29.4.0;; *inspect*) echo '[]';; esac\n"), 0755)
+	t.Setenv("PATH", tools+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("DOCKER_HOST", "unix:///test/socket")
+	t.Setenv("DOCKER_CONTEXT", "")
+	e, err := Execute(context.Background(), Options{Repo: d, Timeout: time.Second})
+	if err != nil || e.ExitCode != 1 {
+		t.Fatalf("lost executed failure precedence: %#v %v", e, err)
+	}
+	r := e.Result.(model.RunReport)
+	defer os.RemoveAll(filepath.Dir(r.ReportPath))
+	if len(r.Jobs) != 2 || r.Jobs[0].Status != "failed" || r.Jobs[1].Status != "skipped" || r.Coverage.Selected != "partial" {
+		t.Fatal(r)
+	}
+	if r.Jobs[1].ReasonCode == nil || *r.Jobs[1].ReasonCode != "ENGINE_OUTCOME_UNKNOWN" {
+		t.Fatal(r.Jobs[1])
+	}
+	if _, err := os.Stat(r.ReportPath); err != nil {
+		t.Fatal("lost final report", err)
+	}
+	// A storage failure also must preserve the already executed failure.
+	os.WriteFile(filepath.Join(tools, "act"), []byte("#!/bin/sh\nif [ \"$1\" = --version ];then echo 'act version 0.2.89';exit 0;fi\nmkdir -p metadata.json\nprintf '{\"jobID\":\"first\",\"jobResult\":\"failure\"}\\n'\nrm \"$0\"\nexit 7\n"), 0755)
+	failed, err := Execute(context.Background(), Options{Repo: d, Timeout: time.Second})
+	if err == nil || failed.ExitCode != 1 || failed.Error == nil || failed.Error.Code != "REPORT_WRITE_FAILED" {
+		t.Fatalf("storage failure erased execution: %#v %v", failed, err)
+	}
+	retained := failed.Result.(model.RunReport)
+	defer os.RemoveAll(filepath.Dir(retained.ReportPath))
+	if len(retained.Jobs) != 2 || retained.Jobs[0].Status != "failed" {
+		t.Fatal(retained)
+	}
+}
+
+func TestCancelledPreflightReturnsCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	e, err := Execute(ctx, Options{Repo: t.TempDir()})
+	if err == nil || e.ExitCode != 130 || e.Error == nil || e.Error.Code != "CANCELLED" {
+		t.Fatalf("cancelled preflight: %#v %v", e, err)
+	}
+}

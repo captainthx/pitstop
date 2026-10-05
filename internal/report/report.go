@@ -34,7 +34,9 @@ func WriteEnvelope(w io.Writer, e model.Envelope) error {
 func Human(w io.Writer, e model.Envelope) error {
 	if e.Error != nil {
 		_, err := fmt.Fprintf(w, "pitstop: %s (%s)\n", e.Error.Message, e.Error.Code)
-		return err
+		if _, ok := e.Result.(model.RunReport); !ok || err != nil {
+			return err
+		}
 	}
 	if r, ok := e.Result.(model.RunReport); ok {
 		_, err := fmt.Fprintf(w, "pitstop run %s: exit %d selected=%s workflow=%s duration=%dms report=%s\n", r.RunID, e.ExitCode, r.Coverage.Selected, r.Coverage.Workflow, r.DurationMs, r.ReportPath)
