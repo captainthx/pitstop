@@ -22,11 +22,12 @@ func Capture(repo, runDir string) (model.Snapshot, error) {
 		return model.Snapshot{}, model.Err("SNAPSHOT_CHANGED", "repository has no HEAD", err)
 	}
 	root, _ := filepath.Abs(repo)
-	if sub, _ := exec.Command("git", "-C", root, "ls-files", "--stage").Output(); strings.Contains(string(sub), " 160000 ") {
+	if sub, _ := exec.Command("git", "-C", root, "ls-files", "--stage").Output(); hasSubmodule(string(sub)) {
 		return model.Snapshot{}, model.Err("SNAPSHOT_CHANGED", "submodules are unsupported", nil)
 	}
 	tracked := trackedFiles(root)
 	allowed := sourceFiles(root)
+	statusBefore := gitStatus(root)
 	clone := filepath.Join(runDir, "snapshot")
 	if err := os.MkdirAll(runDir, 0700); err != nil {
 		return model.Snapshot{}, err
@@ -56,7 +57,8 @@ func Capture(repo, runDir string) (model.Snapshot, error) {
 	if err != nil {
 		return model.Snapshot{}, err
 	}
-	if before != after {
+	trackedAfter, allowedAfter := trackedFiles(root), sourceFiles(root)
+	if before != after || !sameSet(tracked, trackedAfter) || !sameSet(allowed, allowedAfter) || statusBefore != gitStatus(root) {
 		return model.Snapshot{}, model.Err("SNAPSHOT_CHANGED", "working tree changed while capturing", nil)
 	}
 	captured, err := manifest(clone, tracked, allowed)
@@ -70,6 +72,29 @@ func Capture(repo, runDir string) (model.Snapshot, error) {
 	sum := sha256.Sum256([]byte(before))
 	dirty := strings.TrimSpace(string(mustOutput("git", "-C", root, "status", "--porcelain"))) != ""
 	return model.Snapshot{Path: clone, ManifestPath: path, SourceManifestPath: path, Head: strings.TrimSpace(string(headBytes)), SnapshotSHA256: hex.EncodeToString(sum[:]), Dirty: dirty, ExcludedPaths: excluded, CheckoutMode: "local-source-copy"}, nil
+}
+func hasSubmodule(s string) bool {
+	for _, line := range strings.Split(s, "\n") {
+		if strings.HasPrefix(line, "160000 ") {
+			return true
+		}
+	}
+	return false
+}
+func gitStatus(root string) string {
+	b, _ := exec.Command("git", "-C", root, "status", "--porcelain=v1", "-z").Output()
+	return string(b)
+}
+func sameSet(a, b map[string]bool) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k := range a {
+		if !b[k] {
+			return false
+		}
+	}
+	return true
 }
 func trackedFiles(root string) map[string]bool {
 	out := map[string]bool{}
@@ -199,6 +224,10 @@ func manifest(root string, tracked, allowed map[string]bool) (string, error) {
 			return nil
 		}
 		if !tracked[filepath.Clean(rel)] && !allowed[filepath.Clean(rel)] {
+			if info.IsDir() && hasAllowedPrefix(allowed, filepath.Clean(rel)+string(filepath.Separator)) {
+				paths = append(paths, rel)
+				return nil
+			}
 			if info.IsDir() {
 				return filepath.SkipDir
 			}

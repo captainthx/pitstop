@@ -35,18 +35,22 @@ func Check(ctx context.Context) (Environment, error) {
 		return Environment{}, model.Err("TOOL_MISSING", "docker is required", err)
 	}
 	_ = docker
-	host := os.Getenv("DOCKER_HOST")
-	if host == "" {
-		contextName := os.Getenv("DOCKER_CONTEXT")
-		if contextName == "" {
+	contextName := os.Getenv("DOCKER_CONTEXT")
+	host := ""
+	if contextName != "" {
+		out, _ := exec.CommandContext(ctx, "docker", "context", "inspect", "--format", "{{.Endpoints.docker.Host}}", contextName).Output()
+		host = strings.TrimSpace(string(out))
+	} else {
+		host = os.Getenv("DOCKER_HOST")
+		if host == "" {
 			contextOut, _ := exec.CommandContext(ctx, "docker", "context", "show").Output()
 			contextName = strings.TrimSpace(string(contextOut))
 			if contextName == "" {
 				contextName = "default"
 			}
+			out, _ := exec.CommandContext(ctx, "docker", "context", "inspect", "--format", "{{.Endpoints.docker.Host}}", contextName).Output()
+			host = strings.TrimSpace(string(out))
 		}
-		out, _ := exec.CommandContext(ctx, "docker", "context", "inspect", "--format", "{{.Endpoints.docker.Host}}", contextName).Output()
-		host = strings.TrimSpace(string(out))
 	}
 	if host == "" {
 		host = "unix:///var/run/docker.sock"

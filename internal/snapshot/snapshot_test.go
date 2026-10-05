@@ -15,7 +15,13 @@ func TestCaptureUsesWorkingTreeAndExcludesEnv(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(repo, "tracked.txt"), []byte("A"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	runGit(t, repo, "add", "tracked.txt")
+	if err := os.MkdirAll(filepath.Join(repo, "nested", "deep"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(repo, "nested", "deep", "source.txt"), []byte("nested"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	runGit(t, repo, "add", "tracked.txt", "nested")
 	runGit(t, repo, "commit", "-m", "init")
 	if err := os.WriteFile(filepath.Join(repo, "tracked.txt"), []byte("B"), 0600); err != nil {
 		t.Fatal(err)
@@ -33,6 +39,9 @@ func TestCaptureUsesWorkingTreeAndExcludesEnv(t *testing.T) {
 	defer Remove(s)
 	if got, err := os.ReadFile(filepath.Join(s.Path, "tracked.txt")); err != nil || string(got) != "B" {
 		t.Fatalf("tracked=%q err=%v", got, err)
+	}
+	if got, err := os.ReadFile(filepath.Join(s.Path, "nested", "deep", "source.txt")); err != nil || string(got) != "nested" {
+		t.Fatalf("nested=%q err=%v", got, err)
 	}
 	if _, err := os.Stat(filepath.Join(s.Path, "new.txt")); err != nil {
 		t.Fatalf("untracked missing: %v", err)

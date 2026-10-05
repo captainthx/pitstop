@@ -112,6 +112,11 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 	if err := os.MkdirAll(runDir, 0700); err != nil {
 		return errorEnvelope("run", err), err
 	}
+	env.Home = filepath.Join(runDir, "home")
+	if err := os.MkdirAll(filepath.Join(env.Home, ".config"), 0700); err != nil {
+		return errorEnvelope("run", err), err
+	}
+	defer os.RemoveAll(env.Home)
 	_ = os.WriteFile(filepath.Join(runDir, "event.json"), []byte(`{"event":"pull_request"}`+"\n"), 0600)
 	snap, err := snapshot.Capture(repo, runDir)
 	if err != nil {
@@ -121,6 +126,16 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 	snap.CheckoutMode = "local-source-copy"
 	snap.ExcludedPaths = nonNil(snap.ExcludedPaths)
 	sourceWorkflow := filepath.Join(snap.Path, cfg.Workflow)
+	capturedInv, capturedErr := workflow.Inspect(snap.Path, sourceWorkflow)
+	if capturedErr != nil {
+		return errorEnvelope("run", capturedErr), capturedErr
+	}
+	capturedPlan, capturedErr := workflow.Plan(snap.Path, cfg, capturedInv, o.ForceIntegration)
+	if capturedErr != nil {
+		return errorEnvelope("run", capturedErr), capturedErr
+	}
+	inv = capturedInv
+	plan = capturedPlan
 	originalCopy := filepath.Join(runDir, "original-workflow.yml")
 	if b, e := os.ReadFile(sourceWorkflow); e == nil {
 		_ = os.WriteFile(originalCopy, b, 0600)
@@ -165,6 +180,20 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 	}
 	code := report.ExitCode(results, ctx.Err() != nil)
 	warnings := []string{}
+	if e := snapshot.Remove(snap); e != nil {
+		warnings = append(warnings, "CLEANUP_INCOMPLETE: source snapshot: "+e.Error())
+		if code == 0 {
+			code = 2
+		}
+	}
+	if env.Home != "" {
+		if e := os.RemoveAll(env.Home); e != nil {
+			warnings = append(warnings, "CLEANUP_INCOMPLETE: ephemeral home: "+e.Error())
+			if code == 0 {
+				code = 2
+			}
+		}
+	}
 	cleanupCtx, cancelCleanup := context.WithTimeout(context.Background(), 5*time.Second)
 	if cleanupErr := actengine.Cleanup(cleanupCtx, runDir); cleanupErr != nil {
 		warnings = append(warnings, "CLEANUP_INCOMPLETE: "+cleanupErr.Error())
@@ -206,7 +235,17 @@ func writeMetadata(dir, runID string, started time.Time, original, prepared stri
 		_, _ = io.Copy(h, f)
 		return fmt.Sprintf("%x", h.Sum(nil))
 	}
-	m := map[string]any{"runId": runID, "startedAt": started.UTC().Format(time.RFC3339Nano), "finishedAt": time.Now().UTC().Format(time.RFC3339Nano), "originalWorkflowSha256": hash(original), "preparedWorkflowSha256": hash(prepared), "argv": []string{"act", "pull_request", "-j"}}
+	argv := map[string][]string{}
+	for _, p := range func() []string { ps, _ := filepath.Glob(filepath.Join(dir, "argv-*.json")); return ps }() {
+		b, e := os.ReadFile(p)
+		if e == nil {
+			var a []string
+			if json.Unmarshal(b, &a) == nil {
+				argv[filepath.Base(p)] = a
+			}
+		}
+	}
+	m := map[string]any{"runId": runID, "startedAt": started.UTC().Format(time.RFC3339Nano), "finishedAt": time.Now().UTC().Format(time.RFC3339Nano), "originalWorkflowSha256": hash(original), "preparedWorkflowSha256": hash(prepared), "argv": argv}
 	b, e := json.MarshalIndent(m, "", "  ")
 	if e != nil {
 		return e

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"go.yaml.in/yaml/v3"
@@ -31,8 +32,16 @@ func Inspect(repo, path string) (model.Inventory, error) {
 		return model.Inventory{}, model.Err("WORKFLOW_UNSUPPORTED", "workflow has no jobs mapping", nil)
 	}
 	inv := model.Inventory{WorkflowPath: path, Jobs: []model.JobInfo{}}
+	ids := map[string]bool{}
 	for i := 0; i < len(jobs.Content); i += 2 {
 		id := jobs.Content[i].Value
+		if ids[id] {
+			return model.Inventory{}, model.Err("WORKFLOW_UNSUPPORTED", "duplicate job id: "+id, nil)
+		}
+		if !validJobID(id) {
+			return model.Inventory{}, model.Err("WORKFLOW_UNSUPPORTED", "invalid job id: "+id, nil)
+		}
+		ids[id] = true
 		n := jobs.Content[i+1]
 		if n.Kind != yaml.MappingNode {
 			continue
@@ -43,6 +52,11 @@ func Inspect(repo, path string) (model.Inventory, error) {
 		}
 		if v := lookup(n, "runs-on"); v != nil {
 			j.RunsOn = v.Value
+		}
+		if j.RunsOn == "" {
+			j.CapabilityReasons = append(j.CapabilityReasons, "runner is missing")
+		} else if strings.Contains(j.RunsOn, "${{") {
+			j.CapabilityReasons = append(j.CapabilityReasons, "dynamic runner")
 		}
 		if v := lookup(n, "if"); v != nil {
 			j.If = v.Value
@@ -64,6 +78,10 @@ func Inspect(repo, path string) (model.Inventory, error) {
 		j.ContinueOnError = lookup(n, "continue-on-error") != nil
 		if lookup(n, "uses") != nil {
 			j.Reusable = true
+			j.CapabilityReasons = append(j.CapabilityReasons, "reusable workflows are unsupported")
+		}
+		if steps := lookup(n, "steps"); steps == nil || steps.Kind != yaml.SequenceNode || len(steps.Content) == 0 || !hasRunnableStep(steps) {
+			j.CapabilityReasons = append(j.CapabilityReasons, "job has no unconditional executable steps")
 		}
 		if containsSecret(n) {
 			j.SecretReferences = append(j.SecretReferences, "job")
@@ -71,12 +89,11 @@ func Inspect(repo, path string) (model.Inventory, error) {
 		if hasFalseCondition(n) {
 			j.CapabilityReasons = append(j.CapabilityReasons, "conditional steps are unsupported")
 		}
-		for _, local := range localActions(n) {
-			base := filepath.Join(repo, strings.TrimPrefix(local, "./"))
-			for _, name := range []string{"action.yml", "action.yaml"} {
-				if b, e := os.ReadFile(filepath.Join(base, name)); e == nil && strings.Contains(string(b), "secrets.") {
-					j.SecretReferences = append(j.SecretReferences, "local composite "+local)
-				}
+		for _, reason := range localActionReasons(repo, localActions(n)) {
+			if strings.HasPrefix(reason, "secret:") {
+				j.SecretReferences = append(j.SecretReferences, strings.TrimPrefix(reason, "secret:"))
+			} else {
+				j.CapabilityReasons = append(j.CapabilityReasons, reason)
 			}
 		}
 		if top := lookup(mapNode, "env"); top != nil && containsSecret(top) {
@@ -142,6 +159,27 @@ func Inspect(repo, path string) (model.Inventory, error) {
 	}
 	return inv, nil
 }
+
+var jobIDPattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_-]*$`)
+
+func validJobID(id string) bool { return jobIDPattern.MatchString(id) }
+func hasRunnableStep(n *yaml.Node) bool {
+	if n == nil {
+		return false
+	}
+	for _, step := range n.Content {
+		if step.Kind != yaml.MappingNode {
+			continue
+		}
+		if v := lookup(step, "if"); v != nil && strings.TrimSpace(v.Value) != "" && strings.TrimSpace(v.Value) != "true" {
+			continue
+		}
+		if lookup(step, "run") != nil || lookup(step, "uses") != nil {
+			return true
+		}
+	}
+	return false
+}
 func lookup(n *yaml.Node, key string) *yaml.Node {
 	if n == nil || n.Kind != yaml.MappingNode {
 		return nil
@@ -157,7 +195,7 @@ func containsSecret(n *yaml.Node) bool {
 	if n == nil {
 		return false
 	}
-	if strings.Contains(n.Value, "secrets.") {
+	if strings.Contains(n.Value, "secrets.") || strings.Contains(n.Value, "secrets[") || strings.Contains(n.Value, "secrets [") {
 		return true
 	}
 	for _, c := range n.Content {
@@ -189,14 +227,70 @@ func localActions(n *yaml.Node) []string {
 	var out []string
 	var walk func(*yaml.Node)
 	walk = func(x *yaml.Node) {
-		if x.Kind == yaml.ScalarNode && strings.HasPrefix(x.Value, "./") && strings.Contains(x.Value, ".github/actions") {
-			out = append(out, x.Value)
+		if x.Kind == yaml.MappingNode {
+			for i := 0; i+1 < len(x.Content); i += 2 {
+				if x.Content[i].Value == "uses" && strings.HasPrefix(x.Content[i+1].Value, "./") {
+					out = append(out, x.Content[i+1].Value)
+				}
+			}
 		}
 		for _, c := range x.Content {
 			walk(c)
 		}
 	}
 	walk(n)
+	return out
+}
+func localActionReasons(repo string, refs []string) []string {
+	var out []string
+	seen := map[string]bool{}
+	stack := map[string]bool{}
+	var visit func(string)
+	visit = func(ref string) {
+		base := filepath.Join(repo, strings.TrimPrefix(ref, "./"))
+		real, e := filepath.EvalSymlinks(base)
+		root, _ := filepath.EvalSymlinks(repo)
+		rel, relErr := filepath.Rel(root, real)
+		if e != nil || relErr != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			out = append(out, "local action path escapes or is missing: "+ref)
+			return
+		}
+		if stack[real] {
+			out = append(out, "local action cycle: "+ref)
+			return
+		}
+		if seen[real] {
+			return
+		}
+		seen[real] = true
+		stack[real] = true
+		defer delete(stack, real)
+		var doc yaml.Node
+		var b []byte
+		for _, name := range []string{"action.yml", "action.yaml"} {
+			if bb, ee := os.ReadFile(filepath.Join(real, name)); ee == nil {
+				b = bb
+				break
+			}
+		}
+		if len(b) == 0 {
+			out = append(out, "local action metadata is missing: "+ref)
+			return
+		}
+		if yaml.Unmarshal(b, &doc) != nil {
+			out = append(out, "local action metadata is invalid: "+ref)
+			return
+		}
+		if containsSecret(&doc) {
+			out = append(out, "secret:local composite "+ref)
+		}
+		for _, nested := range localActions(&doc) {
+			visit(nested)
+		}
+	}
+	for _, r := range refs {
+		visit(r)
+	}
 	return out
 }
 func Plan(repo string, cfg model.Config, inv model.Inventory, force bool) (model.Plan, error) {
@@ -254,6 +348,9 @@ func PrepareIntegration(source, destination string) ([]model.Adjustment, error) 
 	var root yaml.Node
 	if err := yaml.Unmarshal(b, &root); err != nil {
 		return nil, model.Err("ADAPTER_SHAPE_CHANGED", "invalid integration workflow", err)
+	}
+	if len(root.Content) == 0 || root.Content[0] == nil || root.Content[0].Kind != yaml.MappingNode {
+		return nil, model.Err("ADAPTER_SHAPE_CHANGED", "empty integration workflow", nil)
 	}
 	jobs := lookup(root.Content[0], "jobs")
 	integration := lookup(jobs, "integration")

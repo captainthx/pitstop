@@ -44,7 +44,14 @@ func Run(ctx context.Context, env Environment, snapshot model.Snapshot, plan mod
 	_ = os.WriteFile(filepath.Join(runDir, "engine-meta.json"), []byte(fmt.Sprintf(`{"dockerHost":%q,"label":%q}`, env.DockerHost, "com.pitstop.run="+filepath.Base(runDir))), 0600)
 	_ = os.MkdirAll(filepath.Join(cache, "actions"), 0700)
 	_ = os.MkdirAll(filepath.Join(cache, "dependencies"), 0700)
-	args := []string{"pull_request", "-e", filepath.Join(runDir, "event.json"), "-C", snapshot.Path, "-W", workflow, "-j", job.ID, "-P", plan.Config.Runner.Label + "=" + plan.Config.Runner.Image, "--container-architecture", plan.Config.Runner.Architecture, "--env-file", "/dev/null", "--secret-file", "/dev/null", "--var-file", "/dev/null", "--input-file", "/dev/null", "--container-daemon-socket", "-", "--container-options", "--label=com.pitstop.run=" + filepath.Base(runDir), "--rm", "--pull=false", "--action-offline-mode", "--action-cache-path", filepath.Join(cache, "actions"), "--cache-server-path", filepath.Join(cache, "dependencies"), "--json"}
+	socket := "-"
+	if plan.ForceIntegration && job.ID == "integration" && strings.HasPrefix(env.DockerHost, "unix://") {
+		socket = env.DockerHost
+	}
+	args := []string{"pull_request", "-e", filepath.Join(runDir, "event.json"), "-C", snapshot.Path, "-W", workflow, "-j", job.ID, "-P", plan.Config.Runner.Label + "=" + plan.Config.Runner.Image, "--container-architecture", plan.Config.Runner.Architecture, "--env-file", "/dev/null", "--secret-file", "/dev/null", "--var-file", "/dev/null", "--input-file", "/dev/null", "--container-daemon-socket", socket, "--container-options", "--label=com.pitstop.run=" + filepath.Base(runDir), "--rm", "--pull=false", "--action-offline-mode", "--action-cache-path", filepath.Join(cache, "actions"), "--cache-server-path", filepath.Join(cache, "dependencies"), "--json"}
+	if b, e := json.Marshal(args); e == nil {
+		_ = os.WriteFile(filepath.Join(runDir, "argv-"+job.ID+".json"), append(b, '\n'), 0600)
+	}
 	cmd := exec.Command(env.ActPath, args...)
 	cmd.Dir = runDir
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
