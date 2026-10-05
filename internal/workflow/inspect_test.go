@@ -134,6 +134,51 @@ func TestInspectFindsNestedLocalActionSecret(t *testing.T) {
 		t.Fatalf("nested secret missed: %#v", inv.Jobs[0])
 	}
 }
+func TestInspectBlocksConditionalAndContinueOnErrorCompositeSteps(t *testing.T) {
+	d := t.TempDir()
+	action := filepath.Join(d, ".github/actions/check")
+	if err := os.MkdirAll(action, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(action, "action.yml"), []byte("runs:\n  using: composite\n  steps:\n    - if: false\n      run: exit 42\n    - continue-on-error: true\n      run: echo ignored\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	workflow := filepath.Join(d, "ci.yml")
+	if err := os.WriteFile(workflow, []byte("on: [pull_request]\njobs:\n  verify:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./.github/actions/check\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	inv, err := Inspect(d, workflow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reasons := strings.Join(inv.Jobs[0].CapabilityReasons, " ")
+	if !strings.Contains(reasons, "local composite conditional steps are unsupported") || !strings.Contains(reasons, "local composite continue-on-error is unsupported") {
+		t.Fatalf("reasons=%v", inv.Jobs[0].CapabilityReasons)
+	}
+}
+
+func TestInspectBlocksCompositeWithoutExecutableSteps(t *testing.T) {
+	d := t.TempDir()
+	action := filepath.Join(d, ".github/actions/check")
+	if err := os.MkdirAll(action, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(action, "action.yml"), []byte("runs:\n  using: composite\n  steps:\n    - name: documentation only\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	workflow := filepath.Join(d, "ci.yml")
+	if err := os.WriteFile(workflow, []byte("on: [pull_request]\njobs:\n  verify:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./.github/actions/check\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	inv, err := Inspect(d, workflow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !containsText(strings.Join(inv.Jobs[0].CapabilityReasons, " "), "local composite has no executable steps") {
+		t.Fatalf("reasons=%v", inv.Jobs[0].CapabilityReasons)
+	}
+}
+
 func TestInspectRejectsUnsafeJobID(t *testing.T) {
 	d := t.TempDir()
 	p := filepath.Join(d, "ci.yml")

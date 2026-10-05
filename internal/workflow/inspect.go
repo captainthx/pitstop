@@ -360,6 +360,64 @@ func localActions(n *yaml.Node) []string {
 	walk(n)
 	return out
 }
+
+func localCompositeReasons(doc *yaml.Node) []string {
+	doc = dereferenceNode(doc)
+	if doc != nil && doc.Kind == yaml.DocumentNode && len(doc.Content) > 0 {
+		doc = dereferenceNode(doc.Content[0])
+	}
+	if doc == nil || doc.Kind != yaml.MappingNode {
+		return nil
+	}
+	runs := dereferenceNode(lookup(doc, "runs"))
+	if runs == nil || runs.Kind != yaml.MappingNode {
+		return nil
+	}
+	using := dereferenceNode(lookup(runs, "using"))
+	if using == nil || using.Value != "composite" {
+		return nil
+	}
+	steps := dereferenceNode(lookup(runs, "steps"))
+	if steps == nil || steps.Kind != yaml.SequenceNode || len(steps.Content) == 0 {
+		return []string{"local composite has no executable steps"}
+	}
+	var out []string
+	executable := false
+	seen := map[*yaml.Node]bool{}
+	for _, raw := range steps.Content {
+		step := dereferenceNode(raw)
+		if step == nil || seen[step] {
+			continue
+		}
+		seen[step] = true
+		if step.Kind != yaml.MappingNode {
+			continue
+		}
+		if condition := dereferenceNode(lookup(step, "if")); condition != nil && strings.TrimSpace(condition.Value) != "" && strings.TrimSpace(condition.Value) != "true" {
+			out = append(out, "local composite conditional steps are unsupported")
+		}
+		if lookup(step, "continue-on-error") != nil {
+			out = append(out, "local composite continue-on-error is unsupported")
+		}
+		if lookup(step, "run") != nil || lookup(step, "uses") != nil {
+			executable = true
+		}
+	}
+	if !executable {
+		out = append(out, "local composite has no executable steps")
+	}
+	return out
+}
+
+func dereferenceNode(n *yaml.Node) *yaml.Node {
+	seen := map[*yaml.Node]bool{}
+	for n != nil && n.Kind == yaml.AliasNode && n.Alias != nil && !seen[n] {
+		seen[n] = true
+		n = n.Alias
+	}
+	return n
+}
+
 func localActionReasons(repo string, refs []string) []string {
 	var out []string
 	seen := map[string]bool{}
@@ -410,6 +468,7 @@ func localActionReasons(repo string, refs []string) []string {
 		if containsSecret(&doc) {
 			out = append(out, "secret:local composite "+ref)
 		}
+		out = append(out, localCompositeReasons(&doc)...)
 		for _, nested := range localActions(&doc) {
 			visit(nested, repo)
 		}
