@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"pitstop/internal/report"
 	"pitstop/internal/snapshot"
 	"pitstop/internal/workflow"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -34,7 +36,10 @@ func (l *lock) Release() {
 	}
 }
 func acquireLock(repo string) (*lock, error) {
-	cache, _ := os.UserCacheDir()
+	cache, err := os.UserCacheDir()
+	if err != nil {
+		return nil, err
+	}
 	sum := sha256.Sum256([]byte(repo))
 	dir := filepath.Join(cache, "pitstop", "locks")
 	if err := os.MkdirAll(dir, 0700); err != nil {
@@ -65,6 +70,7 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 	if err != nil {
 		return errorEnvelope("run", err), err
 	}
+	initialConfigBytes, _ := json.Marshal(cfg)
 	if o.Architecture != "" {
 		cfg.Runner.Architecture = o.Architecture
 	}
@@ -91,6 +97,9 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 	if len(o.Jobs) > 0 {
 		cfg.Jobs = o.Jobs
 	}
+	if err := cfg.Validate(); err != nil {
+		return errorEnvelope("run", err), err
+	}
 	if o.ForceIntegration && (cfg.Adapter != "recruit100-service-integration-v1" || !contains(cfg.Jobs, "integration")) {
 		e := model.Err("CONFIG_INVALID", "--force-integration requires the service adapter and selected integration job", nil)
 		return errorEnvelope("run", e), e
@@ -106,7 +115,10 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 	env.Info.Image = cfg.Runner.Image
 	env.Info.Architecture = cfg.Runner.Architecture
 	runID := fmt.Sprintf("%d", time.Now().UnixNano())
-	cache, _ := os.UserCacheDir()
+	cache, err := os.UserCacheDir()
+	if err != nil {
+		return errorEnvelope("run", err), err
+	}
 	runDir := filepath.Join(cache, "pitstop", "runs", runID)
 	if err := os.MkdirAll(runDir, 0700); err != nil {
 		return errorEnvelope("run", err), err
@@ -116,14 +128,36 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 		return errorEnvelope("run", err), err
 	}
 	defer os.RemoveAll(env.Home)
-	_ = os.WriteFile(filepath.Join(runDir, "event.json"), []byte(`{"event":"pull_request"}`+"\n"), 0600)
-	snap, err := snapshot.Capture(repo, runDir)
+	// Every exit after runner creation gets a fresh cleanup context.
+	cleanupDone := false
+	defer func() {
+		if !cleanupDone {
+			c, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			if e := actengine.Cleanup(c, runDir); e != nil && o.Progress != nil {
+				fmt.Fprintln(o.Progress, "CLEANUP_INCOMPLETE:", e)
+			}
+		}
+	}()
+	if err := os.WriteFile(filepath.Join(runDir, "event.json"), []byte(`{}`+"\n"), 0600); err != nil {
+		return errorEnvelope("run", err), err
+	}
+	snap, err := snapshot.CaptureContext(ctx, repo, runDir)
 	if err != nil {
 		return errorEnvelope("run", err), err
 	}
 	defer snapshot.Remove(snap)
 	snap.CheckoutMode = "local-source-copy"
 	snap.ExcludedPaths = nonNil(snap.ExcludedPaths)
+	capturedConfig, err := config.Load(snap.Path)
+	if err != nil {
+		return errorEnvelope("run", err), err
+	}
+	capturedBytes, _ := json.Marshal(capturedConfig)
+	if string(capturedBytes) != string(initialConfigBytes) {
+		err := model.Err("SNAPSHOT_CHANGED", "config changed before capture", nil)
+		return errorEnvelope("run", err), err
+	}
 	sourceWorkflow := filepath.Join(snap.Path, cfg.Workflow)
 	capturedInv, capturedErr := workflow.Inspect(snap.Path, sourceWorkflow)
 	if capturedErr != nil {
@@ -135,13 +169,26 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 	}
 	inv = capturedInv
 	plan = capturedPlan
-	originalCopy := filepath.Join(runDir, "original-workflow.yml")
-	if b, e := os.ReadFile(sourceWorkflow); e == nil {
-		_ = os.WriteFile(originalCopy, b, 0600)
+	if o.ForceIntegration && !strings.HasPrefix(env.DockerHost, "unix://") {
+		for i := range plan.Jobs {
+			if plan.Jobs[i].ID == "integration" {
+				plan.Jobs[i].Eligible = false
+				plan.Jobs[i].Reasons = append(plan.Jobs[i].Reasons, "integration requires a local Unix Docker endpoint")
+			}
+		}
 	}
+	originalCopy := filepath.Join(runDir, "original-workflow.yml")
+	originalBytes, err := os.ReadFile(sourceWorkflow)
+	if err != nil {
+		return errorEnvelope("run", err), err
+	}
+	if err := os.WriteFile(originalCopy, originalBytes, 0600); err != nil {
+		return errorEnvelope("run", err), err
+	}
+	preparedCopy := filepath.Join(runDir, "prepared-workflow.yml")
 	adjustments := []model.Adjustment{}
 	if o.ForceIntegration && cfg.Adapter == "recruit100-service-integration-v1" {
-		prepared := filepath.Join(runDir, "prepared-workflow.yml")
+		prepared := preparedCopy
 		a, e := workflow.PrepareIntegration(sourceWorkflow, prepared)
 		if e != nil {
 			return errorEnvelope("run", e), e
@@ -149,14 +196,16 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 		adjustments = a
 		plan.ExecutionWorkflowPath = prepared
 	} else {
-		plan.ExecutionWorkflowPath = sourceWorkflow
+		if err := os.WriteFile(preparedCopy, originalBytes, 0600); err != nil {
+			return errorEnvelope("run", err), err
+		}
+		plan.ExecutionWorkflowPath = preparedCopy
 	}
-	_ = writeMetadata(runDir, runID, started, workflowPath, plan.ExecutionWorkflowPath)
 	var results []model.JobResult
 	for idx, j := range plan.Jobs {
 		if !j.Eligible {
 			code := "WORKFLOW_UNSUPPORTED"
-			if len(j.Reasons) > 0 && contains(j.Reasons, "integration requires") {
+			if len(j.Reasons) > 0 && strings.Contains(join(j.Reasons), "integration requires") {
 				code = "INTEGRATION_RUNTIME_UNSUPPORTED"
 			}
 			msg := join(j.Reasons)
@@ -201,14 +250,18 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 		}
 	}
 	cancelCleanup()
+	cleanupDone = true
+	digestCtx, cancelDigest := context.WithTimeout(context.Background(), 5*time.Second)
+	env.Info.ImageDigest = actengine.ImageDigest(digestCtx, env, cfg.Runner.Image)
+	cancelDigest()
 	coverage := "complete"
 	for _, r := range results {
-		if r.Status != "passed" {
+		if r.Status != "passed" && !(r.Status == "failed" && r.Provenance == "engine_exit" && r.ReasonCode == nil) {
 			coverage = "partial"
 		}
 	}
 	workflowCoverage := "complete"
-	if len(results) != len(inv.Jobs) || len(adjustments) > 0 {
+	if coverage == "partial" || len(results) != len(inv.Jobs) || len(adjustments) > 0 {
 		workflowCoverage = "partial"
 	}
 	rr := model.RunReport{RunID: runID, Repo: repo, Source: snap, Engine: env.Info, Jobs: results, Coverage: model.Coverage{Selected: coverage, Workflow: workflowCoverage}, Adjustments: adjustments, Warnings: warnings, DurationMs: time.Since(started).Milliseconds(), ReportPath: filepath.Join(runDir, "report.json")}
@@ -217,44 +270,81 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 	if marshalErr != nil {
 		return errorEnvelope("run", marshalErr), marshalErr
 	}
-	if writeErr := os.WriteFile(rr.ReportPath, append(b, '\n'), 0600); writeErr != nil {
-		return errorEnvelope("run", writeErr), writeErr
+	if err := writeMetadata(runDir, runID, started, originalCopy, preparedCopy); err != nil {
+		return errorEnvelope("run", err), err
 	}
-	_ = writeMetadata(runDir, runID, started, workflowPath, plan.ExecutionWorkflowPath)
+	if err := writeAtomic(rr.ReportPath, append(b, '\n')); err != nil {
+		return errorEnvelope("run", err), err
+	}
 	return envl, nil
 }
 func writeMetadata(dir, runID string, started time.Time, original, prepared string) error {
-	hash := func(p string) string {
-		f, e := os.Open(p)
-		if e != nil {
-			return ""
+	hash := func(p string) (string, error) {
+		f, err := os.Open(p)
+		if err != nil {
+			return "", err
 		}
 		defer f.Close()
 		h := sha256.New()
-		_, _ = io.Copy(h, f)
-		return fmt.Sprintf("%x", h.Sum(nil))
+		if _, err := io.Copy(h, f); err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("%x", h.Sum(nil)), nil
+	}
+	originalHash, err := hash(original)
+	if err != nil {
+		return err
+	}
+	preparedHash, err := hash(prepared)
+	if err != nil {
+		return err
 	}
 	argv := map[string][]string{}
-	for _, p := range func() []string { ps, _ := filepath.Glob(filepath.Join(dir, "argv-*.json")); return ps }() {
+	paths, err := filepath.Glob(filepath.Join(dir, "argv-*.json"))
+	if err != nil {
+		return err
+	}
+	for _, p := range paths {
 		b, e := os.ReadFile(p)
-		if e == nil {
-			var a []string
-			if json.Unmarshal(b, &a) == nil {
-				argv[filepath.Base(p)] = a
-			}
+		if e != nil {
+			return e
 		}
+		var a []string
+		if e := json.Unmarshal(b, &a); e != nil {
+			return e
+		}
+		argv[filepath.Base(p)] = a
 	}
-	m := map[string]any{"runId": runID, "startedAt": started.UTC().Format(time.RFC3339Nano), "finishedAt": time.Now().UTC().Format(time.RFC3339Nano), "originalWorkflowSha256": hash(original), "preparedWorkflowSha256": hash(prepared), "argv": argv}
-	b, e := json.MarshalIndent(m, "", "  ")
-	if e != nil {
-		return e
+	m := map[string]any{"runId": runID, "startedAt": started.UTC().Format(time.RFC3339Nano), "finishedAt": time.Now().UTC().Format(time.RFC3339Nano), "originalWorkflowSha256": originalHash, "preparedWorkflowSha256": preparedHash, "argv": argv}
+	b, err := json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		return err
 	}
-	return os.WriteFile(filepath.Join(dir, "metadata.json"), append(b, '\n'), 0600)
+	return writeAtomic(filepath.Join(dir, "metadata.json"), append(b, '\n'))
+}
+func writeAtomic(path string, b []byte) error {
+	f, err := os.CreateTemp(filepath.Dir(path), ".report-*")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(f.Name())
+	if err := f.Chmod(0600); err != nil {
+		f.Close()
+		return err
+	}
+	if _, err := f.Write(b); err != nil {
+		f.Close()
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+	return os.Rename(f.Name(), path)
 }
 func errorEnvelope(command string, err error) model.Envelope {
 	code := 2
 	var me *model.Error
-	if ok := asModelError(err, &me); ok && me.Code == "CANCELLED" {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) || (asModelError(err, &me) && me.Code == "CANCELLED") {
 		code = 130
 	}
 	return model.Envelope{SchemaVersion: 1, Command: command, ExitCode: code, Error: &model.ErrorInfo{Code: errorCode(err), Message: err.Error()}}
@@ -266,13 +356,7 @@ func errorCode(err error) string {
 	}
 	return "CONFIG_INVALID"
 }
-func asModelError(err error, out **model.Error) bool {
-	if e, ok := err.(*model.Error); ok {
-		*out = e
-		return true
-	}
-	return false
-}
+func asModelError(err error, out **model.Error) bool { return errors.As(err, out) }
 func contains(xs []string, s string) bool {
 	for _, x := range xs {
 		if x == s {
@@ -285,7 +369,7 @@ func join(xs []string) string {
 	if len(xs) == 0 {
 		return "job is unsupported"
 	}
-	return xs[0]
+	return strings.Join(xs, "; ")
 }
 func nonNil(xs []string) []string {
 	if xs == nil {

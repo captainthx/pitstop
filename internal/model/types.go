@@ -1,10 +1,5 @@
 package model
 
-import (
-	"errors"
-	"fmt"
-)
-
 const SchemaVersion = 1
 
 type Error struct {
@@ -135,12 +130,12 @@ type Coverage struct {
 	Workflow string `json:"workflowCoverage"`
 }
 type RunReport struct {
-	RunID       string       `json:"runId"`
-	Repo        string       `json:"repo"`
-	Source      Snapshot     `json:"source"`
-	Engine      EngineInfo   `json:"engine"`
-	Jobs        []JobResult  `json:"jobs"`
-	Coverage    Coverage     `json:"coverage"`
+	RunID  string      `json:"runId"`
+	Repo   string      `json:"repo"`
+	Source Snapshot    `json:"source"`
+	Engine EngineInfo  `json:"engine"`
+	Jobs   []JobResult `json:"jobs"`
+	Coverage
 	Adjustments []Adjustment `json:"adjustments"`
 	Warnings    []string     `json:"warnings"`
 	DurationMs  int64        `json:"durationMs"`
@@ -189,6 +184,3 @@ type VersionResult struct {
 func Reason(s string) *string         { return &s }
 func Category(s string) *string       { return &s }
 func (e *Error) Is(target error) bool { t, ok := target.(*Error); return ok && e.Code == t.Code }
-
-var _ = errors.Is
-var _ = fmt.Sprintf

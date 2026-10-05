@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"pitstop/internal/model"
+	"strings"
 )
 
 func ExitCode(jobs []model.JobResult, cancelled bool) int {
@@ -36,13 +37,19 @@ func Human(w io.Writer, e model.Envelope) error {
 		return err
 	}
 	if r, ok := e.Result.(model.RunReport); ok {
-		_, err := fmt.Fprintf(w, "pitstop run %s: exit %d coverage=%s duration=%dms report=%s\n", r.RunID, e.ExitCode, r.Coverage.Selected, r.DurationMs, r.ReportPath)
+		_, err := fmt.Fprintf(w, "pitstop run %s: exit %d selected=%s workflow=%s duration=%dms report=%s\n", r.RunID, e.ExitCode, r.Coverage.Selected, r.Coverage.Workflow, r.DurationMs, r.ReportPath)
 		for _, j := range r.Jobs {
 			fmt.Fprintf(w, "  %s: %s", j.ID, j.Status)
 			if j.ReasonCode != nil {
 				fmt.Fprintf(w, " (%s)", *j.ReasonCode)
 			}
+			if j.Reason != nil {
+				fmt.Fprintf(w, " %s", *j.Reason)
+			}
 			fmt.Fprintf(w, " log=%s\n", j.LogPath)
+		}
+		for _, warning := range r.Warnings {
+			fmt.Fprintln(w, "warning:", warning)
 		}
 		return err
 	}
@@ -54,11 +61,11 @@ func Human(w io.Writer, e model.Envelope) error {
 				status = "selected"
 			}
 			if !j.Eligible {
-				status = "blocked"
+				status += " blocked"
 			}
 			fmt.Fprintf(w, "  %s: %s", j.ID, status)
 			if len(j.Reasons) > 0 {
-				fmt.Fprintf(w, " (%s)", j.Reasons[0])
+				fmt.Fprintf(w, " (%s)", strings.Join(j.Reasons, "; "))
 			}
 			fmt.Fprintln(w)
 		}

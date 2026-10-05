@@ -39,9 +39,16 @@ func Run(ctx context.Context, env Environment, snapshot model.Snapshot, plan mod
 	if workflow != "" && !filepath.IsAbs(workflow) {
 		workflow = filepath.Join(snapshot.Path, workflow)
 	}
-	cacheRoot, _ := os.UserCacheDir()
+	cacheRoot, err := os.UserCacheDir()
+	if err != nil {
+		return model.JobResult{}, err
+	}
 	cache := filepath.Join(cacheRoot, "pitstop", "cache")
-	if e := os.WriteFile(filepath.Join(runDir, "engine-meta.json"), []byte(fmt.Sprintf(`{"dockerHost":%q,"label":%q}`, env.DockerHost, "com.pitstop.run="+filepath.Base(runDir))), 0600); e != nil {
+	meta, err := json.Marshal(map[string]string{"dockerHost": env.DockerHost, "label": "com.pitstop.run=" + filepath.Base(runDir)})
+	if err != nil {
+		return model.JobResult{}, err
+	}
+	if e := os.WriteFile(filepath.Join(runDir, "engine-meta.json"), meta, 0600); e != nil {
 		return model.JobResult{}, e
 	}
 	if e := os.MkdirAll(filepath.Join(cache, "actions"), 0700); e != nil {
@@ -51,12 +58,16 @@ func Run(ctx context.Context, env Environment, snapshot model.Snapshot, plan mod
 		return model.JobResult{}, e
 	}
 	socket := "-"
-	if plan.ForceIntegration && job.ID == "integration" && strings.HasPrefix(env.DockerHost, "unix://") {
+	if plan.Config.Adapter == "recruit100-service-integration-v1" && plan.ForceIntegration && job.ID == "integration" && strings.HasPrefix(env.DockerHost, "unix://") {
 		socket = env.DockerHost
 	}
 	args := []string{"pull_request", "-e", filepath.Join(runDir, "event.json"), "-C", snapshot.Path, "-W", workflow, "-j", job.ID, "-P", plan.Config.Runner.Label + "=" + plan.Config.Runner.Image, "--container-architecture", plan.Config.Runner.Architecture, "--env-file", "/dev/null", "--secret-file", "/dev/null", "--var-file", "/dev/null", "--input-file", "/dev/null", "--container-daemon-socket", socket, "--container-options", "--label=com.pitstop.run=" + filepath.Base(runDir), "--rm", "--pull=false", "--action-offline-mode", "--action-cache-path", filepath.Join(cache, "actions"), "--cache-server-path", filepath.Join(cache, "dependencies"), "--json"}
-	if b, e := json.Marshal(args); e == nil {
-		_ = os.WriteFile(filepath.Join(runDir, "argv-"+job.ID+".json"), append(b, '\n'), 0600)
+	b, err := json.Marshal(args)
+	if err != nil {
+		return model.JobResult{}, err
+	}
+	if err := os.WriteFile(filepath.Join(runDir, "argv-"+job.ID+".json"), append(b, '\n'), 0600); err != nil {
+		return model.JobResult{}, err
 	}
 	cmd := exec.Command(env.ActPath, args...)
 	cmd.Dir = runDir
@@ -73,23 +84,40 @@ func Run(ctx context.Context, env Environment, snapshot model.Snapshot, plan mod
 	if err := cmd.Start(); err != nil {
 		return model.JobResult{}, model.Err("ENGINE_OUTCOME_UNKNOWN", "act did not launch", err)
 	}
-	done := make(chan struct{}, 2)
-	found := make(chan bool, 2)
-	go func() { found <- parseStream(stdout, stdoutFile, progress, job.ID); done <- struct{}{} }()
-	go func() { found <- parseStream(stderr, stderrFile, nil, job.ID); done <- struct{}{} }()
+	type streamResult struct {
+		observed bool
+		err      error
+	}
+	streams := make(chan streamResult, 2)
+	go func() {
+		ok, e := parseStreamResult(stdout, stdoutFile, progress, job.ID)
+		streams <- streamResult{ok, e}
+	}()
+	go func() { ok, e := parseStreamResult(stderr, stderrFile, nil, job.ID); streams <- streamResult{ok, e} }()
 	wait := make(chan error, 1)
-	go func() { wait <- cmd.Wait() }()
+	var observed bool
+	var logErr error
+	go func() {
+		// Drain before Wait: Wait closes StdoutPipe/StderrPipe.
+		for i := 0; i < 2; i++ {
+			r := <-streams
+			observed = observed || r.observed
+			if r.err != nil {
+				logErr = r.err
+			}
+		}
+		wait <- cmd.Wait()
+	}()
 	if timeout <= 0 {
 		timeout = 20 * time.Minute
 	}
 	timer := time.NewTimer(timeout)
+	defer timer.Stop()
 	timedOut, cancelled := false, false
 	var waitErr error
-	finished := false
 	select {
 	case waitErr = <-wait:
 		timer.Stop()
-		finished = true
 	case <-timer.C:
 		timedOut = true
 		signalGroup(cmd, syscall.SIGINT)
@@ -99,7 +127,6 @@ func Run(ctx context.Context, env Environment, snapshot model.Snapshot, plan mod
 			signalGroup(cmd, syscall.SIGKILL)
 			waitErr = <-wait
 		}
-		finished = true
 	case <-ctx.Done():
 		cancelled = true
 		signalGroup(cmd, syscall.SIGINT)
@@ -109,26 +136,7 @@ func Run(ctx context.Context, env Environment, snapshot model.Snapshot, plan mod
 			signalGroup(cmd, syscall.SIGKILL)
 			waitErr = <-wait
 		}
-		finished = true
 	}
-	if !cancelled && !finished {
-		select {
-		case waitErr = <-wait:
-		case <-timer.C:
-			timedOut = true
-			signalGroup(cmd, syscall.SIGINT)
-			select {
-			case waitErr = <-wait:
-			case <-time.After(5 * time.Second):
-				signalGroup(cmd, syscall.SIGKILL)
-				waitErr = <-wait
-			}
-		}
-	}
-	for i := 0; i < 2; i++ {
-		<-done
-	}
-	close(found)
 	code := 0
 	if waitErr != nil {
 		if x, ok := waitErr.(*exec.ExitError); ok {
@@ -136,10 +144,6 @@ func Run(ctx context.Context, env Environment, snapshot model.Snapshot, plan mod
 		} else {
 			code = -1
 		}
-	}
-	observed := false
-	for x := range found {
-		observed = observed || x
 	}
 	result := model.JobResult{ID: job.ID, DurationMs: time.Since(start).Milliseconds(), EngineExitCode: &code, Steps: []model.StepResult{}, LogPath: stdoutPath, Provenance: "engine_exit"}
 	if cancelled {
@@ -155,17 +159,18 @@ func Run(ctx context.Context, env Environment, snapshot model.Snapshot, plan mod
 		result.FailureCategory = model.Category("engine")
 		return result, nil
 	}
-	if code == 0 && !observed {
+	if code == 0 && (!observed || logErr != nil) {
 		result.Status = "skipped"
 		result.Provenance = "unknown"
 		result.ReasonCode = model.Reason("ENGINE_OUTCOME_UNKNOWN")
-		result.Reason = model.Reason("act exited successfully without selected-job evidence")
+		result.Reason = model.Reason("act exited without trustworthy selected-job evidence or complete logs")
 		return result, nil
 	}
 	if code == 0 {
 		result.Status = "passed"
 	} else {
 		result.Status = "failed"
+		result.FailureCategory = model.Category("unknown")
 		result.Reason = model.Reason(fmt.Sprintf("act exited with code %d", code))
 	}
 	return result, nil
@@ -176,6 +181,10 @@ func signalGroup(cmd *exec.Cmd, sig syscall.Signal) {
 	}
 }
 func parseStream(r io.Reader, log io.Writer, progress io.Writer, job string) bool {
+	observed, err := parseStreamResult(r, log, progress, job)
+	return observed && err == nil
+}
+func parseStreamResult(r io.Reader, log io.Writer, progress io.Writer, job string) (bool, error) {
 	br := bufio.NewReaderSize(r, 64*1024)
 	observed := false
 	for {
@@ -185,94 +194,90 @@ func parseStream(r io.Reader, log io.Writer, progress io.Writer, job string) boo
 				fmt.Fprintln(progress, string(line))
 			}
 			var rec struct {
-				JobID      string `json:"jobID"`
-				JobResult  string `json:"jobResult"`
-				StepResult string `json:"stepResult"`
+				JobID     string `json:"jobID"`
+				JobResult string `json:"jobResult"`
+				Raw       bool   `json:"raw_output"`
 			}
-			if json.Unmarshal(line, &rec) == nil && rec.JobID == job && rec.JobResult != "" {
+			if json.Unmarshal(line, &rec) == nil && rec.JobID == job && !rec.Raw && rec.JobResult == "success" {
 				observed = true
 			}
 		}
 		if err == io.EOF {
-			break
+			return observed, nil
 		}
 		if err != nil {
-			break
+			io.Copy(io.Discard, br)
+			return observed, err
 		}
 	}
-	return observed
 }
 func readLineBounded(r *bufio.Reader, w io.Writer) ([]byte, error) {
-	var first []byte
+	var line []byte
+	oversized := false
 	for {
 		part, err := r.ReadSlice('\n')
 		if len(part) > 0 {
-			_, _ = w.Write(part)
-			if len(first) < 1024*1024 {
-				n := 1024*1024 - len(first)
-				if n > len(part) {
-					n = len(part)
+			n, e := w.Write(part)
+			if e != nil {
+				return nil, e
+			}
+			if n != len(part) {
+				return nil, io.ErrShortWrite
+			}
+			if !oversized {
+				if len(line)+len(part) > 1024*1024 {
+					oversized = true
+					line = nil
+				} else {
+					line = append(line, part...)
 				}
-				first = append(first, part[:n]...)
 			}
 		}
 		if err == bufio.ErrBufferFull {
 			continue
 		}
-		return []byte(strings.TrimSpace(string(first))), err
+		return []byte(strings.TrimSpace(string(line))), err
 	}
 }
 func Cleanup(ctx context.Context, runDir string) error {
-	if meta, err := os.ReadFile(filepath.Join(runDir, "engine-meta.json")); err == nil {
-		var m struct{ DockerHost, Label string }
-		if json.Unmarshal(meta, &m) == nil && m.Label != "" {
-			docker, e := exec.LookPath("docker")
-			if e != nil {
-				return e
-			}
-			q := exec.CommandContext(ctx, docker, "--host", m.DockerHost, "ps", "-aq", "--filter", "label="+m.Label)
-			idsOut, e := q.Output()
-			if e != nil {
-				return e
-			}
-			for _, id := range strings.Fields(string(idsOut)) {
-				if e := exec.CommandContext(ctx, docker, "--host", m.DockerHost, "rm", "--force", id).Run(); e != nil {
-					return model.Err("CLEANUP_INCOMPLETE", "owned runner cleanup failed", e)
-				}
-			}
-			return nil
-		}
-	}
-	b, err := os.ReadFile(filepath.Join(runDir, "owned-resources.json"))
+	meta, err := os.ReadFile(filepath.Join(runDir, "engine-meta.json"))
 	if os.IsNotExist(err) {
 		return nil
 	}
 	if err != nil {
 		return err
 	}
-	var ids []string
-	if err := json.Unmarshal(b, &ids); err != nil {
+	var m struct{ DockerHost, Label string }
+	if err := json.Unmarshal(meta, &m); err != nil {
 		return err
 	}
-	if len(ids) == 0 {
-		return nil
+	if m.DockerHost == "" || m.Label != "com.pitstop.run="+filepath.Base(runDir) {
+		return model.Err("CLEANUP_INCOMPLETE", "invalid runner ownership metadata", nil)
 	}
 	docker, err := exec.LookPath("docker")
 	if err != nil {
 		return err
 	}
-	var failures []string
-	for _, id := range ids {
-		if strings.TrimSpace(id) == "" || strings.ContainsAny(id, " \t\n") {
-			continue
-		}
-		if err := exec.CommandContext(ctx, docker, "rm", "--force", id).Run(); err != nil {
-			failures = append(failures, id+": "+err.Error())
-		}
+	q := dockerCommand(ctx, docker, "--host", m.DockerHost, "ps", "-aq", "--filter", "label="+m.Label)
+	idsOut, err := q.Output()
+	if err != nil {
+		return err
 	}
-	if len(failures) > 0 {
-		_ = os.WriteFile(filepath.Join(runDir, "cleanup-errors.txt"), []byte(strings.Join(failures, "\n")), 0600)
-		return model.Err("CLEANUP_INCOMPLETE", "one or more owned resources could not be removed", nil)
+	ids := strings.Fields(string(idsOut))
+	if ids == nil {
+		ids = []string{}
+	}
+	b, err := json.Marshal(ids)
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(runDir, "owned-resources.json"), append(b, '\n'), 0600); err != nil {
+		return err
+	}
+	for _, id := range ids {
+		if err := dockerCommand(ctx, docker, "--host", m.DockerHost, "rm", "--force", id).Run(); err != nil {
+			return model.Err("CLEANUP_INCOMPLETE", "owned runner cleanup failed", err)
+		}
 	}
 	return nil
 }

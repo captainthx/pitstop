@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 	"io"
 	"os"
-	"os/exec"
+	"pitstop/internal/actengine"
 	"pitstop/internal/config"
 	"pitstop/internal/model"
 	"pitstop/internal/report"
@@ -30,8 +30,14 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 func ExecuteContext(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	jsonMode := false
 	for _, a := range args {
-		if a == "--json" {
+		if a == "--" {
+			break
+		}
+		if a == "--json" || a == "--json=true" {
 			jsonMode = true
+		}
+		if a == "--json=false" {
+			jsonMode = false
 		}
 	}
 	root := newRoot(ctx, stdout, stderr)
@@ -51,13 +57,24 @@ func ExecuteContext(ctx context.Context, args []string, stdout, stderr io.Writer
 	return 0
 }
 func command(args []string) string {
-	if len(args) > 0 && args[0] != "--json" {
-		return args[0]
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--" {
+			break
+		}
+		if args[i] == "--repo" {
+			i++
+			continue
+		}
+		switch args[i] {
+		case "run", "doctor", "list", "version":
+			return args[i]
+		}
 	}
 	return "pitstop"
 }
 func newRoot(ctx context.Context, stdout, stderr io.Writer) *cobra.Command {
 	root := &cobra.Command{Use: "pitstop", SilenceUsage: true, SilenceErrors: true}
+	root.SetContext(ctx)
 	root.SetOut(stdout)
 	root.SetErr(stderr)
 	var repo string
@@ -88,38 +105,70 @@ func versionCmd(out io.Writer) *cobra.Command {
 func doctorCmd(out, errOut io.Writer, repo *string) *cobra.Command {
 	var jsonOut bool
 	c := &cobra.Command{Use: "doctor", RunE: func(cmd *cobra.Command, _ []string) error {
-		r := model.DoctorResult{Checks: []model.DoctorCheck{}}
-		if x, e := config.ResolveRepo(*repo); e == nil {
-			r.Repo = x
-		}
-		for _, tool := range []string{"git", "act", "docker"} {
-			if _, e := exec.LookPath(tool); e != nil {
-				r.Checks = append(r.Checks, model.DoctorCheck{Name: tool, Status: "blocked", ReasonCode: "TOOL_MISSING", Message: "not found"})
-			} else {
-				r.Checks = append(r.Checks, model.DoctorCheck{Name: tool, Status: "ready", Message: "found"})
-			}
-		}
-		if _, e := config.Load(r.Repo); e != nil {
-			r.Checks = append(r.Checks, model.DoctorCheck{Name: "config", Status: "blocked", ReasonCode: "CONFIG_INVALID", Message: e.Error()})
-		} else {
-			r.Checks = append(r.Checks, model.DoctorCheck{Name: "config", Status: "ready", Message: "valid"})
-		}
-		if out, e := exec.CommandContext(cmd.Context(), "docker", "version", "--format", "{{.Server.Version}}").Output(); e != nil || len(strings.TrimSpace(string(out))) == 0 {
-			r.Checks = append(r.Checks, model.DoctorCheck{Name: "docker-daemon", Status: "blocked", ReasonCode: "DOCKER_UNAVAILABLE", Message: "Docker daemon unavailable"})
-		} else {
-			r.Checks = append(r.Checks, model.DoctorCheck{Name: "docker-daemon", Status: "ready", Message: strings.TrimSpace(string(out))})
-		}
-		r.Ready = true
-		for _, check := range r.Checks {
-			if check.Status != "ready" {
+		r := model.DoctorResult{Checks: []model.DoctorCheck{}, Ready: true}
+		check := func(name string, err error) {
+			c := model.DoctorCheck{Name: name, Status: "ready", Message: "ready"}
+			if err != nil {
+				c.Status = "blocked"
+				c.Message = err.Error()
+				c.ReasonCode = "CONFIG_INVALID"
+				var me *model.Error
+				if errors.As(err, &me) {
+					c.ReasonCode = me.Code
+				}
 				r.Ready = false
 			}
+			r.Checks = append(r.Checks, c)
 		}
-		e := model.Envelope{SchemaVersion: 1, Command: "doctor", ExitCode: 0, Result: r}
+		resolved, e := config.ResolveRepo(*repo)
+		r.Repo = resolved
+		check("repository", e)
+		if e == nil {
+			cfg, e := config.Load(resolved)
+			check("config", e)
+			if e == nil {
+				path, e := config.ResolveWorkflow(resolved, cfg.Workflow)
+				if e == nil {
+					inv, ie := workflow.Inspect(resolved, path)
+					e = ie
+					if e == nil {
+						plan, pe := workflow.Plan(resolved, cfg, inv, false)
+						e = pe
+						if e == nil {
+							for _, j := range plan.Jobs {
+								if !j.Eligible {
+									e = model.Err("WORKFLOW_UNSUPPORTED", j.ID+": "+strings.Join(j.Reasons, "; "), nil)
+									break
+								}
+							}
+						}
+					}
+				}
+				check("workflow", e)
+			}
+		}
+		_, e = actengine.Check(cmd.Context())
+		check("engine", e)
+		code := 0
+		if !r.Ready {
+			code = 2
+		}
+		if cmd.Context().Err() != nil {
+			code = 130
+		}
+		envelope := model.Envelope{SchemaVersion: 1, Command: "doctor", ExitCode: code, Result: r}
 		if jsonOut {
-			return report.WriteEnvelope(out, e)
+			e = report.WriteEnvelope(out, envelope)
+		} else {
+			e = report.Human(out, envelope)
 		}
-		return report.Human(out, e)
+		if e != nil {
+			return e
+		}
+		if code != 0 {
+			return exitError{code}
+		}
+		return nil
 	}}
 	c.Flags().BoolVar(&jsonOut, "json", false, "JSON output")
 	return c
@@ -160,6 +209,16 @@ func list(repo string) (model.ListResult, error) {
 	if err != nil {
 		return model.ListResult{}, err
 	}
+	planned := map[string]model.PlannedJob{}
+	if len(cfg.Jobs) > 0 {
+		plan, e := workflow.Plan(r, cfg, inv, false)
+		if e != nil {
+			return model.ListResult{}, e
+		}
+		for _, j := range plan.Jobs {
+			planned[j.ID] = j
+		}
+	}
 	selected := map[string]bool{}
 	for _, j := range cfg.Jobs {
 		selected[j] = true
@@ -167,6 +226,9 @@ func list(repo string) (model.ListResult, error) {
 	out := model.ListResult{Repo: r, WorkflowPath: cfg.Workflow, Jobs: []model.ListJob{}}
 	for _, j := range inv.Jobs {
 		reasons := j.CapabilityReasons
+		if p, ok := planned[j.ID]; ok {
+			reasons = p.Reasons
+		}
 		if reasons == nil {
 			reasons = []string{}
 		}
@@ -207,5 +269,3 @@ func runCmd(ctx context.Context, out, errOut io.Writer, repo *string) *cobra.Com
 	c.Flags().BoolVar(&force, "force-integration", false, "enable guarded service integration adapter")
 	return c
 }
-
-var _ = strings.TrimSpace

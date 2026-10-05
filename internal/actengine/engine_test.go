@@ -1,10 +1,14 @@
 package actengine
 
 import (
+	"bufio"
+	"bytes"
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"pitstop/internal/model"
+	"strings"
 	"testing"
 	"time"
 )
@@ -54,5 +58,33 @@ func TestRunTimeoutIsEngineFailure(t *testing.T) {
 	}
 	if r.Status != "failed" || r.ReasonCode == nil || *r.ReasonCode != "TIMEOUT" {
 		t.Fatalf("%#v", r)
+	}
+}
+
+func TestTerminalEvidenceRejectsRawFailureAndOversizedRecords(t *testing.T) {
+	for _, line := range []string{`{"jobID":"verify","jobResult":"failure"}`, `{"jobID":"verify","jobResult":"success","raw_output":true}`, `{"jobID":"verify","jobResult":"success"}` + strings.Repeat(" ", 2*1024*1024)} {
+		var log bytes.Buffer
+		if parseStream(strings.NewReader(line+"\n"), &log, nil, "verify") {
+			t.Fatal("untrusted record became success evidence")
+		}
+		if log.String() != line+"\n" {
+			t.Fatal("raw log lost bytes")
+		}
+	}
+}
+
+type failingLog struct{}
+
+func (failingLog) Write([]byte) (int, error) { return 0, io.ErrClosedPipe }
+func TestLogWriteFailureIsNotSilentlyDiscarded(t *testing.T) {
+	if _, err := readLineBounded(bufio.NewReader(strings.NewReader("raw\n")), failingLog{}); err == nil {
+		t.Fatal("log failure was hidden")
+	}
+}
+func TestCleanupRejectsInvalidOwnershipMetadata(t *testing.T) {
+	d := t.TempDir()
+	os.WriteFile(filepath.Join(d, "engine-meta.json"), []byte(`{}`), 0600)
+	if err := Cleanup(context.Background(), d); err == nil {
+		t.Fatal("invalid ownership metadata accepted")
 	}
 }

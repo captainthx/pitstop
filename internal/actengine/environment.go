@@ -2,6 +2,7 @@ package actengine
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"os/exec"
 	"pitstop/internal/model"
@@ -34,11 +35,13 @@ func Check(ctx context.Context) (Environment, error) {
 	if err != nil {
 		return Environment{}, model.Err("TOOL_MISSING", "docker is required", err)
 	}
-	_ = docker
 	contextName := os.Getenv("DOCKER_CONTEXT")
 	host := ""
 	if contextName != "" {
-		out, _ := exec.CommandContext(ctx, "docker", "context", "inspect", "--format", "{{.Endpoints.docker.Host}}", contextName).Output()
+		out, err := exec.CommandContext(ctx, docker, "context", "inspect", "--format", "{{.Endpoints.docker.Host}}", contextName).Output()
+		if err != nil {
+			return Environment{}, model.Err("DOCKER_UNAVAILABLE", "cannot resolve Docker context endpoint", err)
+		}
 		host = strings.TrimSpace(string(out))
 		if host == "" {
 			return Environment{}, model.Err("DOCKER_UNAVAILABLE", "configured Docker context has no endpoint", nil)
@@ -46,20 +49,58 @@ func Check(ctx context.Context) (Environment, error) {
 	} else {
 		host = os.Getenv("DOCKER_HOST")
 		if host == "" {
-			contextOut, _ := exec.CommandContext(ctx, "docker", "context", "show").Output()
+			contextOut, err := exec.CommandContext(ctx, docker, "context", "show").Output()
+			if err != nil {
+				return Environment{}, model.Err("DOCKER_UNAVAILABLE", "cannot read active Docker context", err)
+			}
 			contextName = strings.TrimSpace(string(contextOut))
 			if contextName == "" {
 				contextName = "default"
 			}
-			out, _ := exec.CommandContext(ctx, "docker", "context", "inspect", "--format", "{{.Endpoints.docker.Host}}", contextName).Output()
+			out, err := exec.CommandContext(ctx, docker, "context", "inspect", "--format", "{{.Endpoints.docker.Host}}", contextName).Output()
+			if err != nil {
+				return Environment{}, model.Err("DOCKER_UNAVAILABLE", "cannot resolve Docker context endpoint", err)
+			}
 			host = strings.TrimSpace(string(out))
 		}
 	}
 	if host == "" {
-		host = "unix:///var/run/docker.sock"
+		return Environment{}, model.Err("DOCKER_UNAVAILABLE", "active Docker context has no endpoint", nil)
 	}
-	if out, e := exec.CommandContext(ctx, "docker", "--host", host, "version", "--format", "{{.Server.Version}}").Output(); e != nil || strings.TrimSpace(string(out)) == "" {
+	if out, e := dockerCommand(ctx, docker, "--host", host, "version", "--format", "{{.Server.Version}}").Output(); e != nil || strings.TrimSpace(string(out)) == "" {
 		return Environment{}, model.Err("DOCKER_UNAVAILABLE", "Docker daemon is unavailable at resolved endpoint", e)
 	}
 	return Environment{ActPath: act, DockerHost: host, Info: model.EngineInfo{Name: "act", Version: v, Architecture: runtime.GOOS + "/" + runtime.GOARCH}}, nil
+}
+
+// An explicit endpoint must not be overridden by the user's active context.
+func dockerCommand(ctx context.Context, docker string, args ...string) *exec.Cmd {
+	cmd := exec.CommandContext(ctx, docker, args...)
+	for _, e := range os.Environ() {
+		if !strings.HasPrefix(e, "DOCKER_CONTEXT=") {
+			cmd.Env = append(cmd.Env, e)
+		}
+	}
+	return cmd
+}
+func ImageDigest(ctx context.Context, env Environment, image string) *string {
+	docker, err := exec.LookPath("docker")
+	if err != nil {
+		return nil
+	}
+	out, err := dockerCommand(ctx, docker, "--host", env.DockerHost, "image", "inspect", image, "--format", "{{json .RepoDigests}}").Output()
+	if err != nil {
+		return nil
+	}
+	var digests []string
+	if json.Unmarshal(out, &digests) != nil || len(digests) == 0 {
+		return nil
+	}
+	for _, d := range digests {
+		if strings.Contains(d, "@sha256:") {
+			digest := strings.SplitN(d, "@", 2)[1]
+			return &digest
+		}
+	}
+	return nil
 }

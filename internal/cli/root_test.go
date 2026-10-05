@@ -43,3 +43,35 @@ func TestJSONRunErrorIsOneDocument(t *testing.T) {
 		t.Fatalf("extra=%v", err)
 	}
 }
+
+func TestJSONEqualsFlagParseErrorIsOneDocument(t *testing.T) {
+	var out, errOut bytes.Buffer
+	if Execute([]string{"--repo", "/missing", "run", "--bad", "--json=true"}, &out, &errOut) != 2 {
+		t.Fatal("expected exit2")
+	}
+	var doc map[string]any
+	dec := json.NewDecoder(&out)
+	if err := dec.Decode(&doc); err != nil {
+		t.Fatal(err)
+	}
+	if doc["command"] != "run" {
+		t.Fatal(doc)
+	}
+	var extra any
+	if err := dec.Decode(&extra); err != io.EOF {
+		t.Fatal(err)
+	}
+}
+func TestDoctorBlockedReturnsPreflightExit(t *testing.T) {
+	var out, errOut bytes.Buffer
+	if code := Execute([]string{"doctor", "--repo", t.TempDir(), "--json"}, &out, &errOut); code != 2 {
+		t.Fatalf("blocked doctor exit=%d", code)
+	}
+	var doc map[string]any
+	if err := json.Unmarshal(out.Bytes(), &doc); err != nil {
+		t.Fatal(err)
+	}
+	if doc["exitCode"] != float64(2) {
+		t.Fatal(doc)
+	}
+}
