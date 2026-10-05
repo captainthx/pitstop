@@ -27,6 +27,12 @@ func Inspect(repo, path string) (model.Inventory, error) {
 	if mapNode == nil || mapNode.Kind != yaml.MappingNode {
 		return model.Inventory{}, model.Err("WORKFLOW_UNSUPPORTED", "workflow document must be a mapping", nil)
 	}
+	if err := duplicateKeys(mapNode); err != nil {
+		return model.Inventory{}, model.Err("WORKFLOW_UNSUPPORTED", err.Error(), nil)
+	}
+	if !supportsPullRequest(lookup(mapNode, "on")) {
+		return model.Inventory{}, model.Err("WORKFLOW_UNSUPPORTED", "workflow is not triggered by pull_request", nil)
+	}
 	jobs := lookup(mapNode, "jobs")
 	if jobs == nil || jobs.Kind != yaml.MappingNode {
 		return model.Inventory{}, model.Err("WORKFLOW_UNSUPPORTED", "workflow has no jobs mapping", nil)
@@ -44,7 +50,7 @@ func Inspect(repo, path string) (model.Inventory, error) {
 		ids[id] = true
 		n := jobs.Content[i+1]
 		if n.Kind != yaml.MappingNode {
-			continue
+			return model.Inventory{}, model.Err("WORKFLOW_UNSUPPORTED", "job must be a mapping: "+id, nil)
 		}
 		j := model.JobInfo{ID: id, Name: id, Needs: []string{}}
 		if v := lookup(n, "name"); v != nil {
@@ -63,10 +69,18 @@ func Inspect(repo, path string) (model.Inventory, error) {
 		}
 		if v := lookup(n, "needs"); v != nil {
 			if v.Kind == yaml.ScalarNode {
-				j.Needs = []string{v.Value}
+				if strings.Contains(v.Value, "${{") {
+					j.CapabilityReasons = append(j.CapabilityReasons, "dynamic needs")
+				} else {
+					j.Needs = []string{v.Value}
+				}
 			} else if v.Kind == yaml.SequenceNode {
 				for _, x := range v.Content {
-					j.Needs = append(j.Needs, x.Value)
+					if strings.Contains(x.Value, "${{") {
+						j.CapabilityReasons = append(j.CapabilityReasons, "dynamic needs")
+					} else {
+						j.Needs = append(j.Needs, x.Value)
+					}
 				}
 			} else {
 				j.CapabilityReasons = append(j.CapabilityReasons, "dynamic needs")
@@ -129,7 +143,7 @@ func Inspect(repo, path string) (model.Inventory, error) {
 	for i := range inv.Jobs {
 		for _, need := range inv.Jobs[i].Needs {
 			if !known[need] {
-				inv.Jobs[i].CapabilityReasons = append(inv.Jobs[i].CapabilityReasons, "missing dependency: "+need)
+				return model.Inventory{}, model.Err("WORKFLOW_UNSUPPORTED", "missing dependency: "+need, nil)
 			}
 		}
 	}
@@ -155,6 +169,13 @@ func Inspect(repo, path string) (model.Inventory, error) {
 	for _, j := range inv.Jobs {
 		if state[j.ID] == 0 {
 			visit(j.ID)
+		}
+	}
+	for _, j := range inv.Jobs {
+		for _, r := range j.CapabilityReasons {
+			if r == "dependency cycle" {
+				return model.Inventory{}, model.Err("WORKFLOW_UNSUPPORTED", "dependency cycle", nil)
+			}
 		}
 	}
 	return inv, nil
@@ -191,15 +212,71 @@ func lookup(n *yaml.Node, key string) *yaml.Node {
 	}
 	return nil
 }
-func containsSecret(n *yaml.Node) bool {
+func duplicateKeys(n *yaml.Node) error {
+	if n == nil {
+		return nil
+	}
+	if n.Kind == yaml.MappingNode {
+		seen := map[string]bool{}
+		for i := 0; i+1 < len(n.Content); i += 2 {
+			k := n.Content[i].Value
+			if seen[k] {
+				return fmt.Errorf("duplicate YAML key: %s", k)
+			}
+			seen[k] = true
+		}
+	}
+	for _, c := range n.Content {
+		if err := duplicateKeys(c); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+func supportsPullRequest(n *yaml.Node) bool {
 	if n == nil {
 		return false
 	}
-	if strings.Contains(n.Value, "secrets.") || strings.Contains(n.Value, "secrets[") || strings.Contains(n.Value, "secrets [") {
+	if n.Kind == yaml.ScalarNode {
+		return n.Value == "pull_request"
+	}
+	if n.Kind == yaml.SequenceNode {
+		for _, x := range n.Content {
+			if x.Value == "pull_request" {
+				return true
+			}
+		}
+		return false
+	}
+	if n.Kind == yaml.MappingNode {
+		for i := 0; i+1 < len(n.Content); i += 2 {
+			if n.Content[i].Value == "pull_request" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+var secretPattern = regexp.MustCompile(`(?i)\bsecrets\s*(?:\.|\[)`)
+
+func containsSecret(n *yaml.Node) bool { return containsSecretSeen(n, map[*yaml.Node]bool{}) }
+func containsSecretSeen(n *yaml.Node, seen map[*yaml.Node]bool) bool {
+	if n == nil {
+		return false
+	}
+	if seen[n] {
+		return false
+	}
+	seen[n] = true
+	if secretPattern.MatchString(n.Value) {
 		return true
 	}
+	if n.Kind == yaml.AliasNode && n.Alias != nil {
+		return containsSecretSeen(n.Alias, seen)
+	}
 	for _, c := range n.Content {
-		if containsSecret(c) {
+		if containsSecretSeen(c, seen) {
 			return true
 		}
 	}
@@ -227,6 +304,10 @@ func localActions(n *yaml.Node) []string {
 	var out []string
 	var walk func(*yaml.Node)
 	walk = func(x *yaml.Node) {
+		if x.Kind == yaml.AliasNode && x.Alias != nil {
+			walk(x.Alias)
+			return
+		}
 		if x.Kind == yaml.MappingNode {
 			for i := 0; i+1 < len(x.Content); i += 2 {
 				if x.Content[i].Value == "uses" && strings.HasPrefix(x.Content[i+1].Value, "./") {
@@ -268,7 +349,14 @@ func localActionReasons(repo string, refs []string) []string {
 		var doc yaml.Node
 		var b []byte
 		for _, name := range []string{"action.yml", "action.yaml"} {
-			if bb, ee := os.ReadFile(filepath.Join(real, name)); ee == nil {
+			meta := filepath.Join(real, name)
+			resolvedMeta, me := filepath.EvalSymlinks(meta)
+			mrel, _ := filepath.Rel(root, resolvedMeta)
+			if me == nil && (mrel == ".." || strings.HasPrefix(mrel, ".."+string(filepath.Separator))) {
+				out = append(out, "local action metadata escapes repository: "+ref)
+				return
+			}
+			if bb, ee := os.ReadFile(meta); ee == nil {
 				b = bb
 				break
 			}
@@ -285,7 +373,7 @@ func localActionReasons(repo string, refs []string) []string {
 			out = append(out, "secret:local composite "+ref)
 		}
 		for _, nested := range localActions(&doc) {
-			visit(nested, real)
+			visit(nested, repo)
 		}
 	}
 	for _, r := range refs {
@@ -393,8 +481,12 @@ func containsRunCommand(n *yaml.Node, want string) bool {
 	if n == nil {
 		return false
 	}
-	if n.Kind == yaml.ScalarNode && strings.TrimSpace(n.Value) == want {
-		return true
+	if n.Kind == yaml.MappingNode {
+		for i := 0; i+1 < len(n.Content); i += 2 {
+			if n.Content[i].Value == "run" && n.Content[i+1].Kind == yaml.ScalarNode && strings.TrimSpace(n.Content[i+1].Value) == want {
+				return true
+			}
+		}
 	}
 	for _, c := range n.Content {
 		if containsRunCommand(c, want) {

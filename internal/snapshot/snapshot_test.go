@@ -1,11 +1,20 @@
 package snapshot
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"testing"
 )
+
+func TestCaptureContextHonorsCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := CaptureContext(ctx, t.TempDir(), t.TempDir()); err == nil {
+		t.Fatal("expected cancellation")
+	}
+}
 
 func TestCaptureUsesWorkingTreeAndExcludesEnv(t *testing.T) {
 	repo := t.TempDir()

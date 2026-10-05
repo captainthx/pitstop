@@ -8,6 +8,8 @@ Build it with Go 1.26.5 or newer, then run `pitstop doctor`, `pitstop list`, and
 
 Snapshots are stored under the user cache directory at `pitstop/runs`, with 0700 run directories and 0600 reports/logs. Finished runs are retained for evidence and may be removed manually. Source snapshots use the working tree, including nonignored untracked files, and report excluded conventional local files such as `.env`.
 
+Relative symlinks that resolve inside the repository are preserved. Absolute symlinks are blocked during capture because relocating them safely requires a future snapshot path rewrite.
+
 The generic runner supports independent, unconditional, nonmatrix jobs on the configured runner. Dependencies, job conditions, matrices, reusable workflows, custom containers/services, secret references, and deploy-like work are blocked. The service adapter only removes the guarded integration job's `needs` and `if` after verifying its expected shape; it reports the workflow fidelity adjustment.
 
 See `docs/evidence/` for measured runtime evidence and limitations.

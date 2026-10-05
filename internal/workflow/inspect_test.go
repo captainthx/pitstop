@@ -78,6 +78,17 @@ func TestPrepareIntegrationFailsClosedOnShapeDrift(t *testing.T) {
 		t.Fatal("expected adapter shape rejection")
 	}
 }
+func TestPrepareIntegrationRejectsMatchingNameWithFakeRun(t *testing.T) {
+	d := t.TempDir()
+	src := filepath.Join(d, "ci.yml")
+	y := "jobs:\n  integration:\n    needs: changes\n    if: needs.changes.outputs.persistence == 'true'\n    runs-on: ubuntu-latest\n    steps:\n      - name: go test -race -tags integration ./...\n        run: echo fake\n"
+	if err := os.WriteFile(src, []byte(y), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := PrepareIntegration(src, filepath.Join(d, "out.yml")); err == nil {
+		t.Fatal("fake command accepted")
+	}
+}
 func TestInspectBlocksFalseStepsAndLocalSecrets(t *testing.T) {
 	d := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(d, ".github/actions/check"), 0755); err != nil {
@@ -87,7 +98,7 @@ func TestInspectBlocksFalseStepsAndLocalSecrets(t *testing.T) {
 		t.Fatal(err)
 	}
 	p := filepath.Join(d, "ci.yml")
-	if err := os.WriteFile(p, []byte("jobs:\n  verify:\n    runs-on: ubuntu-latest\n    steps:\n      - if: false\n        run: echo no\n      - uses: ./.github/actions/check\n"), 0600); err != nil {
+	if err := os.WriteFile(p, []byte("on: [pull_request]\njobs:\n  verify:\n    runs-on: ubuntu-latest\n    steps:\n      - if: false\n        run: echo no\n      - uses: ./.github/actions/check\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	inv, err := Inspect(d, p)
@@ -105,14 +116,14 @@ func TestInspectFindsNestedLocalActionSecret(t *testing.T) {
 	if err := os.MkdirAll(nested, 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(base, "action.yml"), []byte("runs:\n  using: composite\n  steps:\n    - uses: ./nested\n"), 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(base, "action.yml"), []byte("runs:\n  using: composite\n  steps:\n    - uses: ./.github/actions/a/nested\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(nested, "action.yml"), []byte("runs:\n  using: composite\n  steps:\n    - run: echo ${{ secrets['TOKEN'] }}\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	p := filepath.Join(d, "ci.yml")
-	if err := os.WriteFile(p, []byte("jobs:\n  verify:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./.github/actions/a\n"), 0600); err != nil {
+	if err := os.WriteFile(p, []byte("on: [pull_request]\njobs:\n  verify:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./.github/actions/a\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
 	inv, err := Inspect(d, p)
@@ -131,6 +142,18 @@ func TestInspectRejectsUnsafeJobID(t *testing.T) {
 	}
 	if _, err := Inspect(d, p); err == nil {
 		t.Fatal("unsafe job id accepted")
+	}
+}
+func TestInspectRejectsMissingAndCyclicNeeds(t *testing.T) {
+	for _, y := range []string{"on: [pull_request]\njobs:\n  verify:\n    needs: missing\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo ok\n", "on: [pull_request]\njobs:\n  a:\n    needs: b\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo a\n  b:\n    needs: a\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo b\n"} {
+		d := t.TempDir()
+		p := filepath.Join(d, "ci.yml")
+		if err := os.WriteFile(p, []byte(y), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := Inspect(d, p); err == nil {
+			t.Fatal("invalid needs accepted")
+		}
 	}
 }
 func containsText(s, sub string) bool { return strings.Contains(s, sub) }

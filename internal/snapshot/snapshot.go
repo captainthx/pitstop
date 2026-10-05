@@ -1,6 +1,7 @@
 package snapshot
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -14,54 +15,87 @@ import (
 )
 
 func Capture(repo, runDir string) (model.Snapshot, error) {
-	if out, err := exec.Command("git", "-C", repo, "diff", "--name-only", "--diff-filter=U").Output(); err == nil && len(out) > 0 {
+	return CaptureContext(context.Background(), repo, runDir)
+}
+func CaptureContext(ctx context.Context, repo, runDir string) (model.Snapshot, error) {
+	if err := ctx.Err(); err != nil {
+		return model.Snapshot{}, model.Err("CANCELLED", "snapshot capture cancelled", err)
+	}
+	if out, err := exec.CommandContext(ctx, "git", "-C", repo, "diff", "--name-only", "--diff-filter=U").Output(); err == nil && len(out) > 0 {
 		return model.Snapshot{}, model.Err("SNAPSHOT_CHANGED", "unresolved merge state", nil)
 	}
-	headBytes, err := exec.Command("git", "-C", repo, "rev-parse", "HEAD").Output()
+	headBytes, err := exec.CommandContext(ctx, "git", "-C", repo, "rev-parse", "HEAD").Output()
 	if err != nil {
 		return model.Snapshot{}, model.Err("SNAPSHOT_CHANGED", "repository has no HEAD", err)
 	}
-	root, _ := filepath.Abs(repo)
-	if sub, _ := exec.Command("git", "-C", root, "ls-files", "--stage").Output(); hasSubmodule(string(sub)) {
+	root, absErr := filepath.Abs(repo)
+	if absErr != nil {
+		return model.Snapshot{}, model.Err("SNAPSHOT_CHANGED", "cannot resolve repository path", absErr)
+	}
+	if sub, e := exec.CommandContext(ctx, "git", "-C", root, "ls-files", "--stage").Output(); e != nil {
+		return model.Snapshot{}, model.Err("SNAPSHOT_CHANGED", "cannot inspect submodules", e)
+	} else if hasSubmodule(string(sub)) {
 		return model.Snapshot{}, model.Err("SNAPSHOT_CHANGED", "submodules are unsupported", nil)
 	}
-	tracked := trackedFiles(root)
-	allowed := sourceFiles(root)
-	statusBefore := gitStatus(root)
+	tracked, err := trackedFiles(ctx, root)
+	if err != nil {
+		return model.Snapshot{}, err
+	}
+	allowed, err := sourceFiles(ctx, root)
+	if err != nil {
+		return model.Snapshot{}, err
+	}
+	statusBefore, statusErr := gitStatus(ctx, root)
+	if statusErr != nil {
+		return model.Snapshot{}, statusErr
+	}
 	clone := filepath.Join(runDir, "snapshot")
 	if err := os.MkdirAll(runDir, 0700); err != nil {
 		return model.Snapshot{}, err
 	}
-	if out, err := exec.Command("git", "clone", "--no-hardlinks", "--local", root, clone).CombinedOutput(); err != nil {
+	if out, err := exec.CommandContext(ctx, "git", "clone", "--no-hardlinks", "--local", root, clone).CombinedOutput(); err != nil {
+		_ = os.RemoveAll(clone)
 		return model.Snapshot{}, model.Err("SNAPSHOT_CHANGED", "cannot clone source", fmt.Errorf("%v: %s", err, out))
 	}
-	before, err := manifest(root, tracked, allowed)
+	before, err := manifest(ctx, root, tracked, allowed)
 	if err != nil {
 		return model.Snapshot{}, err
 	}
-	for _, ent := range []string{".git"} {
-		_ = ent
+	entries, e := os.ReadDir(clone)
+	if e != nil {
+		return model.Snapshot{}, e
 	}
-	if entries, e := os.ReadDir(clone); e == nil {
-		for _, ent := range entries {
-			if ent.Name() != ".git" {
-				_ = os.RemoveAll(filepath.Join(clone, ent.Name()))
+	for _, ent := range entries {
+		if ent.Name() != ".git" {
+			if e := os.RemoveAll(filepath.Join(clone, ent.Name())); e != nil {
+				return model.Snapshot{}, e
 			}
 		}
 	}
 	excluded := []string{}
-	if err := overlay(root, clone, "", &excluded, tracked, allowed, root); err != nil {
+	if err := overlay(ctx, root, clone, "", &excluded, tracked, allowed, root); err != nil {
 		return model.Snapshot{}, err
 	}
-	after, err := manifest(root, tracked, allowed)
+	after, err := manifest(ctx, root, tracked, allowed)
 	if err != nil {
 		return model.Snapshot{}, err
 	}
-	trackedAfter, allowedAfter := trackedFiles(root), sourceFiles(root)
-	if before != after || !sameSet(tracked, trackedAfter) || !sameSet(allowed, allowedAfter) || statusBefore != gitStatus(root) {
+	trackedAfter, te := trackedFiles(ctx, root)
+	if te != nil {
+		return model.Snapshot{}, te
+	}
+	allowedAfter, ae := sourceFiles(ctx, root)
+	if ae != nil {
+		return model.Snapshot{}, ae
+	}
+	statusAfter, se := gitStatus(ctx, root)
+	if se != nil {
+		return model.Snapshot{}, se
+	}
+	if before != after || !sameSet(tracked, trackedAfter) || !sameSet(allowed, allowedAfter) || statusBefore != statusAfter {
 		return model.Snapshot{}, model.Err("SNAPSHOT_CHANGED", "working tree changed while capturing", nil)
 	}
-	captured, err := manifest(clone, tracked, allowed)
+	captured, err := manifest(ctx, clone, tracked, allowed)
 	if err != nil || captured != after {
 		return model.Snapshot{}, model.Err("SNAPSHOT_CHANGED", "captured source differs from working tree", err)
 	}
@@ -70,7 +104,7 @@ func Capture(repo, runDir string) (model.Snapshot, error) {
 		return model.Snapshot{}, err
 	}
 	sum := sha256.Sum256([]byte(before))
-	dirty := strings.TrimSpace(string(mustOutput("git", "-C", root, "status", "--porcelain"))) != ""
+	dirty := strings.TrimSpace(statusAfter) != ""
 	return model.Snapshot{Path: clone, ManifestPath: path, SourceManifestPath: path, Head: strings.TrimSpace(string(headBytes)), SnapshotSHA256: hex.EncodeToString(sum[:]), Dirty: dirty, ExcludedPaths: excluded, CheckoutMode: "local-source-copy"}, nil
 }
 func hasSubmodule(s string) bool {
@@ -81,9 +115,9 @@ func hasSubmodule(s string) bool {
 	}
 	return false
 }
-func gitStatus(root string) string {
-	b, _ := exec.Command("git", "-C", root, "status", "--porcelain=v1", "-z").Output()
-	return string(b)
+func gitStatus(ctx context.Context, root string) (string, error) {
+	b, e := exec.CommandContext(ctx, "git", "-C", root, "status", "--porcelain=v1", "-z").Output()
+	return string(b), e
 }
 func sameSet(a, b map[string]bool) bool {
 	if len(a) != len(b) {
@@ -96,27 +130,40 @@ func sameSet(a, b map[string]bool) bool {
 	}
 	return true
 }
-func trackedFiles(root string) map[string]bool {
+func trackedFiles(ctx context.Context, root string) (map[string]bool, error) {
 	out := map[string]bool{}
-	b, _ := exec.Command("git", "-C", root, "ls-files", "-z").Output()
-	for _, p := range strings.Split(string(b), "\x00") {
+	b := exec.CommandContext(ctx, "git", "-C", root, "ls-files", "-z")
+	raw, err := b.Output()
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range strings.Split(string(raw), "\x00") {
 		if p != "" {
 			out[filepath.Clean(p)] = true
 		}
 	}
-	return out
+	return out, nil
 }
-func sourceFiles(root string) map[string]bool {
-	out := trackedFiles(root)
-	b, _ := exec.Command("git", "-C", root, "ls-files", "-o", "--exclude-standard", "-z").Output()
-	for _, p := range strings.Split(string(b), "\x00") {
+func sourceFiles(ctx context.Context, root string) (map[string]bool, error) {
+	out, err := trackedFiles(ctx, root)
+	if err != nil {
+		return nil, err
+	}
+	raw, e := exec.CommandContext(ctx, "git", "-C", root, "ls-files", "-o", "--exclude-standard", "-z").Output()
+	if e != nil {
+		return nil, e
+	}
+	for _, p := range strings.Split(string(raw), "\x00") {
 		if p != "" {
 			out[filepath.Clean(p)] = true
 		}
 	}
-	return out
+	return out, nil
 }
-func overlay(src, dst, rel string, excluded *[]string, tracked, allowed map[string]bool, root string) error {
+func overlay(ctx context.Context, src, dst, rel string, excluded *[]string, tracked, allowed map[string]bool, root string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	ents, err := os.ReadDir(filepath.Join(src, rel))
 	if err != nil {
 		return err
@@ -144,7 +191,7 @@ func overlay(src, dst, rel string, excluded *[]string, tracked, allowed map[stri
 			if err := os.MkdirAll(dp, info.Mode().Perm()); err != nil {
 				return err
 			}
-			if err := overlay(src, dst, r, excluded, tracked, allowed, root); err != nil {
+			if err := overlay(ctx, src, dst, r, excluded, tracked, allowed, root); err != nil {
 				return err
 			}
 			continue
@@ -179,12 +226,23 @@ func overlay(src, dst, rel string, excluded *[]string, tracked, allowed map[stri
 		if err := os.MkdirAll(filepath.Dir(dp), 0700); err != nil {
 			return err
 		}
-		b, err := os.ReadFile(sp)
+		in, err := os.Open(sp)
 		if err != nil {
 			return err
 		}
-		if err := os.WriteFile(dp, b, info.Mode().Perm()); err != nil {
+		out, err := os.OpenFile(dp, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, info.Mode().Perm())
+		if err != nil {
+			in.Close()
 			return err
+		}
+		_, copyErr := io.Copy(out, in)
+		in.Close()
+		closeErr := out.Close()
+		if copyErr != nil {
+			return copyErr
+		}
+		if closeErr != nil {
+			return closeErr
 		}
 		if err := os.Chmod(dp, info.Mode().Perm()); err != nil {
 			return err
@@ -204,9 +262,12 @@ func hasAllowedPrefix(allowed map[string]bool, prefix string) bool {
 	}
 	return false
 }
-func manifest(root string, tracked, allowed map[string]bool) (string, error) {
+func manifest(ctx context.Context, root string, tracked, allowed map[string]bool) (string, error) {
 	var paths []string
 	err := filepath.Walk(root, func(p string, info os.FileInfo, e error) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if e != nil {
 			return e
 		}
@@ -277,4 +338,3 @@ func Remove(s model.Snapshot) error {
 	}
 	return nil
 }
-func mustOutput(args ...string) []byte { b, _ := exec.Command(args[0], args[1:]...).Output(); return b }
