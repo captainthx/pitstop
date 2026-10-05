@@ -2,7 +2,6 @@ package config
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"io"
 	"os"
@@ -68,4 +67,3 @@ func ResolveWorkflow(repo, relative string) (string, error) {
 	}
 	return real, nil
 }
-func Context(ctx context.Context) context.Context { return ctx }

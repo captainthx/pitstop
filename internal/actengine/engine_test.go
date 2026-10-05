@@ -15,7 +15,7 @@ func TestRunDrainsBothStreamsAndMapsExit(t *testing.T) {
 	if err := os.WriteFile(fake, []byte("#!/bin/sh\nprintf '{\"jobID\":\"verify\",\"jobResult\":\"success\"}\\n'\nprintf 'stderr\\n' >&2\nexit 0\n"), 0755); err != nil {
 		t.Fatal(err)
 	}
-	e := Environment{ActPath: fake, Home: d, Image: "image", Architecture: "linux/arm64"}
+	e := Environment{ActPath: fake, Home: d, Architecture: "linux/arm64"}
 	s := model.Snapshot{Path: d}
 	p := model.Plan{ExecutionWorkflowPath: filepath.Join(d, "ci.yml")}
 	j := model.PlannedJob{ID: "verify", Eligible: true}

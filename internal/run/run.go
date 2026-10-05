@@ -24,7 +24,6 @@ type Options struct {
 	Timeout          time.Duration
 	Architecture     string
 	ForceIntegration bool
-	JSON             bool
 	Progress         io.Writer
 }
 type lock struct{ f *os.File }

@@ -187,7 +187,7 @@ func runCmd(ctx context.Context, out, errOut io.Writer, repo *string) *cobra.Com
 		if jsonOut {
 			progress = errOut
 		}
-		e, err := run.Execute(ctx, run.Options{Repo: *repo, Jobs: jobs, Timeout: timeout, Architecture: arch, ForceIntegration: force, JSON: jsonOut, Progress: progress})
+		e, err := run.Execute(ctx, run.Options{Repo: *repo, Jobs: jobs, Timeout: timeout, Architecture: arch, ForceIntegration: force, Progress: progress})
 		if jsonOut {
 			if werr := report.WriteEnvelope(out, e); werr != nil {
 				return werr

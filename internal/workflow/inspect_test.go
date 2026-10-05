@@ -98,6 +98,31 @@ func TestInspectBlocksFalseStepsAndLocalSecrets(t *testing.T) {
 		t.Fatalf("%#v", inv.Jobs[0])
 	}
 }
+func TestInspectFindsNestedLocalActionSecret(t *testing.T) {
+	d := t.TempDir()
+	base := filepath.Join(d, ".github/actions/a")
+	nested := filepath.Join(base, "nested")
+	if err := os.MkdirAll(nested, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(base, "action.yml"), []byte("runs:\n  using: composite\n  steps:\n    - uses: ./nested\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(nested, "action.yml"), []byte("runs:\n  using: composite\n  steps:\n    - run: echo ${{ secrets['TOKEN'] }}\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	p := filepath.Join(d, "ci.yml")
+	if err := os.WriteFile(p, []byte("jobs:\n  verify:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: ./.github/actions/a\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	inv, err := Inspect(d, p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(inv.Jobs[0].SecretReferences) == 0 {
+		t.Fatalf("nested secret missed: %#v", inv.Jobs[0])
+	}
+}
 func containsText(s, sub string) bool { return strings.Contains(s, sub) }
 func InventoryFixture(ids []string) model.Inventory {
 	out := model.Inventory{}

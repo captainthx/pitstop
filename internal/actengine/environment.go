@@ -10,8 +10,8 @@ import (
 )
 
 type Environment struct {
-	ActPath, DockerHost, Home, Image, Architecture string
-	Info                                           model.EngineInfo
+	ActPath, DockerHost, Home, Architecture string
+	Info                                    model.EngineInfo
 }
 
 func Check(ctx context.Context) (Environment, error) {

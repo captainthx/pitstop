@@ -13,7 +13,7 @@ func TestExecuteMissingConfigIsActionable(t *testing.T) {
 	if out, err := exec.Command("git", "init", d).CombinedOutput(); err != nil {
 		t.Fatal(string(out))
 	}
-	e, err := Execute(context.Background(), Options{Repo: d, JSON: true})
+	e, err := Execute(context.Background(), Options{Repo: d})
 	if err == nil || e.ExitCode != 2 || e.Error == nil || e.Error.Code != "CONFIG_INVALID" {
 		t.Fatalf("envelope=%#v err=%v", e, err)
 	}

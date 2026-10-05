@@ -3,7 +3,6 @@ package model
 import (
 	"errors"
 	"fmt"
-	"time"
 )
 
 const SchemaVersion = 1
@@ -55,14 +54,6 @@ func (c Config) Validate() error {
 	return nil
 }
 
-type Options struct {
-	Repo, Jobs               string
-	JobList                  []string
-	JSON                     bool
-	Timeout                  time.Duration
-	Architecture, ConfigPath string
-	ForceIntegration         bool
-}
 type JobInfo struct {
 	ID                string   `json:"id"`
 	Name              string   `json:"name"`

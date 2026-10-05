@@ -245,11 +245,11 @@ func localActionReasons(repo string, refs []string) []string {
 	var out []string
 	seen := map[string]bool{}
 	stack := map[string]bool{}
-	var visit func(string)
-	visit = func(ref string) {
-		base := filepath.Join(repo, strings.TrimPrefix(ref, "./"))
+	root, _ := filepath.EvalSymlinks(repo)
+	var visit func(string, string)
+	visit = func(ref, baseDir string) {
+		base := filepath.Join(baseDir, strings.TrimPrefix(ref, "./"))
 		real, e := filepath.EvalSymlinks(base)
-		root, _ := filepath.EvalSymlinks(repo)
 		rel, relErr := filepath.Rel(root, real)
 		if e != nil || relErr != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
 			out = append(out, "local action path escapes or is missing: "+ref)
@@ -285,11 +285,11 @@ func localActionReasons(repo string, refs []string) []string {
 			out = append(out, "secret:local composite "+ref)
 		}
 		for _, nested := range localActions(&doc) {
-			visit(nested)
+			visit(nested, real)
 		}
 	}
 	for _, r := range refs {
-		visit(r)
+		visit(r, repo)
 	}
 	return out
 }
