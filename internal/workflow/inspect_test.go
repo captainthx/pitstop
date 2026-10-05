@@ -123,6 +123,16 @@ func TestInspectFindsNestedLocalActionSecret(t *testing.T) {
 		t.Fatalf("nested secret missed: %#v", inv.Jobs[0])
 	}
 }
+func TestInspectRejectsUnsafeJobID(t *testing.T) {
+	d := t.TempDir()
+	p := filepath.Join(d, "ci.yml")
+	if err := os.WriteFile(p, []byte("jobs:\n  ../escape:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo no\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Inspect(d, p); err == nil {
+		t.Fatal("unsafe job id accepted")
+	}
+}
 func containsText(s, sub string) bool { return strings.Contains(s, sub) }
 func InventoryFixture(ids []string) model.Inventory {
 	out := model.Inventory{}
