@@ -1,20 +1,22 @@
 # Pitstop
 
-**รันงานตรวจโค้ดจาก GitHub Actions บนเครื่องตัวเอง ก่อนส่งขึ้น CI**
+**English** | [ไทย](README.th.md)
 
-Pitstop ใช้ workflow เดิมของโปรเจกต์ เลือกเฉพาะ job ที่กำหนด แล้วรันผ่าน `act` และ Docker โดยทดสอบสำเนาของโค้ดที่อยู่ใน working tree รวมถึงงานที่ยังไม่ได้ commit
+**Run your GitHub Actions checks locally before sending changes to CI.**
 
-## เริ่มตรงนี้
+Pitstop selects jobs from an existing workflow and runs them through `act` and Docker. It tests an isolated copy of the current working tree, including changes you have not committed yet.
 
-| ต้องการอ่านเรื่องอะไร | เอกสาร |
+## Start here
+
+| What you need | Documentation |
 |---|---|
-| เริ่มใช้ ตั้งค่า และดูผลการรัน | [คู่มือใช้งาน](docs/user-guide.md) |
-| เครื่องต้องมีอะไร ฟีเจอร์ที่รองรับ และข้อกำหนดของ MVP | [ความต้องการและขอบเขต](docs/requirements.md) |
-| ผลทดสอบกับ React, Go และ integration จริง | [ผล validation](docs/evidence/final-validation.md) |
+| Set up, run checks, and understand results | [User guide](docs/user-guide.en.md) |
+| Tools, features, MVP requirements, and limitations | [Requirements and scope](docs/requirements.en.md) |
+| Actual React, Go, and integration validation | [Validation evidence](docs/evidence/final-validation.md) |
 
-## เริ่มใช้แบบสั้น
+## Quick start
 
-รันจากโฟลเดอร์ source ของ Pitstop:
+From the Pitstop source directory:
 
 ```sh
 go build -trimpath -o pitstop ./cmd/pitstop
@@ -22,7 +24,7 @@ PITSTOP_BIN="$PWD/pitstop"
 TARGET_REPO="/absolute/path/to/your/repo"
 ```
 
-สร้าง `.pitstop.json` ในโปรเจกต์เป้าหมายตาม [ตัวอย่างในคู่มือ](docs/user-guide.md#2-ตั้งค่าโปรเจกต์ที่จะทดสอบ) แล้วรัน:
+Create `.pitstop.json` in the target repository using the [guide's example](docs/user-guide.en.md#2-configure-the-target-project), then run:
 
 ```sh
 "$PITSTOP_BIN" doctor --repo "$TARGET_REPO"
@@ -30,15 +32,23 @@ TARGET_REPO="/absolute/path/to/your/repo"
 "$PITSTOP_BIN" run --repo "$TARGET_REPO"
 ```
 
-เครื่องต้องมี Git, Docker daemon ที่ใช้งานได้ และ **act 0.2.89** ส่วน Go **1.26.5 ขึ้นไป** จำเป็นเมื่อ build Pitstop จาก source
+You need Git, a reachable Docker daemon, and **act 0.2.89**. Go **1.26.5 or newer** is required when building Pitstop from source.
 
-## ฟีเจอร์หลัก
+## Main features
 
-- เลือก job จาก workflow เดิม เช่น lint, test หรือ verify และรันทีละ job
-- ทดสอบโค้ดปัจจุบัน รวมไฟล์ที่แก้ไว้แต่ยังไม่ได้ commit
-- ดูผลแบบข้อความ หรือ JSON สำหรับ script และ AI agent
-- เก็บ report, log และข้อมูลของ source ที่ใช้รัน เพื่อย้อนตรวจได้
-- กำหนด timeout, หยุดด้วย Ctrl+C และป้องกันการรันซ้ำใน repo เดียวกัน
-- มีโหมด integration เฉพาะสำหรับ `recruit100-service`
+- Select jobs such as lint, test, or verify from the original workflow and run them sequentially.
+- Test current source files, including uncommitted changes.
+- Read human output or JSON for scripts and AI agents.
+- Retain reports, logs, and source identity for inspection.
+- Set a timeout, cancel with Ctrl+C, and prevent overlapping runs for the same repository.
+- Opt into the dedicated `recruit100-service` integration adapter.
 
-รุ่นนี้มีผลทดสอบบน macOS ARM64 กับ Linux ARM64 runner งานที่มีเงื่อนไขหรือความสามารถที่ยังไม่รองรับจะแสดงว่า `blocked` และการผ่านบนเครื่องยังต้องผ่าน required checks บน GitHub ตามปกติ
+Runtime validation covers macOS ARM64 with a Linux ARM64 runner. Unsupported conditions or workflow capabilities are reported as `blocked`. Local success still needs the required GitHub checks to pass.
+
+## Pitstop CI
+
+[GitHub repository](https://github.com/captainthx/pitstop) · [GitHub Actions](https://github.com/captainthx/pitstop/actions)
+
+CI runs on pull requests targeting `main`, pushes and merges into `main`, and manual dispatch. It checks formatting, dependencies, vet, race tests, build, and the CLI's JSON smoke test using the Go version in `go.mod`.
+
+These checks validate Pitstop's code. Actual React/Go application workflow runs are recorded separately in the [validation evidence](docs/evidence/final-validation.md).

@@ -1,10 +1,12 @@
 # คู่มือใช้งาน Pitstop
 
+[English](user-guide.en.md) | **ไทย**
+
 **ใช้งานครั้งแรก: build → ตั้งค่า → ตรวจความพร้อม → รัน → อ่านผล**
 
 Pitstop เหมาะกับการตรวจโค้ดก่อน commit หรือ push เช่น lint, unit test และ build ที่เขียนไว้ใน GitHub Actions อยู่แล้ว คำว่า **job** ในคู่มือนี้หมายถึงรายการใต้ `jobs:` ในไฟล์ workflow
 
-[กลับหน้าแรก](../README.md) · [ความต้องการและขอบเขต](requirements.md)
+[กลับหน้าแรก](../README.th.md) · [ความต้องการและขอบเขต](requirements.md)
 
 ## 1. เตรียมเครื่องและ build
 
@@ -26,7 +28,7 @@ PITSTOP_BIN="$PWD/pitstop"
 
 `PITSTOP_BIN` เก็บ path ของโปรแกรมไว้ เพื่อให้ใช้กับโปรเจกต์อื่นได้ หากใช้ binary ที่ build ไว้แล้ว ไม่ต้องมี Go เพื่อเปิด Pitstop แต่ job ของโปรเจกต์ยังต้องมีเครื่องมือตามที่ workflow กำหนด
 
-binary ที่ส่งมอบใน workspace นี้อยู่ที่ `.pitstop-work/bin/pitstop` หากต้องการใช้ไฟล์นั้น ให้กำหนด `PITSTOP_BIN="$PWD/.pitstop-work/bin/pitstop"` แทน โดยเริ่มจากโฟลเดอร์ Pitstop
+binary ที่ส่งมอบใน workspace นี้อยู่ที่ `.pitstop-work/bin/pitstop` หากต้องการใช้ไฟล์นั้น ให้กำหนด `PITSTOP_BIN="$PWD/.pitstop-work/bin/pitstop"` แทน โดยเริ่มจากโฟลเดอร์ Pitstop ไฟล์นี้ถูก ignore และไม่ติดไปกับ GitHub clone; หลัง clone ให้ build จาก source
 
 ## 2. ตั้งค่าโปรเจกต์ที่จะทดสอบ
 
