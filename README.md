@@ -1,26 +1,44 @@
 # Pitstop
 
-Pitstop runs a configured subset of an existing GitHub Actions workflow against a local working-tree snapshot through `act` and Docker.
+**รันงานตรวจโค้ดจาก GitHub Actions บนเครื่องตัวเอง ก่อนส่งขึ้น CI**
 
-Build it with Go 1.26.5 or newer:
+Pitstop ใช้ workflow เดิมของโปรเจกต์ เลือกเฉพาะ job ที่กำหนด แล้วรันผ่าน `act` และ Docker โดยทดสอบสำเนาของโค้ดที่อยู่ใน working tree รวมถึงงานที่ยังไม่ได้ commit
+
+## เริ่มตรงนี้
+
+| ต้องการอ่านเรื่องอะไร | เอกสาร |
+|---|---|
+| เริ่มใช้ ตั้งค่า และดูผลการรัน | [คู่มือใช้งาน](docs/user-guide.md) |
+| เครื่องต้องมีอะไร ฟีเจอร์ที่รองรับ และข้อกำหนดของ MVP | [ความต้องการและขอบเขต](docs/requirements.md) |
+| ผลทดสอบกับ React, Go และ integration จริง | [ผล validation](docs/evidence/final-validation.md) |
+
+## เริ่มใช้แบบสั้น
+
+รันจากโฟลเดอร์ source ของ Pitstop:
 
 ```sh
 go build -trimpath -o pitstop ./cmd/pitstop
-./pitstop version
+PITSTOP_BIN="$PWD/pitstop"
+TARGET_REPO="/absolute/path/to/your/repo"
 ```
 
-Then run `./pitstop doctor --repo /path/to/repo`, `./pitstop list --repo /path/to/repo`, and `./pitstop run --repo /path/to/repo --json`. The repository must contain a strict `.pitstop.json`; copy one of the profiles in `examples/`. Pitstop requires Git, act 0.2.89, and a reachable Docker daemon. It never installs tools or reads cloud credentials.
+สร้าง `.pitstop.json` ในโปรเจกต์เป้าหมายตาม [ตัวอย่างในคู่มือ](docs/user-guide.md#2-ตั้งค่าโปรเจกต์ที่จะทดสอบ) แล้วรัน:
 
-`run` accepts `--job ID` repeatedly, `--timeout 20m`, `--arch linux/arm64|linux/amd64`, and the guarded `--force-integration` adapter. Exit codes are 0 for a complete successful selection, 1 for a launched failure or timeout, 2 for invalid or blocked work, and 130 for cancellation. With `--json`, progress goes to stderr and stdout contains one envelope. Unknown values are represented by JSON `null`; arrays remain `[]`.
+```sh
+"$PITSTOP_BIN" doctor --repo "$TARGET_REPO"
+"$PITSTOP_BIN" list --repo "$TARGET_REPO"
+"$PITSTOP_BIN" run --repo "$TARGET_REPO"
+```
 
-Snapshots are stored under the user cache directory at `pitstop/runs`, with 0700 run directories and 0600 reports/logs. Finished runs are retained for evidence and may be removed manually. Source snapshots use the working tree, including nonignored untracked files, and report excluded conventional local files such as `.env`.
+เครื่องต้องมี Git, Docker daemon ที่ใช้งานได้ และ **act 0.2.89** ส่วน Go **1.26.5 ขึ้นไป** จำเป็นเมื่อ build Pitstop จาก source
 
-Relative symlinks that resolve inside the repository are preserved. Absolute symlinks are blocked during capture because relocating them safely requires a future snapshot path rewrite.
+## ฟีเจอร์หลัก
 
-The generic runner supports independent, unconditional, nonmatrix jobs on the configured runner. Dependencies, job conditions, matrices, reusable workflows, custom containers/services, secret references, and deploy-like work is excluded from the example selections. The service adapter only removes the guarded integration job's `needs` and `if` after verifying its expected shape; it reports the workflow fidelity adjustment.
+- เลือก job จาก workflow เดิม เช่น lint, test หรือ verify และรันทีละ job
+- ทดสอบโค้ดปัจจุบัน รวมไฟล์ที่แก้ไว้แต่ยังไม่ได้ commit
+- ดูผลแบบข้อความ หรือ JSON สำหรับ script และ AI agent
+- เก็บ report, log และข้อมูลของ source ที่ใช้รัน เพื่อย้อนตรวจได้
+- กำหนด timeout, หยุดด้วย Ctrl+C และป้องกันการรันซ้ำใน repo เดียวกัน
+- มีโหมด integration เฉพาะสำหรับ `recruit100-service`
 
-`selectedCoverage` and `workflowCoverage` are top-level fields in the run result. A completed failed job still contributes coverage; blocked work, cancellation, timeout or unknown execution makes coverage partial. Forced integration always keeps workflow coverage partial.
-
-The service adapter requires a local Unix Docker endpoint. Connection is resolved before isolating HOME and act configuration; host secrets/tokens and local act config are not passed to the runner. Local tracked files remain source inputs, so tracked `.env` files are preserved.
-
-Validation and limitations: [final product evidence](docs/evidence/final-validation.md). The delivered local binary is `.pitstop-work/bin/pitstop`; rebuild using the command above on another host.
+รุ่นนี้มีผลทดสอบบน macOS ARM64 กับ Linux ARM64 runner งานที่มีเงื่อนไขหรือความสามารถที่ยังไม่รองรับจะแสดงว่า `blocked` และการผ่านบนเครื่องยังต้องผ่าน required checks บน GitHub ตามปกติ
