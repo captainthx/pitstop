@@ -457,3 +457,7 @@ Commit: `test(docker): verify isolated checks and document config v2`.
 - Run implementation on existing `feature/docker-checks`; no merge/push/release until user requests it.
 - Recommended execution: sequential implementation because Tasks 1→2→3→4→5 share types and runtime contracts. User may choose luna_worker to implement task-by-task with parent review, as with help change.
 - This turn creates design + implementation plan only; no product code changes or tests claiming the feature exists.
+
+## Implementation outcome — 2026-10-07
+
+Implemented by luna_worker on `feature/docker-checks`, followed by parent and independent review. See [Docker checks validation](../../evidence/docker-checks-validation.md) for the checks actually executed. Implementation and review fixes were committed as coherent changes rather than the original five intermediate task commits. Checklist entries above preserve the original detailed plan; the validation record is the execution evidence. Docker create uses immutable repository digests when available, with config IDs for local images, to accommodate multi-platform Docker image stores. No merge, push or release was performed.

@@ -52,3 +52,5 @@ config schema version 1 จะถูกปฏิเสธพร้อมคำ�
 รายงานเก็บ source identity, image ID, arguments, log, exit record และหลักฐาน cleanup ไว้ใน user cache ค่า `workflowCoverage` เป็น `not_applicable` เพราะไม่ได้ตีความ workflow เมื่อ timeout หรือกด Ctrl+C ระบบจะหยุดและลบเฉพาะ container ของ run นั้น และไม่แก้ source repository
 
 ดู [คู่มือ](docs/user-guide.md), [ข้อกำหนด](docs/requirements.md) และ [หลักฐานเดิม](docs/evidence/final-validation.md)
+
+หากต้องการตรึง toolchain ให้ตั้ง `runner.image` เป็น image digest เช่น `node@sha256:<digest>` เพราะ tag อาจเปลี่ยนได้ แต่ละ run จะบันทึก image ID ที่ใช้ ส่วน custom image ต้อง build เองก่อนรัน Pitstop

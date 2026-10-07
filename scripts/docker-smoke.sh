@@ -54,7 +54,10 @@ assert r['result']['selectedCoverage'] == 'complete', r
 assert r['result']['workflowCoverage'] == 'not_applicable', r
 assert all(j['status'] == 'passed' for j in r['result']['jobs']), r
 assert all(s['status'] == 'passed' for j in r['result']['jobs'] for s in j['steps']), r
-assert pathlib.Path(r['result']['reportPath']).exists(), r
+report = pathlib.Path(r['result']['reportPath'])
+assert json.loads(report.read_text()) == r, r
+assert not (report.parent / 'snapshot').exists(), r
+assert not list(report.parent.glob('scripts-*')), r
 assert not (pathlib.Path(sys.argv[2]) / 'generated.txt').exists()
 PY
 AFTER=$(git -C "$REPO" status --porcelain=v1)
@@ -71,7 +74,7 @@ p.write_text(json.dumps(c))
 PY
 if "$PITSTOP_BIN" run --repo "$REPO" --json > "$ROOT/failure.json"; then exit 1; fi
 python3 - "$ROOT/failure.json" "$REPO" <<'PY'
-import json, pathlib, sys
+import json, pathlib, subprocess, sys
 r = json.loads(pathlib.Path(sys.argv[1]).read_text())
 assert r['exitCode'] == 1, r
 jobs = {j['id']: j for j in r['result']['jobs']}
@@ -79,6 +82,8 @@ assert jobs['verify']['status'] == 'failed', r
 assert jobs['verify']['steps'][2]['status'] == 'skipped', r
 assert jobs['independent']['status'] == 'passed', r
 assert not (pathlib.Path(sys.argv[2]) / 'must-not-run').exists()
+assert json.loads(pathlib.Path(r['result']['reportPath']).read_text()) == r
+assert not subprocess.run(['docker', 'ps', '-aq', '--filter', 'label=com.pitstop.run=' + r['result']['runId']], capture_output=True, text=True, check=True).stdout.strip()
 PY
 
 python3 - "$REPO/.pitstop.json" <<'PY'
@@ -90,10 +95,13 @@ PY
 if "$PITSTOP_BIN" run --repo "$REPO" --timeout 1s --json > "$ROOT/timeout.json"; then exit 1; fi
 test -s "$ROOT/timeout.json" || { cat "$ROOT/timeout.json"; exit 1; }
 python3 - "$ROOT/timeout.json" <<'PY'
-import json, pathlib, sys
+import json, pathlib, subprocess, sys
 r = json.loads(pathlib.Path(sys.argv[1]).read_text())
 assert r['exitCode'] == 1, r
 assert any(j.get('reasonCode') == 'TIMEOUT' for j in r['result']['jobs']), r
+assert r['result']['selectedCoverage'] == 'partial', r
+assert json.loads(pathlib.Path(r['result']['reportPath']).read_text()) == r
+assert not subprocess.run(['docker', 'ps', '-aq', '--filter', 'label=com.pitstop.run=' + r['result']['runId']], capture_output=True, text=True, check=True).stdout.strip()
 PY
 
 UNRELATED=$(docker run -d --label com.pitstop.run=unrelated-smoke "$IMAGE" sleep 30)
@@ -120,7 +128,10 @@ r = json.loads(out_path.read_text())
 assert r['exitCode'] == 130, r
 assert 'result' in r and any(j.get('reasonCode') == 'CANCELLED' for j in r['result']['jobs']), r
 assert subprocess.run(['docker', 'ps', '-q', '--filter', 'label=com.pitstop.run=unrelated-smoke'], capture_output=True, text=True, check=True).stdout.strip() == unrelated_short
-remaining = subprocess.run(['docker', 'ps', '-q', '--filter', 'label=com.pitstop.run'], capture_output=True, text=True, check=True).stdout.split()
-assert all(x == unrelated_short for x in remaining), remaining
+run_id = r['result']['runId']
+remaining = subprocess.run(['docker', 'ps', '-aq', '--filter', 'label=com.pitstop.run=' + run_id], capture_output=True, text=True, check=True).stdout.split()
+assert not remaining, remaining
+for container in baseline:
+    assert subprocess.run(['docker', 'inspect', container], capture_output=True).returncode == 0, container
 PY
 printf 'docker smoke passed (%s, linux/%s)\n' "$IMAGE" "$ARCH"

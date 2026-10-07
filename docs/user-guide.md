@@ -38,3 +38,5 @@ pitstop run --repo /absolute/path/to/repo
 ```
 
 รุ่นแรกยังไม่มี services, cache volume, auto-build image หรือแปลง workflow เป็น checks ดู [ข้อกำหนด](requirements.md) และ [หลักฐานเดิม](evidence/final-validation.md)
+
+หากต้องการตรึง toolchain ให้ตั้ง `runner.image` เป็น image digest เช่น `node@sha256:<digest>` เพราะ tag อาจเปลี่ยนได้ แต่ละ run จะบันทึก image ID ที่ใช้ ส่วน custom image ต้อง build เองก่อนรัน Pitstop

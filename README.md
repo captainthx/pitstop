@@ -52,3 +52,5 @@ Schema version 1 configurations are rejected with migration guidance. Move comma
 Reports keep the source identity, resolved image ID, command arguments, logs, step exit records, and cleanup evidence under the user cache. `workflowCoverage` is `not_applicable` because no workflow is interpreted. Timeout and Ctrl+C stop and remove the owned container; the source repository remains unchanged.
 
 See the [user guide](docs/user-guide.en.md), [requirements](docs/requirements.en.md), and historical [validation evidence](docs/evidence/final-validation.md).
+
+For reproducible toolchains, set `runner.image` to an image digest, for example `node@sha256:<digest>`. Tags can move; each run records the resolved image ID. Build custom images manually before running Pitstop.

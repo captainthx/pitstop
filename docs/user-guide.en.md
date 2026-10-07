@@ -38,3 +38,5 @@ pitstop run --repo /absolute/path/to/repo
 ```
 
 The first release does not provide services, cache volumes, automatic image builds, or workflow-to-check conversion. See [requirements](requirements.en.md) for the complete boundary and [historical evidence](evidence/final-validation.md) for the former workflow backend.
+
+For reproducible toolchains, set `runner.image` to an image digest, for example `node@sha256:<digest>`. Tags can move; each run records the resolved image ID. Build custom images manually before running Pitstop.
