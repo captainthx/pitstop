@@ -1,3 +1,5 @@
+> Historical record / เอกสารประวัติ: describes an earlier implementation, not the current CLI. ดู [คู่มือปัจจุบัน](../../README.th.md) สำหรับการใช้งาน Docker checks.
+
 # act React CI — ผลทดลอง
 
 วันที่ 2026-10-05 (Asia/Bangkok)

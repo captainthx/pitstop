@@ -1,3 +1,5 @@
+> Historical record / เอกสารประวัติ: describes an earlier implementation, not the current CLI. ดู [คู่มือปัจจุบัน](../../../README.th.md) สำหรับการใช้งาน Docker checks.
+
 # Pitstop MVP 1 — Detailed Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Execute natively and sequentially; subagents require explicit user authorization.

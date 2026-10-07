@@ -1,3 +1,5 @@
+> Historical record / เอกสารประวัติ: describes an earlier implementation, not the current CLI. ดู [คู่มือปัจจุบัน](../../README.th.md) สำหรับการใช้งาน Docker checks.
+
 # SDD ledger — plan: docs/superpowers/plans/2026-10-05-pitstop-mvp-1.md
 
 Pre-flight: shared interfaces are model/config → workflow → snapshot → engine → report → coordinator; adapter consumes workflow plan and produces a prepared workflow.

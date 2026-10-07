@@ -1,3 +1,5 @@
+> Historical record / เอกสารประวัติ: describes an earlier implementation, not the current CLI. ดู [คู่มือปัจจุบัน](../../README.th.md) สำหรับการใช้งาน Docker checks.
+
 # Measured act runtime contract — 2026-10-05
 
 Parent-agent probes ran on macOS ARM64, act 0.2.89, Docker OrbStack with endpoint `unix:///Users/thanyatab/.orbstack/run/docker.sock`. Runner Linux ARM64, `catthehacker/ubuntu:act-latest`, digest `sha256:c58e2b364da03b0c804c7d660f2ecbedf2f221a382b9baa0b344b0144780ff43`. Go host is 1.27.1; Go 1.26.5 remains the declared build baseline rather than a host test claim.

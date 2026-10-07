@@ -1,15 +1,58 @@
-# Requirements and scope
+# Pitstop requirements and scope
 
-Pitstop requires a Git repository with at least one commit, Git, Docker CLI, and a reachable Docker daemon. The target project supplies a schema version 2 `.pitstop.json`; Pitstop supplies source snapshot isolation, container lifecycle, timeout, cancellation, cleanup, logs, evidence, and reports.
+[ไทย](requirements.md) | [User guide](user-guide.en.md) | [Index](README.md)
 
-The configuration names a Linux image (`linux/arm64` or `linux/amd64`), selected check IDs, and ordered shell steps. The image must contain the tools used by those steps. Public images or a user-built image are supported; Pitstop does not build images automatically.
+This document defines current Docker checks behavior. Installation and runnable examples are in the user guide.
 
-The first version supports `run`, `doctor`, `list`, and `version`. It does not interpret `.github/workflows/*.yml`, install or invoke `act`, translate `uses:` actions or expressions, or provide matrix, needs, services, secret injection, cache volumes, or self-hosted runner registration. `workflowCoverage` is always `not_applicable`.
+## Requirements
 
-Each selected check runs in a fresh container. Its steps share `/workspace` and generated evidence under `/pitstop`; another check cannot see files created by the previous check. The working tree is copied from a snapshot through `docker cp`, so dirty, new, and deleted files are tested without a host bind mount. Timeout and cancellation stop the active owned container, then cleanup removes only matching run labels.
+- Host Git, Docker CLI and a reachable daemon; build the CLI with Go 1.26.5 from `go.mod`.
+- Target repository with at least one HEAD commit and schema version 2 `.pitstop.json` at Git root.
+- User-created/copied configuration per repository defining image, architecture, checks and selection; no config generator.
+- Linux `arm64` or `amd64` image containing `/bin/sh` and every command's tools.
+- Registry/network access as required by image pulls and project commands.
+- Local real execution is validated on macOS ARM64 / Docker Linux ARM64; native Windows and cross-architecture execution are unverified.
 
-Schema version 1 is rejected with migration guidance. A migration moves `run` commands into `checks`, replaces `checkout` with the Pitstop snapshot, and replaces setup actions with an image toolchain. Existing GitHub workflows remain the CI project's responsibility.
+## Supported behavior
 
-Reports contain an immutable image ID, step exit records, raw logs, source identity, command argv, and cleanup evidence. Normal check failures are distinct from missing evidence and container runtime failures. Exit codes are 0 for all passed, 1 for proven check failure, 2 for invalid/blocked/unknown/persistence/cleanup failure, and 130 for cancellation.
+| Component | Contract |
+| --- | --- |
+| Config | One JSON document, version 2, strict fields/IDs; manual migration from earlier schema |
+| Commands | `doctor`, `list`, `run`, `version`; `-h`/`--help` and JSON output |
+| Selection | `jobs` defines default selection/order; `--job` chooses a subset |
+| Environment | Use a daemon image or pull when needed; two-minute preparation budget; no automatic build |
+| Snapshot | Current tracked edits/deletions and new non-ignored files; original repo is not mounted |
+| Isolation | Fresh container per check; no host bind mount, Docker socket mount or privileged mode |
+| Steps | `/bin/sh -e`, cwd `/workspace`, user `0:0`; shared files and a new shell per step |
+| Failure | Failed step skips the rest of that check; later independent checks still run |
+| Timeout | Default 20 minutes per check, positive `--timeout` override; covers create/copy/start/run |
+| Cancellation | Ctrl+C/SIGTERM stops scheduling and attempts bounded stop/removal of owned containers |
+| Concurrency | Per-repository lock; other repositories may run independently |
+| Evidence | Docker terminal state and step exit records; success text alone is insufficient |
+| Reports | Logs, source/image identity, configs, arguments, exit evidence and ownership records in user cache |
+| Cleanup | Remove owned containers/volumes, snapshots and temporary scripts; retain reports/logs; no image/global resource pruning |
 
-See the [user guide](user-guide.en.md), [Docker examples](../examples/docker-react.json), and retained historical [validation evidence](evidence/final-validation.md).
+## Result contract
+
+Configuration schema is 2; JSON envelope schema is 1. `workflowCoverage` is always `not_applicable`. `selectedCoverage=complete` means ordinary selected checks have sufficient evidence, not that they passed. Interrupted/runtime/unknown outcomes produce partial coverage.
+
+Exit precedence: cancellation `130` → failed job `1` (including timeout/runtime failure) → invalid/blocked/unknown/log/report/cleanup problem `2` → all passed `0`. Storage and cleanup problems do not hide established failures.
+
+Step durations are `null`; check/run durations are measured. Pre-execution errors may have no report. There is no automatic report retention or artifact export.
+
+## Unsupported features
+
+- Execution of `.github/workflows/*.yml`, `uses:` actions or expressions.
+- Matrix, job dependencies (`needs`) and service containers.
+- Config-based secret/environment injection, host environment forwarding or cache volumes.
+- Automatic image builds, workflow/config conversion or `pitstop init`.
+- Self-hosted runner registration or uploading source to GitHub.
+- A provided installer link/release installation method.
+
+Snapshots reject submodules, unresolved merges and absolute/broken/escaping symlinks. Ignored untracked files and untracked `.env`/`.env.*`/`.secrets`/`.vars`/`.input` files are excluded; tracked files remain included. Exclusion is not secret scanning.
+
+CI can reuse project scripts, but matching results depend on the image/toolchain/OS/network. Workflow parity is not guaranteed.
+
+## Validation
+
+See [current Docker validation](evidence/docker-checks-validation.md) for tests, smoke and limits of the actual evidence. GitHub CI includes smoke; local validation does not establish remote CI success. Historical documents in the [index](README.md) do not define the current CLI's scope.

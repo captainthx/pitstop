@@ -1,15 +1,58 @@
-# ข้อกำหนดและขอบเขต
+# ข้อกำหนดและขอบเขต Pitstop
 
-Pitstop ต้องใช้ Git repository ที่มี commit อย่างน้อยหนึ่งรายการ, Git, Docker CLI และ Docker daemon ที่เชื่อมต่อได้ โปรเจกต์เป้าหมายต้องมี `.pitstop.json` schema version 2 ส่วน Pitstop จัดการ snapshot, container lifecycle, timeout, cancellation, cleanup, log, evidence และ report
+[English](requirements.en.md) | [คู่มือใช้งาน](user-guide.md) | [สารบัญ](README.md)
 
-config ระบุ Linux image (`linux/arm64` หรือ `linux/amd64`), check ที่เลือก และ shell step ตามลำดับ image ต้องมีเครื่องมือที่ step เรียก ใช้ image สาธารณะหรือ image ที่ผู้ใช้ build เองได้ แต่ Pitstop ไม่ build image อัตโนมัติ
+เอกสารนี้ระบุความสามารถปัจจุบันของ Docker checks ส่วนวิธีติดตั้งและตัวอย่างคำสั่งอยู่ในคู่มือ
 
-รุ่นแรกมี `run`, `doctor`, `list` และ `version` ไม่อ่าน `.github/workflows/*.yml`, ไม่ติดตั้งหรือเรียก `act`, ไม่แปล `uses:` หรือ expression และยังไม่มี matrix, needs, services, secret injection, cache volume หรือ self-hosted runner `workflowCoverage` เป็น `not_applicable` เสมอ
+## ข้อกำหนด
 
-แต่ละ check ได้ container ใหม่ Steps ใน check เดียวกันใช้ `/workspace` และ evidence ใต้ `/pitstop` ร่วมกัน แต่ check อื่นมองไม่เห็นไฟล์ที่สร้างไว้ source ถูก copy จาก snapshot ผ่าน `docker cp` จึงตรวจ dirty, new และ deleted files ได้โดยไม่ bind mount working tree Timeout และ cancellation จะหยุด container ที่มี label ของ run แล้ว cleanup เฉพาะทรัพยากรนั้น
+- Host มี Git, Docker CLI และ daemon ที่เชื่อมต่อได้; build CLI ด้วย Go 1.26.5 ตาม `go.mod`
+- Repo เป้าหมายมี Git HEAD อย่างน้อยหนึ่ง commit และ `.pitstop.json` schema version 2 ที่ Git root
+- ผู้ใช้คัดลอก/เขียน config ครั้งเดียวต่อ repo: ระบุ image, architecture, check definitions และ selection ไม่มี config generator
+- Image เป็น Linux `arm64` หรือ `amd64` มี `/bin/sh` และ tools ที่ commands ใช้
+- ใช้ registry/network ตามที่การ pull image และ project commands ต้องการ
+- การรันจริงที่ยืนยัน local คือ macOS ARM64 / Docker Linux ARM64; native Windows และ cross-architecture execution ยังไม่ยืนยัน
 
-schema version 1 จะถูกปฏิเสธพร้อมคำแนะนำ migration ให้ย้ายคำสั่ง `run` มาไว้ใน `checks`, แทน `checkout` ด้วย snapshot ของ Pitstop และแทน setup action ด้วย toolchain image Workflow เดิมยังเป็นหน้าที่ของ CI ในโปรเจกต์
+## พฤติกรรมที่รองรับ
 
-รายงานเก็บ image ID, exit record ของ step, log ดิบ, source identity, command argv และหลักฐาน cleanup แยก failure ของ check, evidence ที่หาย และ runtime failure ค่า exit code คือ 0 เมื่อผ่านทั้งหมด, 1 เมื่อพบ check failure, 2 เมื่อ config/blocked/unknown/persistence/cleanup failure และ 130 เมื่อยกเลิก
+| ส่วน | ข้อตกลง |
+| --- | --- |
+| Config | JSON document เดียว, version 2, strict fields/IDs; schema เดิมต้องย้ายเอง |
+| Commands | `doctor`, `list`, `run`, `version`; help `-h`/`--help` และ JSON output |
+| Selection | `jobs` กำหนด default selection/order; `--job` เลือก subset จากรายการนี้ |
+| Environment | ใช้ image ใน daemon หรือ pull เมื่อจำเป็น; เตรียมสูงสุด 2 นาที; ไม่ build image ให้ |
+| Snapshot | ตรวจ working tree รวม tracked edits/deletions และ new non-ignored files; ไม่ mount repo ต้นฉบับ |
+| Isolation | Container ใหม่ต่อ check; ไม่มี host bind mount, Docker socket mount หรือ privileged mode |
+| Steps | `/bin/sh -e`, cwd `/workspace`, user `0:0`; แชร์ files แต่เป็น shell ใหม่ทุก step |
+| Failure | step failed ทำให้ steps ที่เหลือใน check skipped; independent check ถัดไปรันต่อ |
+| Timeout | 20 นาทีต่อ check โดยปริยาย; override ด้วย positive `--timeout`; รวม create/copy/start/run |
+| Cancellation | Ctrl+C/SIGTERM หยุด scheduling และพยายาม stop/remove owned containers ด้วย bounded cleanup |
+| Concurrency | ล็อก repo เดียวกัน; repo อื่นรันแยกได้ |
+| Evidence | Docker terminal state + exit records; success text อย่างเดียวไม่ถือว่าผ่าน |
+| Reports | log, source/image identity, config, arguments, exit evidence และ ownership records ใน user cache |
+| Cleanup | ลบ owned container volumes, snapshot และ temporary scripts; เก็บ reports/logs; ไม่ prune images/resources อื่น |
 
-ดู [คู่มือ](user-guide.md), [ตัวอย่าง Docker](../examples/docker-react.json) และ [หลักฐานเดิม](evidence/final-validation.md)
+## ผลลัพธ์
+
+Config schema เป็น 2 แต่ JSON envelope schema เป็น 1 ค่า `workflowCoverage` เป็น `not_applicable` เสมอ `selectedCoverage=complete` หมายถึงมีหลักฐานครบสำหรับ checks ปกติ ไม่ได้หมายถึงทุก check ผ่าน ส่วน timeout/runtime/unknown ทำให้ coverage เป็น partial
+
+ลำดับ exit code: cancellation `130` → failed job `1` (รวม timeout/runtime failure) → invalid/blocked/unknown/log/report/cleanup problem `2` → ทุก check ผ่าน `0` ปัญหาบันทึกผลหรือ cleanup ไม่กลบ failure ที่ตรวจพบแล้ว
+
+Step durations เป็น `null` ส่วน check/run มี duration จริง ข้อผิดพลาดก่อนเริ่ม execution อาจไม่มี report ไม่มี automatic report retention หรือ artifact export
+
+## ขอบเขตที่ยังไม่มี
+
+- การอ่านและ execute `.github/workflows/*.yml`, แปล `uses:` หรือ expressions
+- Matrix, job dependencies (`needs`) และ service containers
+- Secret/environment injection ผ่าน config, host environment forwarding หรือ cache volumes
+- Automatic image build, automatic workflow/config conversion และ `pitstop init`
+- Self-hosted runner registration หรือส่ง source ไป GitHub
+- Installer link/release installation ที่จัดทำไว้
+
+Snapshot ไม่รองรับ submodules, unresolved merges, absolute/broken/escaping symlinks ไฟล์ untracked ที่ ignore หรือชื่อกลุ่ม `.env`/`.env.*`/`.secrets`/`.vars`/`.input` ถูก exclude แต่ tracked files ยังรวมอยู่ การ exclude ไม่ใช่ secret scanning
+
+การใช้ shared script ร่วมกับ CI ทำได้ แต่ความเหมือนของผลขึ้นกับ image/toolchain/OS/network ที่ตั้งไว้ ไม่มีการรับประกัน workflow parity
+
+## หลักฐานและการตรวจสอบ
+
+ดู [Docker validation ปัจจุบัน](evidence/docker-checks-validation.md) สำหรับ tests, smoke และข้อจำกัดของหลักฐานที่รันจริง GitHub CI มี smoke แต่ผล local ไม่ได้ยืนยันว่า remote CI รันผ่านแล้ว เอกสารในหมวดประวัติของ [สารบัญ](README.md) ไม่ใช่ขอบเขตของ CLI ปัจจุบัน

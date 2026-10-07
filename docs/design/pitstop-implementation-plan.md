@@ -1,3 +1,5 @@
+> Historical record / เอกสารประวัติ: describes an earlier implementation, not the current CLI. ดู [คู่มือปัจจุบัน](../../README.th.md) สำหรับการใช้งาน Docker checks.
+
 # Pitstop MVP 1 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. If the user explicitly chooses delegation, use the available subagent workflow instead. Steps use checkboxes for tracking. No delegation is currently authorized.
@@ -8,7 +10,7 @@
 
 **Tech Stack:** Go 1.26.5, Cobra, go.yaml.in/yaml/v3, Go standard library; external Git, act 0.2.89 and Docker.
 
-**Spec:** [pitstop-spec.md](pitstop-spec.md). **Context/evidence:** [pitstop-context.md](pitstop-context.md), [act-react-ci-report.md](act-react-ci-report.md).
+**Spec:** [pitstop-spec.md](pitstop-spec.md). **Context/evidence:** [pitstop-context.md](pitstop-context.md), [act-react-ci-report.md](../evidence/act-react-ci-report.md).
 
 ## Global Constraints
 
