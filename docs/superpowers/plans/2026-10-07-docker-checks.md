@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** ให้ Pitstop เปิด Docker environment แล้วรันคำสั่ง/shared script ของ repo บน snapshot โดยไม่ใช้ act หรือรัน checks บน host
+**Goal:** ให้ Pitstop เปิด Docker environment แล้วรันคำสั่ง/shared script ของ repo บน snapshot โดยถอด act ออกจาก Pitstop ทั้งหมด และไม่รัน checks บน host
 
-**Architecture:** เพิ่ม config v2 สำหรับ Docker checks แยกจาก workflow v1 ใช้ Docker CLI และ result files ของ generated scripts เป็น execution evidence ใช้ snapshot, repo lock, report models, exit precedence และ atomic persistence เดิม แยกเฉพาะ Docker endpoint/cleanup utilities ที่ act และ engine ใหม่ต้องใช้ร่วมกัน ไม่สร้าง generic engine interface/factory
+**Architecture:** เปลี่ยน backend เป็น Docker checks เพียงตัวเดียว ใช้ config v2, Docker CLI และ result files เป็น execution evidence นำ endpoint/cleanup logic เดิมมาใช้ แล้วลบ actengine/workflow parser ใช้ snapshot, repo lock, report models, exit precedence และ atomic persistence เดิม ไม่สร้าง engine selector/interface/factory
 
 **Tech Stack:** Go 1.26.5, Cobra v1.10.2, Go stdlib, Git, Docker CLI/daemon; ไม่เพิ่ม dependency
 
@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- Config v1 = act 0.2.89 แบบเดิม; config v2 = engine docker; JSON envelope schemaVersion ยังคง 1
+- Final state: config v2 Docker checks เท่านั้น; v1 ต้องได้ actionable migration error; JSON envelope schemaVersion ยังคง 1
 - Architecture เป็น `linux/arm64` หรือ `linux/amd64`; default timeout 20m ต่อ job; image prepare 2m; cleanup 10s
 - ไม่รัน checks บน host ไม่ใช้ bind mount หรือ Docker socket และไม่ส่ง source ขึ้น GitHub
 - fresh container ต่อ job; steps ใช้ `/bin/sh -e`, cwd `/workspace`, แชร์ files แต่ไม่แชร์ shell session
@@ -21,14 +21,14 @@
 - exit codes 0/1/2/130 ใช้ precedence ใน report.ExitCode เดิม
 - logs/progress บน stderr เมื่อ --json; stdout มี JSON envelope เดียว
 - shell commands บนเครื่องต้องขึ้นต้น `rtk`; commands ภายใน repo config/container เป็นคำสั่งของผู้ใช้ ไม่ถูกเติม RTK
-- ทุก task เพิ่ม failing tests ก่อน implement และต้องรักษา tests เดิม; commit เฉพาะไฟล์ใน task บน `feature/docker-checks`
+- ทุก task เพิ่ม failing tests ก่อน implement; รักษา tests สำหรับพฤติกรรมที่ยังใช้ และย้าย tests ของ old backend เป็น Docker equivalents ก่อนลบ; commit เฉพาะไฟล์ใน task บน `feature/docker-checks`
 
 ## Review Focus
 
 1. Docker client exit กับ command exit คนละอย่าง: evidence ขาด/OOM/launch error ต้องไม่กลายเป็น passed — Tasks 3/4
 2. Ctrl+C/timeout หยุด container จริง และ cleanup ไม่ลบ container อื่น — Tasks 2/3/5
 3. `--repo` ที่มี spaces, dirty/new/deleted files, script writes: copy ตรง snapshot และ original ไม่เปลี่ยน — Tasks 3/5
-4. Config version/unknown fields/unsafe IDs/overrides: reject ก่อนรัน command; v1 ไม่เปลี่ยนพฤติกรรม — Tasks 1/4
+4. Config version/unknown fields/unsafe IDs/overrides: reject ก่อนรัน command; v1 ได้ข้อความ migration โดยไม่เปิด container — Tasks 1/4
 5. Logs/report เขียนไม่ได้หลังตรวจพบ failure: รักษา failure precedence และรายงาน storage error — Tasks 3/4
 
 ## Current Flow and Files
@@ -38,12 +38,14 @@
 | Task | ไฟล์ที่รับผิดชอบ |
 |---|---|
 | 1 | Modify `internal/model/types.go`, `internal/model/types_test.go`, `internal/config/config_test.go`; `config.go` เฉพาะเมื่อ strict decoder ต้องปรับ |
-| 2 | Create `internal/dockercli/docker.go`, `internal/dockercli/docker_test.go`; Modify `internal/actengine/environment.go`, `internal/actengine/engine.go` และ tests ที่เกี่ยวข้อง |
+| 2 | Create `internal/dockerchecks/environment.go`, `internal/dockerchecks/environment_test.go`; นำ endpoint/owned cleanup logic เดิมมาใช้ |
 | 3 | Create `internal/dockerchecks/engine.go`, `internal/dockerchecks/engine_test.go` |
-| 4 | Modify `internal/run/run.go`, `internal/run/run_test.go`, `internal/cli/root.go`, `internal/cli/root_test.go`, `internal/report/report.go`, `internal/report/report_test.go`; Create `internal/run/docker.go` |
+| 4 | Modify `internal/model/types.go`, `internal/model/types_test.go`, `internal/config/config.go`, `internal/config/config_test.go`, `internal/run/run.go`, `internal/run/run_test.go`, `internal/cli/root.go`, `internal/cli/root_test.go`, `internal/report/report.go`, `internal/report/report_test.go`; Delete `internal/actengine/`, `internal/workflow/`, `testdata/workflows/`; Modify `go.mod`, `go.sum` |
 | 5 | Create `scripts/docker-smoke.sh`, `examples/docker-react.json`, `examples/docker-go.json`; Modify README และ user guides ทั้งสองภาษา, requirements ทั้งสองภาษา, `.github/workflows/ci.yml` |
 
-ไม่แตะ snapshot algorithm หรือ workflow adapter; ไม่ split/refactor ไฟล์อื่นที่ไม่เกี่ยวข้อง
+ไม่แตะ snapshot algorithm; ลบ workflow adapter พร้อม engine เก่า ไม่ split/refactor ไฟล์อื่นที่ไม่เกี่ยวข้อง
+
+Sequencing: Tasks 1–3 เตรียม v2 models/engine ใน branch โดยคง legacy fields/validation ชั่วคราวเพื่อให้ intermediate commits build/test ได้ Task 4 เปลี่ยน routing แล้วลบ legacy ทั้งหมดก่อน Task 5/ส่งงาน อย่า merge intermediate commits เป็นรุ่นพร้อมใช้
 
 ## Task 1: Versioned Docker Checks Config
 
@@ -56,13 +58,12 @@
 ```go
 func TestDockerConfigValidation(t *testing.T) {
     valid := func() Config {
-        return Config{SchemaVersion: 2, Engine: "docker", Jobs: []string{"verify"},
+        return Config{SchemaVersion: 2, Jobs: []string{"verify"},
             Runner: RunnerConfig{Image: "node:22-bookworm", Architecture: "linux/arm64"},
             Checks: []Check{{ID: "verify", Steps: []CheckStep{{ID: "check", Run: "npm run check"}}}}}
     }
     if err := valid().Validate(); err != nil { t.Fatal(err) }
     for _, mutate := range []func(*Config){
-        func(c *Config) { c.Engine = "act" },
         func(c *Config) { c.Workflow = "ci.yml" },
         func(c *Config) { c.Event = "pull_request" },
         func(c *Config) { c.Adapter = "recruit100-service-integration-v1" },
@@ -91,10 +92,9 @@ Run: `rtk go test ./internal/model ./internal/config -count=1` → build fails o
 - [ ] **2. เพิ่ม minimum model definitions**
 
 ```go
-// Add to Config, with omitempty on fields irrelevant to v2.
-Engine string `json:"engine,omitempty"`
+// Add Checks to Config; legacy fields survive only until Task 4.
 Checks []Check `json:"checks,omitempty"`
-// Existing Workflow/Event/Adapter/Runner.Label get omitempty; v1 non-empty JSON stays identical.
+// Task 4 removes Workflow/Event/Adapter/Runner.Label entirely.
 
 type Check struct {
     ID string `json:"id"`
@@ -107,52 +107,42 @@ type CheckStep struct {
 }
 // EngineInfo addition:
 ImageID string `json:"imageId,omitempty"`
-// ListResult addition:
-Engine string `json:"engine,omitempty"`
 ```
 
-Keep `model.SchemaVersion = 1` for envelopes. `Config.Validate` switches on literal 1/2: v1 uses current checks plus rejects Engine/Checks; v2 applies every Config Contract rule from spec; default rejects. Use regexp compiled once for IDs and `strings` for NUL/whitespace checks. No renderer/parser/framework additions.
+Keep `model.SchemaVersion = 1` for envelopes. Temporarily retain existing v1 validation only to keep intermediate commits green; v2 applies every Config Contract rule from spec without an engine field; default rejects. Task 4 replaces this switch with v2-only validation and version-first migration errors. Use regexp compiled once for IDs and `strings` for NUL/whitespace checks. No renderer/parser/framework additions.
 
 - [ ] **3. GREEN and commit**
 
-Run `rtk go test ./internal/model ./internal/config -count=1`, then `rtk go test ./...` → all pass, including original v2-as-invalid test (its config lacks engine/checks). Commit: `feat(config): define Docker checks config v2`.
+Run `rtk go test ./internal/model ./internal/config -count=1`, then `rtk go test ./...` → all pass, including original v2-as-invalid test (its config lacks checks). Commit: `feat(config): define Docker checks config v2`.
 
-## Task 2: Reuse Docker Endpoint and Owned Cleanup
+## Task 2: Docker Environment and Owned Cleanup
 
-**Interfaces:** produces:
+**Interfaces:** Create concrete helpers inside the single engine package:
 
 ```go
-package dockercli
-type Environment struct { Path, Host, Version string }
+package dockerchecks
+// Environment defined here; Task 3 extends preparation using Info.
+type Environment struct {
+    DockerPath string
+    DockerHost string
+    Info model.EngineInfo
+}
 func Check(ctx context.Context) (Environment, error)
-func Command(ctx context.Context, env Environment, args ...string) *exec.Cmd
+func command(ctx context.Context, env Environment, args ...string) *exec.Cmd
 func Cleanup(ctx context.Context, runDir string) error
 ```
 
-`Check` moves current Docker resolution/version logic from actengine; `Command` prepends `--host env.Host` and removes DOCKER_CONTEXT from process environment; `Cleanup` reuses metadata format `{dockerHost,label}`, validates label against runDir and records removed IDs. actengine keeps its public wrappers/types to avoid changing all callers at once.
+`Check` ports Docker resolution/version logic from actengine without checking act; `command` prepends --host and removes DOCKER_CONTEXT; `Cleanup` uses existing metadata format {dockerHost,label}, validates ownership and records removed IDs. This is a concrete engine package, not a generic Docker/backend framework. Leave old actengine source intact until Task 4 switches routing.
 
-- [ ] **1. RED: endpoint and cleanup regression tests**
+- [ ] **1. RED: endpoint and cleanup tests**
 
-Use fake `docker` executables via t.TempDir like existing tests; record argv as one line per argument. Table cases:
-
-| Input | Expected |
-|---|---|
-| DOCKER_CONTEXT set and DOCKER_HOST different | context endpoint wins, resolved once |
-| no context, DOCKER_HOST set | explicit host wins |
-| neither set | context show → context inspect |
-| daemon version empty/nonzero | DOCKER_UNAVAILABLE |
-| PATH contains docker/git but no act | Docker Check succeeds |
-| Command called after context changes | fixed --host endpoint; no DOCKER_CONTEXT in cmd.Env |
-| metadata label not equal expected runDir label | cleanup errors before rm |
-| owned container and unrelated container | only owned ID removed with --volumes |
-
-Direct environment isolation assertion:
+Use test-local fake Docker executables as existing tests do and record argv one argument per line. Cases: context overrides conflicting host; explicit host wins when no context; neither supplied resolves active context; empty/nonzero daemon version gives DOCKER_UNAVAILABLE; missing CLI gives TOOL_MISSING; no act installed still succeeds; invalid ownership errors before rm; only owned containers removed and anonymous volumes cleaned.
 
 ```go
 func TestCommandPinsEndpoint(t *testing.T) {
     t.Setenv("DOCKER_CONTEXT", "other")
-    env := Environment{Path: "/fake/docker", Host: "unix:///chosen.sock"}
-    cmd := Command(context.Background(), env, "version")
+    env := Environment{DockerPath: "/fake/docker", DockerHost: "unix:///chosen.sock"}
+    cmd := command(context.Background(), env, "version")
     if !reflect.DeepEqual(cmd.Args, []string{"/fake/docker", "--host", "unix:///chosen.sock", "version"}) {
         t.Fatal(cmd.Args)
     }
@@ -162,14 +152,14 @@ func TestCommandPinsEndpoint(t *testing.T) {
 }
 ```
 
-Run `rtk go test ./internal/dockercli ./internal/actengine -count=1` → new package/function tests fail before extraction
+Run `rtk go test ./internal/dockerchecks -count=1` → fail before helper implementation.
 
-- [ ] **2. Extract concrete utilities and retain wrappers**
+- [ ] **2. Port the existing Docker utilities into this package**
 
 ```go
-func Command(ctx context.Context, env Environment, args ...string) *exec.Cmd {
-    argv := append([]string{"--host", env.Host}, args...)
-    cmd := exec.CommandContext(ctx, env.Path, argv...)
+func command(ctx context.Context, env Environment, args ...string) *exec.Cmd {
+    argv := append([]string{"--host", env.DockerHost}, args...)
+    cmd := exec.CommandContext(ctx, env.DockerPath, argv...)
     for _, e := range os.Environ() {
         if !strings.HasPrefix(e, "DOCKER_CONTEXT=") { cmd.Env = append(cmd.Env, e) }
     }
@@ -177,23 +167,20 @@ func Command(ctx context.Context, env Environment, args ...string) *exec.Cmd {
 }
 ```
 
-Move endpoint resolution from `actengine.Check` verbatim then return daemon version. Keep act version/git checks and EngineInfo as before. Replace actengine internal Docker invocations with dockercli.Command using explicit env; ImageDigest can retain current parsing. Keep `actengine.Cleanup` wrapper calling dockercli.Cleanup. Before removal inspect each matched ID's ownership label again; missing containers are already-clean, inspect/daemon failures are not success. No shared workflow engine interface.
+Check uses exec.LookPath("docker"), original endpoint resolution and `version --format {{.Server.Version}}`; Info.Name=docker, Info.Version=daemon. Cleanup uses label-filtered ps, validates each container's exact label via inspect before `rm --force --volumes`, and never uses prune. Already-removed containers are harmless; daemon/inspect failures are not cleanup success. Keep retained owned-resource evidence available across job cleanups, not just the last empty cleanup pass.
 
 - [ ] **3. GREEN and commit**
 
-Run `rtk go test ./internal/dockercli ./internal/actengine ./internal/run -count=1` then full suite. Commit: `refactor(docker): share endpoint resolution and owned cleanup`.
+Run `rtk go test ./internal/dockerchecks -count=1` and full suite. Commit: `feat(docker): add daemon checks and owned cleanup`.
 
 ## Task 3: Execute Checks in a Fresh Container
 
-**Interfaces:** consumes Task 1 model and Task 2 utilities; produces:
+**Interfaces:** consumes Task 1 model and the same-package Environment/command/Cleanup from Task 2; produces:
 
 ```go
 package dockerchecks
-type Environment struct {
-    Docker dockercli.Environment
-    Info model.EngineInfo // Name=docker, Version=daemon; includes immutable image ID.
-}
-func Prepare(ctx context.Context, docker dockercli.Environment, runner model.RunnerConfig, progress io.Writer) (Environment, error)
+// Environment comes from environment.go, defined in Task 2.
+func Prepare(ctx context.Context, env Environment, runner model.RunnerConfig, progress io.Writer) (Environment, error)
 func Run(ctx context.Context, env Environment, snap model.Snapshot, check model.Check, runDir string, timeout time.Duration, progress io.Writer) (model.JobResult, error)
 ```
 
@@ -271,11 +258,11 @@ Container name = `pitstop-<runID>-<check.ID>`; store command argv records under 
 Copy source directory contents and generated directory:
 
 ```go
-dockercli.Command(jobCtx, env.Docker, "cp", snap.Path+string(os.PathSeparator)+".", containerID+":/workspace")
-dockercli.Command(jobCtx, env.Docker, "cp", scriptsDir, containerID+":/pitstop")
-dockercli.Command(jobCtx, env.Docker, "start", "--attach", containerID)
-dockercli.Command(evidenceCtx, env.Docker, "inspect", "--format", "{{json .State}}", containerID)
-dockercli.Command(evidenceCtx, env.Docker, "cp", containerID+":/pitstop/results/.", evidenceDir)
+command(jobCtx, env, "cp", snap.Path+string(os.PathSeparator)+".", containerID+":/workspace")
+command(jobCtx, env, "cp", scriptsDir, containerID+":/pitstop")
+command(jobCtx, env, "start", "--attach", containerID)
+command(evidenceCtx, env, "inspect", "--format", "{{json .State}}", containerID)
+command(evidenceCtx, env, "cp", containerID+":/pitstop/results/.", evidenceDir)
 ```
 
 Ensure `/workspace` is available by workdir/create contract and source cp behavior; real smoke must verify directory nesting explicitly. `scriptsDir` must be copied to nonexistent `/pitstop` so its contents become step scripts/run.sh/results directly, not an extra nested directory.
@@ -290,19 +277,13 @@ Cancellation/timeout use a job context covering create/copy/start. After context
 
 Run `rtk go test ./internal/dockerchecks -count=1`, full suite and vet. Commit: `feat(docker): execute checks with container evidence and cleanup`.
 
-## Task 4: Route CLI/Run and Retain Reports
+## Task 4: Replace act Routing and Delete Legacy Backend
 
-**Interfaces:** consumes `model.Config`, dockercli.Check, dockerchecks.Prepare/Run; existing public `run.Execute`/Options/cli.Execute signatures remain unchanged. Add only:
+**Interfaces:** consumes model.Config + dockerchecks.Check/Prepare/Run. Keep run.Execute/Options except removing ForceIntegration. The final Config struct has only SchemaVersion, Jobs, Runner, Checks; RunnerConfig has only Image/Architecture. There is no engine selector field or second backend.
 
-```go
-// internal/run/docker.go, called after Execute has resolved repo,
-// acquired lock, loaded config, and applied validated job/arch overrides.
-func executeDocker(ctx context.Context, o Options, repo string, cfg model.Config, initialConfig []byte) (model.Envelope, error)
-```
+- [ ] **1. RED: Docker entry points and legacy migration**
 
-- [ ] **1. RED: entry-point integration tests**
-
-Extend run tests using current git fixture/fake-tool pattern. Set fake act to fail/record if invoked; fake Docker supplies lifecycle/evidence fixtures from Task 3. Expected contracts:
+Extend run tests using current Git fixture/fake-tool pattern. Fake act must fail/record if invoked; Docker provides Task 3 lifecycle/evidence fixtures. Fixture repo contains no workflow. Verify:
 
 ```go
 e, err := Execute(context.Background(), Options{Repo: repo, Jobs: []string{"verify"}, Timeout: time.Second})
@@ -312,37 +293,66 @@ if r.Engine.Name != "docker" || r.Engine.ImageID == "" ||
     r.Coverage.Selected != "complete" || r.Coverage.Workflow != "not_applicable" {
     t.Fatalf("%#v", r)
 }
-// repo fixture contains no workflow; act must never be called.
-// Decode saved report and emitted envelope, compare via reflect.DeepEqual
-// using TestExecuteRetainsHashesAndCoverageAfterSnapshotCleanup pattern.
+// Compare persisted report vs emitted envelope via reflect.DeepEqual,
+// using existing TestExecuteRetainsHashesAndCoverageAfterSnapshotCleanup pattern.
 ```
 
-Also exercise invalid job override, duplicate override, invalid --arch, --force-integration, config changes during capture, cancelled preflight, known failure followed by unknown job, report write failure after known failure and cleanup failure after success. Assert exit precedence 1/2/130 exactly as spec. Captured original config comparison must occur before applying overrides to captured config.
+Add explicit old-config rejection:
 
-CLI tests call Execute/ExecuteContext with fake tools and v2 repo, decode exactly one JSON doc + EOF. `list --json` must work with Docker/act absent; `doctor --json` must not invoke act; `run --json` progress goes to stderr. Retain existing help tests and add docker wording assertions without deleting workflow explanations.
+```go
+func TestLegacyConfigNeedsMigration(t *testing.T) {
+    dir := t.TempDir()
+    old := `{"schemaVersion":1,"workflow":".github/workflows/ci.yml","event":"pull_request","jobs":["verify"],"runner":{"label":"ubuntu-latest","image":"old-image","architecture":"linux/arm64"}}`
+    if err := os.WriteFile(filepath.Join(dir, ".pitstop.json"), []byte(old), 0600); err != nil { t.Fatal(err) }
+    _, err := Load(dir) // Put this test in package config.
+    var me *model.Error
+    if !errors.As(err, &me) || me.Code != "CONFIG_INVALID" ||
+        !strings.Contains(me.Message, "schemaVersion 2") {
+        t.Fatalf("missing migration guidance: %v", err)
+    }
+}
+```
 
-Run: `rtk go test ./internal/run ./internal/cli ./internal/report -count=1` → new v2 routes fail before implementation.
+Config.Load uses encoding/json RawMessage + a second Decode expecting io.EOF to validate exactly one JSON document, probes schemaVersion from RawMessage, then rejects version1 with message `schemaVersion 1 act workflows are no longer supported; migrate to schemaVersion 2 Docker checks`. Only supported version2 then gets strict typed decoding. Test version0/3, malformed JSON, trailing document, and v2 unknown workflow/event/adapter/runner.label/engine/uses fields. All reject before Docker invocation; no YAML parsing or automatic conversion.
 
-- [ ] **2. Add early dispatch without a generic engine framework**
+Exercise invalid job/duplicate override, invalid --arch, captured config changes, cancelled preflight, failure followed by unknown job, report failure after known failure and cleanup failure after success. Preserve 1/2/130 precedence. Captured config comparison occurs before applying overrides to captured config.
 
-In run.Execute after config.Load and initial normalized bytes:
-1. Validate job overrides against cfg.Jobs, apply architecture/jobs and Validate for both modes (move existing block as necessary; no double handling).
-2. If cfg.Engine==docker, reject force-integration then return executeDocker while existing lock defer remains active.
-3. v1 continues into original workflow/act path, preserving config snapshot equality logic and report behavior.
+CLI: list works with Docker/act absent, no config returns CONFIG_INVALID rather than reading ci.yml; doctor uses Docker and never act; run --json gives one envelope + EOF with progress on stderr; --force-integration returns unknown flag exit2 even with --json. Replace old help text assertions with Docker purpose/checks/examples and removal of adapter flag.
 
-`executeDocker` uses snapshot.CaptureContext and config equality check, selected checks ordered by cfg.Jobs, dockerchecks.Prepare once, then Run per job. Save `config.json` from captured config before overrides; save `effective-config.json` after overrides. Record hashes for both in metadata; argv paths glob works for new operation filenames. Do not hash nonexistent workflow copies or create dummy YAML evidence.
+Run `rtk go test ./internal/config ./internal/run ./internal/cli ./internal/report -count=1` → new route/migration/help tests fail before implementation.
 
-Keep `writeMetadata` v1 unchanged; add a concrete `writeDockerMetadata(dir, runID string, started time.Time, cfg model.Config, source model.Snapshot) error` in docker.go using normalized config bytes, SHA256 and saved argv/container/image information. Reuse writeAtomic and report.ExitCode. Do not introduce a metadata interface with one implementation.
+- [ ] **2. Rewrite run.Execute to the single Docker flow**
 
-Retain results before final cleanup and persist report even when later engine/log/cleanup/storage operations fail. Snapshot removed on every return; ownership cleanup fallback defer must not disappear on early failure. Persist error field in envelope for write/report failures as existing behavior; failed job precedence stays 1, cancellation stays 130.
+Reuse current fail/errorEnvelope, acquireLock, config.Load, snapshot.CaptureContext, writeAtomic and report.ExitCode. Remove workflow path/inspection/plan, prepared/original YAML copies, event.json, act Home/action cache and adapter logic. The flow is exactly spec.Execution:
 
-CLI doctor chooses runtime check from a valid config: v1 current workflow/act; v2 config/check selection + dockercli.Check + nonmutating image probe. Invalid config gives config failure without selecting an engine by guess. list v2 uses config definitions and sets Engine=docker, WorkflowPath empty; v1 fallback to ci.yml stays as-is.
+1. Resolve repo, acquire lock, load config; retain normalized original bytes.
+2. Apply valid selected job/arch overrides and Validate, reject nonpositive timeout.
+3. dockerchecks.Check; create runDir and cleanup fallback defer before any owned container can exist.
+4. Capture snapshot; reload config and compare original bytes; use captured steps as source of execution.
+5. dockerchecks.Prepare once; run selected Check objects in cfg.Jobs order.
+6. Preserve known results if later calls return errors; cancel marks later jobs skipped.
+7. Cleanup under fresh context; remove snapshot/scripts; compute selectedCoverage and workflowCoverage=not_applicable.
+8. Persist metadata and envelope atomically, report storage errors without erasing known failure.
 
-Human list prints `checks: .pitstop.json` for docker mode; Human run includes `engine=docker` and workflow=not_applicable only for Docker reports. Keep v1 text unchanged. Root/help text explains both modes and prerequisites; --job description becomes selected job/check ID. `--force-integration` help states act-only. No new CLI flags required.
+Save config.json from captured config and effective-config.json after overrides. Add `writeDockerMetadata(dir, runID string, started time.Time, cfg model.Config, source model.Snapshot) error` to run.go; hash these configs and retain argv/container/image identity. Replace old writeMetadata rather than keeping unused workflow-only hashing. Retain tests asserting saved hashes and stdout report equality, adapted to config hashes.
 
-- [ ] **3. GREEN and commit**
+Update doctor/list to check .pitstop.json checks directly. ListResult uses `ConfigPath string json:"configPath"` instead of WorkflowPath; Jobs/Selected/Eligible/Reasons remain. Human output prints `checks: .pitstop.json`; run output includes engine=docker. Retain report workflowCoverage=not_applicable and adjustments=[] for result compatibility without generating YAML adjustments. model.Adjustment may remain solely as the existing report wire type.
 
-Run all targeted tests, `rtk go test -race -count=1 ./...`, `rtk go vet ./...`, `rtk git diff --check`. Commit: `feat(run): route Docker checks through existing CLI and reports`.
+ก่อนลบ legacy fields ปรับ TestDockerConfigValidation ให้ลบ mutation cases ที่อ้าง c.Workflow/c.Event/c.Adapter/c.Runner.Label แล้วแทนด้วย strict-decoder unknown-field tests ที่เพิ่มใน task นี้ เพื่อไม่เหลือ compile references. Remove Config legacy fields, Runner.Label, model.JobInfo/Inventory/PlannedJob/Plan, Options.ForceIntegration, CLI --force-integration, config.ResolveWorkflow. Delete internal/actengine and internal/workflow (including tests), testdata/workflows. Move still-relevant failure/log/cleanup test cases into dockerchecks/run tests before deleting their former files. Snapshot/report/lock/JSON regressions remain, not discarded merely because their fixtures previously used act.
+
+Run `rtk proxy go mod tidy` to remove go.yaml.in/yaml/v3 and unused transitive entries. Cobra remains. Existing Pitstop GitHub CI YAML is still used by GitHub itself; do not delete .github/workflows/ci.yml.
+
+- [ ] **3. GREEN, no-act verification and commit**
+
+```sh
+rtk go test -race -count=1 ./...
+rtk go vet ./...
+rtk proxy go list -deps ./cmd/pitstop
+rtk rg -n 'actengine|pitstop/internal/workflow|go.yaml.in/yaml|ForceIntegration|ResolveWorkflow' internal cmd go.mod go.sum
+rtk git diff --check
+```
+
+Expected: tests/vet pass; dependency list has no old engine/workflow/YAML package; rg finds nothing (exit1 is expected). Legacy v1 JSON exists only in migration tests, not runtime paths. Commit: `feat!: replace act workflow execution with Docker checks`.
 
 ## Task 5: Real Docker Acceptance and User Docs
 
@@ -357,7 +367,6 @@ Use Alpine image with architecture derived from Docker daemon architecture; perm
 ```json
 {
   "schemaVersion": 2,
-  "engine": "docker",
   "runner": {"image": "alpine:3.22", "architecture": "linux/arm64"},
   "jobs": ["verify", "independent"],
   "checks": [
@@ -395,9 +404,9 @@ Run script against pre-implementation binary first → fails because schema2 uns
 
 - [ ] **2. Document config and reproducible environment**
 
-Create examples/docker-react.json from spec. Create examples/docker-go.json with runner image `golang:1.26.5`, jobs verify, steps vet=`go vet ./...`, test=`go test -race ./...`, build=`go build ./...`. Images are example inputs, not claims that all registries/tools/platforms work without validation. Shared scripts remain in target repo; users may replace steps with `sh scripts/check.sh`.
+Create examples/docker-react.json from spec. Create examples/docker-go.json with runner image `golang:1.26.5`, jobs verify, steps vet=`go vet ./...`, test=`go test -race ./...`, build=`go build ./...`. Images are example inputs, not claims that all registries/tools/platforms work without validation. Shared scripts remain in target repo; users may replace steps with `sh scripts/check.sh`. Remove active v1 examples/recruit100-react.json and examples/recruit100-service.json and update every README/guide link to new examples. Add a migration section mapping checkout/setup actions to snapshot/image and run steps to shared scripts. Keep docs/evidence and docs/design historical files intact, but link them as evidence of the former act implementation rather than current capabilities.
 
-README/user-guide/requirements EN+TH explain v1 vs v2, prerequisites, setup once per repo, no uses translation, snapshot isolation, step/file persistence, image pinning, image preparation budget, timeout/cancel, reports and workflowCoverage not_applicable. Document no services/cache/auto-build yet and toolchain responsibility. Add a custom image example:
+README/user-guide/requirements EN+TH explain Docker-only execution, v1 migration, prerequisites, setup once per repo, no uses translation, snapshot isolation, step/file persistence, image pinning, image preparation budget, timeout/cancel, reports and workflowCoverage not_applicable. Document no services/cache/auto-build yet and toolchain responsibility. Add a custom image example:
 
 ```dockerfile
 FROM node:22-bookworm
@@ -427,7 +436,7 @@ CI ARM vs AMD platform from daemon must be recorded. Local acceptance records ma
 - [ ] **4. Final validation and commit**
 
 ```sh
-rtk proxy gofmt -w internal/model internal/config internal/dockercli internal/dockerchecks internal/actengine internal/run internal/cli internal/report
+rtk proxy gofmt -w internal/model internal/config internal/dockerchecks internal/run internal/cli internal/report
 rtk go test -race -count=1 ./...
 rtk go vet ./...
 rtk proxy go build -trimpath -o /tmp/pitstop-docker-checks ./cmd/pitstop
@@ -444,7 +453,7 @@ Commit: `test(docker): verify isolated checks and document config v2`.
 ## Completion / Review
 
 - All acceptance criteria in spec must map to actual tests/evidence; review both normal and early-return cleanup paths.
-- Review v1 regression, false-success protection and ownership cleanup first, not cosmetic output.
+- Review v1 migration errors, complete removal of act, false-success protection and ownership cleanup first, not cosmetic output.
 - Run implementation on existing `feature/docker-checks`; no merge/push/release until user requests it.
 - Recommended execution: sequential implementation because Tasks 1→2→3→4→5 share types and runtime contracts. User may choose luna_worker to implement task-by-task with parent review, as with help change.
 - This turn creates design + implementation plan only; no product code changes or tests claiming the feature exists.

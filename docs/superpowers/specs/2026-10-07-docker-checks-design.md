@@ -2,14 +2,15 @@
 
 ## เป้าหมาย
 
-Pitstop เตรียม Linux container ที่มี toolchain ตาม image ของโปรเจกต์ นำ snapshot ของ working tree เข้าไป แล้วรันคำสั่งหรือ shared script โดยไม่รัน checks บน host และไม่ต้องติดตั้ง act สำหรับโหมดนี้ เก็บผลราย job/step, logs และ source identity ได้เหมือนการรันเดิม
+Pitstop เตรียม Linux container ที่มี toolchain ตาม image ของโปรเจกต์ นำ snapshot ของ working tree เข้าไป แล้วรันคำสั่งหรือ shared script โดยไม่รัน checks บน host และไม่ใช้ act ทั้งโปรแกรม เก็บผลราย job/step, logs และ source identity ได้เหมือนการรันเดิม
 
 ใช้ branch `feature/docker-checks` สำหรับแผนและ implementation ในอนาคต เอกสารนี้เป็น design ประกอบแผน ยังไม่ใช่การเปลี่ยนโค้ด
 
 ## ขอบเขตรุ่นแรก
 
-- เพิ่มโหมด `docker` แบบเลือกอย่างชัดเจนด้วย config schema version 2
-- config version 1 และการรัน workflow ผ่าน act 0.2.89 ใช้ต่อได้ตามเดิม
+- เปลี่ยนเป็น Docker checks เพียง backend เดียว ใช้ config schema version 2
+- ถอด act engine, workflow parser และ service workflow adapter ออกทั้งหมด ไม่ทำ fallback
+- config version 1 ถูกปฏิเสธพร้อมข้อความ migration; ไม่แปลง workflow เป็น checks อัตโนมัติ
 - ใช้ Docker image ที่มีอยู่ หรือ pull เมื่อยังไม่มีบน daemon; ไม่สร้าง image ทุกครั้งที่แก้ source
 - รองรับ custom image ที่ผู้ใช้ build เองแล้ว เช่น `docker build -t my-checks:dev .`; ตั้ง image นั้นใน config
 - เลือก jobs และเรียก steps ตามลำดับ ใน container ใหม่ต่อ job; steps ภายใน job แชร์ filesystem
@@ -25,7 +26,6 @@ Pitstop เตรียม Linux container ที่มี toolchain ตาม i
 ```json
 {
   "schemaVersion": 2,
-  "engine": "docker",
   "runner": {
     "image": "node:22-bookworm",
     "architecture": "linux/arm64"
@@ -48,8 +48,9 @@ Pitstop เตรียม Linux container ที่มี toolchain ตาม i
 - มีอย่างน้อยหนึ่ง selected job, หนึ่ง check และหนึ่ง step ต่อ check; `run` ห้ามว่างหรือมี NUL
 - step name optional; ถ้าไม่กำหนดใช้ ID
 - image ต้องไม่ว่าง ไม่เริ่ม `-`, ไม่มี whitespace/control characters; architecture เป็น `linux/arm64` หรือ `linux/amd64`
-- version 2 ต้อง engine=`docker` และไม่มี workflow/event/adapter/runner.label
-- version 1 ห้ามระบุ engine/checks; Validate เดิมและ strict unknown-field decoding ใช้ต่อ
+- version 2 ไม่มี field engine เพราะมี Docker backend เดียว; workflow/event/adapter/runner.label เป็น unknown fields
+- โหลด config ด้วยการตรวจ JSON หนึ่ง document และอ่าน schemaVersion ก่อน strict decode: version 1 ต้องได้ CONFIG_INVALID พร้อมข้อความให้ย้ายไป version 2, versions อื่นต้องได้ unsupported config version
+- strict unknown-field decoding ใช้ต่อสำหรับ version 2 ไม่มี silent migration หรือการข้าม uses/actions
 - ไม่เพิ่ม `env` ในรุ่นแรก: non-secret environment สามารถเขียนในคำสั่ง เช่น `CI=true npm run check` หรือกำหนดใน image/script
 - input command เป็น shell code ที่ผู้ใช้ตั้งใจรันใน container; ส่งเป็นไฟล์ ไม่ประกอบเป็น shell command บน host
 
@@ -66,7 +67,7 @@ resolve repo → acquire existing repo lock → load/validate config
 → remove snapshot → persist metadata/report → return human/JSON result
 ```
 
-ใช้ Docker CLI ผ่าน Go `exec.CommandContext` และ argv แยก argument ไม่ใช้ host shell ทุก Docker invocation ใช้ endpoint เดียวที่ resolve แล้ว และลบ `DOCKER_CONTEXT` ออกจาก command environment เพื่อไม่ให้ override endpoint เช่นเดียวกับ implementation เดิม ไม่ต้องใช้ Docker SDK ใหม่
+ใช้ Docker CLI ผ่าน Go `exec.CommandContext` และ argv แยก argument ไม่ใช้ host shell ทุก Docker invocation ใช้ endpoint เดียวที่ resolve แล้ว และลบ `DOCKER_CONTEXT` ออกจาก command environment เพื่อไม่ให้ override endpoint เช่นเดียวกับ implementation เดิม ไม่ต้องใช้ Docker SDK ใหม่; endpoint/cleanup implementation ย้ายจาก actengine มาอยู่ใน dockerchecks แล้วลบ actengine
 
 นำ source เข้า filesystem ของ container ด้วย `docker cp` ไม่ bind mount working tree หรือ snapshot จึงไม่ต้องให้ daemon เห็น host path และ container เขียนแก้ source บนเครื่องไม่ได้ ไม่ใช้ cache volume รุ่นแรก container ใหม่ต่อ job จึงไม่มี dependency state จาก job ก่อน
 
@@ -101,18 +102,28 @@ Image preparation: inspect local image ด้วย platform เป้าหม�
 - temporary scripts และ snapshot ลบหลัง cleanup; logs, captured config, manifest, command argv, container/image identity, step evidence, metadata และ report เก็บไว้ใต้ user cache
 - report persistence ใช้ `writeAtomic` เดิม; ไม่มีการส่ง snapshot/private source ขึ้น GitHub
 
-## CLI / Report Compatibility
+## CLI / Report Contract และ Migration
 
-- run config v2 ไม่เรียก `act --version`, workflow.Inspect หรือ PrepareIntegration
-- `--force-integration` กับ docker mode เป็น CONFIG_INVALID ก่อนเตรียม image
-- list แสดง jobs ที่กำหนดใน checks และ selection โดยไม่เรียก Docker/act
-- doctor ไม่เรียก act สำหรับ config v2; กรณี config invalid ยังคงแสดง actionable config error
+- `run`, `doctor`, `list`, `version` ใช้ต่อ; run/doctor ไม่เรียก act และไม่อ่าน workflow YAML
+- เอา `--force-integration` และ Options.ForceIntegration ออก ใช้ flag เก่านี้ต้องได้ unknown flag/exit2
+- list อ่าน definitions/selection จาก .pitstop.json และไม่เรียก Docker; ไม่มี fallback ไป ci.yml หาก config หาย
+- doctor ตรวจ Git/config/Docker daemon และ image metadata; config invalid แสดงข้อความ migration ตามจริง
 - JSON envelope schemaVersion ยังคง 1; config schemaVersion=2 เป็นคนละ version space
-- RunReport ใช้ jobs/steps/engine เดิม เพิ่ม engine.imageId แบบ optional
-- docker mode: selectedCoverage complete เมื่อ selected jobs ได้ผลตรวจ terminal ที่เชื่อถือได้ (รวม failure ปกติ), partial เมื่อ blocked/unknown/cancel/timeout; workflowCoverage=`not_applicable`
-- เพิ่ม ListResult.engine แบบ optional เพื่อให้ human output ใช้ `checks: .pitstop.json` แทน `workflow:` ใน docker mode; v1 JSON/output คง shape เดิมด้วย omitempty
+- RunReport ใช้ jobs/steps/engine เดิม เพิ่ม engine.imageId แบบ optional; engine.name=docker เสมอ
+- selectedCoverage complete เมื่อ selected jobs ได้ผลตรวจ terminal ที่เชื่อถือได้ (รวม failure ปกติ), partial เมื่อ blocked/unknown/cancel/timeout; workflowCoverage=`not_applicable`
+- เพื่อให้ scripts อ่าน reports เก่า/ใหม่ง่าย เก็บ workflowCoverage และ adjustments=[] ใน RunReport; model.Adjustment คงอยู่เฉพาะเป็น report wire type ไม่มี workflow parser หรือ runtime producer
+- ListResult เปลี่ยน workflowPath เป็น configPath=.pitstop.json; รายการ checks ใช้ Jobs/Selected/Eligible เดิม; human output บอก checks config
 - code 0=passed, 1=failed/timeout, 2=invalid/blocked/unknown/persistence/cleanup error เมื่อไม่มี failure, 130=cancel
-- Human output ต้องบอก engine=docker และไม่กล่าวว่าได้รัน GitHub workflow; JSON mode progress เป็น stderr และ stdout มี envelope เดียว
+- Human output บอก engine=docker และไม่กล่าวว่าได้รัน GitHub workflow; JSON mode progress เป็น stderr และ stdout มี envelope เดียว
+
+Migration ที่ผู้ใช้ทำครั้งเดียวต่อ repo:
+1. เปลี่ยน schemaVersion เป็น 2 และลบ workflow/event/adapter/runner.label
+2. เปลี่ยน runner.image เป็น toolchain image เช่น node/golang หรือ custom image ที่มีเครื่องมือพร้อม
+3. สร้าง checks definitions โดยนำคำสั่งจาก run steps หรือ project scripts มาใช้; ปรับ GitHub-specific paths/env ให้เป็น /workspace และ image toolchain
+4. แทน checkout ด้วย source snapshot, แทน setup actions ด้วย toolchain image; actions อื่นต้องหาคำสั่ง equivalent ที่ทดสอบแล้วเอง
+5. หาก GitHub CI ต้องตรวจเหมือนกัน ให้ workflow เรียก shared script เดียวกัน GitHub ยังจัดการ checkout/setup/actions ของ CI ได้ตามเดิม
+
+ไม่มีการแก้ GitHub workflow ของ target repo อัตโนมัติ และไม่มีการ uninstall act ที่ผู้ใช้ติดตั้งบนเครื่อง เราถอดเฉพาะ dependency/usage ภายใน Pitstop
 
 ## Acceptance
 
@@ -121,7 +132,7 @@ Image preparation: inspect local image ด้วย platform เป้าหม�
 3. dependencies ที่ step แรกสร้างใช้ได้ใน step ถัดไปของ job เดียวกัน แต่ไม่รั่วไป job ถัดไป
 4. ผล success/failure/unknown/cancel/timeout และ step evidence ตรวจสอบย้อนกลับได้
 5. ทุก outcome ล้างเฉพาะทรัพยากรที่ Pitstop รอบนี้สร้าง; cleanup/report failure ไม่ถูกซ่อน
-6. v1 act tests, CLI help และ JSON smoke เดิมผ่าน
+6. CLI/JSON/lock/snapshot/storage tests ที่ยังเกี่ยวข้องผ่าน; v1 config มี migration test; ไม่มี actengine/workflow imports หรือ YAML dependency ใน binary
 7. ทดสอบ Docker จริงบน macOS ARM64 + Linux ARM64 runner; AMD64 เป็น configurable แต่ไม่อ้าง runtime validation จนกว่าจะทดสอบ
 
 ## Sources for Docker mechanics
