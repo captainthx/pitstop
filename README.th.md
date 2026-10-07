@@ -2,62 +2,53 @@
 
 [English](README.md) | **ไทย**
 
-**รันงานตรวจโค้ดจาก GitHub Actions บนเครื่องตัวเอง ก่อนส่งขึ้น CI**
+**รันคำสั่งตรวจโค้ดใน Docker environment ที่แยกจากเครื่อง ก่อน commit หรือ push**
 
-Pitstop ใช้ workflow เดิมของโปรเจกต์ เลือกเฉพาะ job ที่กำหนด แล้วรันผ่าน `act` และ Docker โดยทดสอบสำเนาของโค้ดที่อยู่ใน working tree รวมถึงงานที่ยังไม่ได้ commit
+Pitstop เก็บ snapshot ของ working tree ปัจจุบัน แล้ว copy เข้า Linux container ใหม่ต่อ check ที่เลือก เก็บ log, หลักฐานแต่ละ step และ JSON report ไว้ให้ตรวจย้อนหลัง ระบบไม่อ่านหรือรัน GitHub Actions workflow และไม่ต้องติดตั้ง `act`
 
-## เริ่มตรงนี้
-
-| ต้องการอ่านเรื่องอะไร | เอกสาร |
-|---|---|
-| เริ่มใช้ ตั้งค่า และดูผลการรัน | [คู่มือใช้งาน](docs/user-guide.md) |
-| เครื่องต้องมีอะไร ฟีเจอร์ที่รองรับ และข้อกำหนดของ MVP | [ความต้องการและขอบเขต](docs/requirements.md) |
-| ผลทดสอบกับ React, Go และ integration จริง | [ผล validation](docs/evidence/final-validation.md) |
-
-## เริ่มใช้แบบสั้น
-
-รันจากโฟลเดอร์ source ของ Pitstop:
+## เริ่มใช้งาน
 
 ```sh
 go build -trimpath -o pitstop ./cmd/pitstop
 PITSTOP_BIN="$PWD/pitstop"
 TARGET_REPO="/absolute/path/to/your/repo"
-```
-
-ดูฟีเจอร์ คำสั่ง flags และตัวอย่างจาก CLI ได้โดยตรง:
-
-```sh
 "$PITSTOP_BIN" -h
-"$PITSTOP_BIN" run -h
-```
-
-เปิด help ได้โดยยังไม่ต้องตั้งค่าโปรเจกต์เป้าหมายหรือเปิด Docker
-
-สร้าง `.pitstop.json` ในโปรเจกต์เป้าหมายตาม [ตัวอย่างในคู่มือ](docs/user-guide.md#2-ตั้งค่าโปรเจกต์ที่จะทดสอบ) แล้วรัน:
-
-```sh
 "$PITSTOP_BIN" doctor --repo "$TARGET_REPO"
 "$PITSTOP_BIN" list --repo "$TARGET_REPO"
-"$PITSTOP_BIN" run --repo "$TARGET_REPO"
+"$PITSTOP_BIN" run --repo "$TARGET_REPO" --json
 ```
 
-เครื่องต้องมี Git, Docker daemon ที่ใช้งานได้ และ **act 0.2.89** ส่วน Go **1.26.5 ขึ้นไป** จำเป็นเมื่อ build Pitstop จาก source
+เครื่องที่รัน Pitstop ต้องมี Git, Docker และ Docker daemon ที่เชื่อมต่อได้ ส่วนเครื่องมือของโปรเจกต์ต้องอยู่ใน image ที่ตั้งค่าไว้ จึงไม่ต้องติดตั้ง Node หรือ Go บน host ใช้ตัวอย่าง [docker-react.json](examples/docker-react.json) หรือ [docker-go.json](examples/docker-go.json) ได้
 
-## ฟีเจอร์หลัก
+## ตั้งค่า
 
-- เลือก job จาก workflow เดิม เช่น lint, test หรือ verify และรันทีละ job
-- ทดสอบโค้ดปัจจุบัน รวมไฟล์ที่แก้ไว้แต่ยังไม่ได้ commit
-- ดูผลแบบข้อความ หรือ JSON สำหรับ script และ AI agent
-- เก็บ report, log และข้อมูลของ source ที่ใช้รัน เพื่อย้อนตรวจได้
-- กำหนด timeout, หยุดด้วย Ctrl+C และป้องกันการรันซ้ำใน repo เดียวกัน
-- มีโหมด integration เฉพาะสำหรับ `recruit100-service`
+`.pitstop.json` ใช้ schema version 2:
 
-รุ่นนี้มีผลทดสอบบน macOS ARM64 กับ Linux ARM64 runner งานที่มีเงื่อนไขหรือความสามารถที่ยังไม่รองรับจะแสดงว่า `blocked` และการผ่านบนเครื่องยังต้องผ่าน required checks บน GitHub ตามปกติ
+```json
+{
+  "schemaVersion": 2,
+  "runner": {"image": "node:22-bookworm", "architecture": "linux/arm64"},
+  "jobs": ["verify"],
+  "checks": [{"id":"verify","steps":[
+    {"id":"install","run":"npm ci"},
+    {"id":"check","run":"npm run check"}
+  ]}]
+}
+```
 
-## CI ของ Pitstop
+แต่ละ step ใช้ `/bin/sh -e` และทำงานที่ `/workspace` ไฟล์ที่สร้างใน step ก่อนหน้าจะใช้ต่อได้ใน check เดียวกัน แต่ check ถัดไปได้ container ใหม่ สามารถเรียก script เดิม เช่น `sh scripts/check.sh` ได้ แต่รุ่นนี้ไม่แปล `uses:`, expression, services, matrix, cache volume, secret หรือสร้าง image อัตโนมัติ หาก image สาธารณะไม่มีเครื่องมือ ให้ build image เองครั้งเดียว:
 
-[GitHub repository](https://github.com/captainthx/pitstop) · [GitHub Actions](https://github.com/captainthx/pitstop/actions)
+```dockerfile
+FROM node:22-bookworm
+```
 
-CI ทำงานเมื่อเปิดหรืออัปเดต PR ที่เข้า `main`, เมื่อ push/merge เข้า `main` และเมื่อสั่งรันด้วยตนเอง ตรวจ formatting, dependencies, vet, race tests, build และ JSON smoke test ของ CLI โดยใช้เวอร์ชัน Go จาก `go.mod`
+```sh
+docker build -t my-checks:dev -f Dockerfile.checks .
+go run ./cmd/pitstop run --repo /absolute/path/to/repo
+```
 
-ผลที่ตรวจคือโค้ดของ Pitstop ส่วนหลักฐานการรัน workflow ของ React/Go service จริงอยู่ใน [ผล validation](docs/evidence/final-validation.md)
+config schema version 1 จะถูกปฏิเสธพร้อมคำแนะนำย้ายไป v2 ให้ย้ายคำสั่งจาก `run` ใน workflow มาไว้ใน `checks`, ให้ Pitstop จัดการ snapshot แทน checkout และใช้ image แทน setup action หาก GitHub CI ต้องตรวจเหมือนกัน ให้ workflow เรียก project script เดียวกัน
+
+รายงานเก็บ source identity, image ID, arguments, log, exit record และหลักฐาน cleanup ไว้ใน user cache ค่า `workflowCoverage` เป็น `not_applicable` เพราะไม่ได้ตีความ workflow เมื่อ timeout หรือกด Ctrl+C ระบบจะหยุดและลบเฉพาะ container ของ run นั้น และไม่แก้ source repository
+
+ดู [คู่มือ](docs/user-guide.md), [ข้อกำหนด](docs/requirements.md) และ [หลักฐานเดิม](docs/evidence/final-validation.md)

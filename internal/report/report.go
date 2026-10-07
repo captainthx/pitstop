@@ -39,7 +39,7 @@ func Human(w io.Writer, e model.Envelope) error {
 		}
 	}
 	if r, ok := e.Result.(model.RunReport); ok {
-		_, err := fmt.Fprintf(w, "pitstop run %s: exit %d selected=%s workflow=%s duration=%dms report=%s\n", r.RunID, e.ExitCode, r.Coverage.Selected, r.Coverage.Workflow, r.DurationMs, r.ReportPath)
+		_, err := fmt.Fprintf(w, "pitstop run %s: exit %d engine=%s selected=%s workflow=%s duration=%dms report=%s\n", r.RunID, e.ExitCode, r.Engine.Name, r.Coverage.Selected, r.Coverage.Workflow, r.DurationMs, r.ReportPath)
 		for _, j := range r.Jobs {
 			fmt.Fprintf(w, "  %s: %s", j.ID, j.Status)
 			if j.ReasonCode != nil {
@@ -56,7 +56,7 @@ func Human(w io.Writer, e model.Envelope) error {
 		return err
 	}
 	if r, ok := e.Result.(model.ListResult); ok {
-		fmt.Fprintf(w, "repo: %s\nworkflow: %s\n", r.Repo, r.WorkflowPath)
+		fmt.Fprintf(w, "repo: %s\nchecks: %s\n", r.Repo, r.ConfigPath)
 		for _, j := range r.Jobs {
 			status := "excluded"
 			if j.Selected {

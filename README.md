@@ -2,62 +2,53 @@
 
 **English** | [ไทย](README.th.md)
 
-**Run your GitHub Actions checks locally before sending changes to CI.**
+**Run repository checks in an isolated Docker environment before commit or push.**
 
-Pitstop selects jobs from an existing workflow and runs them through `act` and Docker. It tests an isolated copy of the current working tree, including changes you have not committed yet.
-
-## Start here
-
-| What you need | Documentation |
-|---|---|
-| Set up, run checks, and understand results | [User guide](docs/user-guide.en.md) |
-| Tools, features, MVP requirements, and limitations | [Requirements and scope](docs/requirements.en.md) |
-| Actual React, Go, and integration validation | [Validation evidence](docs/evidence/final-validation.md) |
+Pitstop captures the current Git working tree, copies it into a fresh Linux container for each selected check, and retains logs, step evidence, and a JSON report. It does not read or execute GitHub Actions workflow YAML and does not require `act`.
 
 ## Quick start
-
-From the Pitstop source directory:
 
 ```sh
 go build -trimpath -o pitstop ./cmd/pitstop
 PITSTOP_BIN="$PWD/pitstop"
 TARGET_REPO="/absolute/path/to/your/repo"
-```
-
-Explore features, commands, flags, and examples from the CLI:
-
-```sh
 "$PITSTOP_BIN" -h
-"$PITSTOP_BIN" run -h
-```
-
-Help works without configuring a target repository or starting Docker.
-
-Create `.pitstop.json` in the target repository using the [guide's example](docs/user-guide.en.md#2-configure-the-target-project), then run:
-
-```sh
 "$PITSTOP_BIN" doctor --repo "$TARGET_REPO"
 "$PITSTOP_BIN" list --repo "$TARGET_REPO"
-"$PITSTOP_BIN" run --repo "$TARGET_REPO"
+"$PITSTOP_BIN" run --repo "$TARGET_REPO" --json
 ```
 
-You need Git, a reachable Docker daemon, and **act 0.2.89**. Go **1.26.5 or newer** is required when building Pitstop from source.
+The host needs Git, Docker, and a reachable Docker daemon. Checks need their own toolchain in the configured image; Node or Go on the host is unnecessary. Start from [examples/docker-react.json](examples/docker-react.json) or [examples/docker-go.json](examples/docker-go.json).
 
-## Main features
+## Configuration
 
-- Select jobs such as lint, test, or verify from the original workflow and run them sequentially.
-- Test current source files, including uncommitted changes.
-- Read human output or JSON for scripts and AI agents.
-- Retain reports, logs, and source identity for inspection.
-- Set a timeout, cancel with Ctrl+C, and prevent overlapping runs for the same repository.
-- Opt into the dedicated `recruit100-service` integration adapter.
+`.pitstop.json` uses schema version 2:
 
-Runtime validation covers macOS ARM64 with a Linux ARM64 runner. Unsupported conditions or workflow capabilities are reported as `blocked`. Local success still needs the required GitHub checks to pass.
+```json
+{
+  "schemaVersion": 2,
+  "runner": {"image": "node:22-bookworm", "architecture": "linux/arm64"},
+  "jobs": ["verify"],
+  "checks": [{"id":"verify","steps":[
+    {"id":"install","run":"npm ci"},
+    {"id":"check","run":"npm run check"}
+  ]}]
+}
+```
 
-## Pitstop CI
+Steps use `/bin/sh -e` with `/workspace` as the working directory. Steps in one check share files; each check gets a new container. A step can call an existing project script such as `sh scripts/check.sh`, but GitHub `uses:` actions, expressions, services, matrix, cache volumes, secrets, and automatic image builds are not translated. Build a custom image once when the public image lacks a tool:
 
-[GitHub repository](https://github.com/captainthx/pitstop) · [GitHub Actions](https://github.com/captainthx/pitstop/actions)
+```dockerfile
+FROM node:22-bookworm
+```
 
-CI runs on pull requests targeting `main`, pushes and merges into `main`, and manual dispatch. It checks formatting, dependencies, vet, race tests, build, and the CLI's JSON smoke test using the Go version in `go.mod`.
+```sh
+docker build -t my-checks:dev -f Dockerfile.checks .
+go run ./cmd/pitstop run --repo /absolute/path/to/repo
+```
 
-These checks validate Pitstop's code. Actual React/Go application workflow runs are recorded separately in the [validation evidence](docs/evidence/final-validation.md).
+Schema version 1 configurations are rejected with migration guidance. Move commands from workflow `run` steps into `checks`, replace checkout with Pitstop's snapshot, and replace setup actions with a toolchain image. GitHub CI can keep using its workflow and call the same project script.
+
+Reports keep the source identity, resolved image ID, command arguments, logs, step exit records, and cleanup evidence under the user cache. `workflowCoverage` is `not_applicable` because no workflow is interpreted. Timeout and Ctrl+C stop and remove the owned container; the source repository remains unchanged.
+
+See the [user guide](docs/user-guide.en.md), [requirements](docs/requirements.en.md), and historical [validation evidence](docs/evidence/final-validation.md).
