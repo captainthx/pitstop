@@ -1,3 +1,5 @@
+> Historical record / เอกสารประวัติ: describes an earlier implementation, not the current CLI. ดู [คู่มือปัจจุบัน](../../README.th.md) สำหรับการใช้งาน Docker checks.
+
 # Final product validation
 
 Pitstop MVP was implemented by Luna and independently exercised through the CLI on macOS ARM64, act 0.2.89, Docker 29.4.0 / OrbStack and the Linux ARM64 runner. The final binary SHA-256 is `80b73aa7c6e2e8e063befaa34d0d03a121a22040123fc4523ce41103cb7fab6c`; build toolchain Go 1.27.1. The required Go 1.26.5 baseline also passed the complete test suite. A fresh whole-implementation audit found two Important defects. Both were fixed with failing-then-passing regressions, followed by the complete tests/race/vet and actual application checks. See [audit findings and resolutions](final-review.md).

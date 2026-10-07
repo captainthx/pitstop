@@ -1,3 +1,5 @@
+> Historical record / เอกสารประวัติ: describes an earlier implementation, not the current CLI. ดู [คู่มือปัจจุบัน](../../README.th.md) สำหรับการใช้งาน Docker checks.
+
 # Pitstop — ชุดสเปกและแผน MVP 1
 
 ชุดนี้ใช้ส่งต่อให้คนหรือ AI agent เริ่ม implement โดยไม่ต้องอ่านประวัติแชต ไม่มี product code และยังไม่มี CLI pitstop ที่ติดตั้งได้
@@ -7,7 +9,7 @@
 1. [Context / handoff](pitstop-context.md): ที่มา สิ่งที่ผู้ใช้เลือก สถานะเครื่องและ repos ผลทดลอง และ prompt เริ่มงานต่อ
 2. [Specification](pitstop-spec.md): ขอบเขต CLI/config/report, snapshot, act isolation, integration adapter, ข้อจำกัดและ acceptance criteria
 3. [Implementation plan](pitstop-implementation-plan.md): 8 tasks พร้อมไฟล์ interfaces tests และ verification
-4. [ผลทดลอง act](act-react-ci-report.md): คำสั่งจริงและผล React CI; log/JSON results อยู่ในชุดเดียวกัน
+4. [ผลทดลอง act](../evidence/act-react-ci-report.md): คำสั่งจริงและผล React CI; log/JSON results อยู่ในชุดเดียวกัน
 
 ## สิ่งที่พิสูจน์แล้ว
 

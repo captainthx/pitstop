@@ -53,5 +53,8 @@ jobs:
       - name: Build CLI
         run: go build -trimpath -o "$RUNNER_TEMP/pitstop" ./cmd/pitstop
 
+      - name: Check Docker checks on a real daemon
+        run: PITSTOP_BIN="$RUNNER_TEMP/pitstop" sh scripts/docker-smoke.sh
+
       - name: Check CLI JSON output
         run: '"$RUNNER_TEMP/pitstop" version --json | go run ./scripts/validate-json.go'

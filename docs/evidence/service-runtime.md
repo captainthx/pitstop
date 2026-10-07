@@ -1,3 +1,5 @@
+> Historical record / เอกสารประวัติ: describes an earlier implementation, not the current CLI. ดู [คู่มือปัจจุบัน](../../README.th.md) สำหรับการใช้งาน Docker checks.
+
 # Measured service runtime — 2026-10-05
 
 The parent agent ran act 0.2.89 in an independent local clone of recruit100-service HEAD `e58f8403f675e49e3e9681ad9492d158622bb0c2`. The original application repository was not edited. Neutral launcher cwd, isolated HOME/XDG, explicit Docker endpoint and empty env/secret/var/input files were used; host token/cloud environment was not inherited.

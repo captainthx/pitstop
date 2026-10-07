@@ -32,6 +32,19 @@ func Load(repo string) (model.Config, error) {
 	if err != nil {
 		return model.Config{}, model.Err("CONFIG_INVALID", ".pitstop.json is required for run", err)
 	}
+	var probe struct {
+		SchemaVersion int `json:"schemaVersion"`
+	}
+	probeDec := json.NewDecoder(bytes.NewReader(b))
+	if err := probeDec.Decode(&probe); err != nil {
+		return model.Config{}, model.Err("CONFIG_INVALID", "invalid .pitstop.json", err)
+	}
+	if probe.SchemaVersion == 1 {
+		return model.Config{}, model.Err("CONFIG_INVALID", "schemaVersion 1 act workflows are no longer supported; migrate to schemaVersion 2 Docker checks", nil)
+	}
+	if probe.SchemaVersion != model.ConfigSchemaVersion {
+		return model.Config{}, model.Err("CONFIG_INVALID", "unsupported config schemaVersion", nil)
+	}
 	dec := json.NewDecoder(bytes.NewReader(b))
 	dec.DisallowUnknownFields()
 	var c model.Config
@@ -46,24 +59,4 @@ func Load(repo string) (model.Config, error) {
 		return c, err
 	}
 	return c, nil
-}
-func ResolveWorkflow(repo, relative string) (string, error) {
-	if relative == "" || filepath.IsAbs(relative) || strings.HasPrefix(filepath.Clean(relative), ".."+string(filepath.Separator)) {
-		return "", model.Err("CONFIG_INVALID", "workflow must be a repo-relative path", nil)
-	}
-	clean := filepath.Clean(relative)
-	if filepath.Ext(clean) != ".yml" && filepath.Ext(clean) != ".yaml" {
-		return "", model.Err("CONFIG_INVALID", "workflow must end in .yml or .yaml", nil)
-	}
-	path := filepath.Join(repo, clean)
-	real, err := filepath.EvalSymlinks(path)
-	if err != nil {
-		return "", model.Err("CONFIG_INVALID", "workflow does not exist", err)
-	}
-	root, _ := filepath.EvalSymlinks(repo)
-	rel, err := filepath.Rel(root, real)
-	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return "", model.Err("CONFIG_INVALID", "workflow escapes repository", nil)
-	}
-	return real, nil
 }

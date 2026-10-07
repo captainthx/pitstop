@@ -1,3 +1,5 @@
+> Historical record / เอกสารประวัติ: describes an earlier implementation, not the current CLI. ดู [คู่มือปัจจุบัน](../../README.th.md) สำหรับการใช้งาน Docker checks.
+
 # Pitstop MVP 1 — Product and Technical Specification
 
 Date: 2026-10-05 (Asia/Bangkok). Revision 2, after the successful React experiment.

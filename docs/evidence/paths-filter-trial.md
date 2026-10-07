@@ -1,3 +1,5 @@
+> Historical record / เอกสารประวัติ: describes an earlier implementation, not the current CLI. ดู [คู่มือปัจจุบัน](../../README.th.md) สำหรับการใช้งาน Docker checks.
+
 # paths-filter local trial — 2026-10-05
 
 Original recruit100-service `changes` job was run unchanged without a token through act 0.2.89 using a local pull_request event artifact. Actual base SHA `db1afda60ca19e2a7474f75e3a033dd1f8905d56`, head SHA `e58f8403f675e49e3e9681ad9492d158622bb0c2`. No invented PR number or credential was supplied.

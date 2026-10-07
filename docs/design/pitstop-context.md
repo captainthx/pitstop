@@ -1,3 +1,5 @@
+> Historical record / เอกสารประวัติ: describes an earlier implementation, not the current CLI. ดู [คู่มือปัจจุบัน](../../README.th.md) สำหรับการใช้งาน Docker checks.
+
 # Pitstop — Context and Execution Handoff
 
 Date: 2026-10-05, Asia/Bangkok. Read this first, then pitstop-spec.md and pitstop-implementation-plan.md.

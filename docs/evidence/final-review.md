@@ -1,3 +1,5 @@
+> Historical record / เอกสารประวัติ: describes an earlier implementation, not the current CLI. ดู [คู่มือปัจจุบัน](../../README.th.md) สำหรับการใช้งาน Docker checks.
+
 # Final whole-implementation audit and rulings
 
 A fresh qa-work-auditor reviewed all code at `8d79719` against the specification and implementation plan. It reproduced two Important defects, one using real act/Docker. No Critical or Minor findings were raised. The initial audit verdict was **With fixes**; it must not be misrepresented as an unconditional approval. The executor resolved the findings in one regression-driven fix pass; no second reviewer was dispatched.

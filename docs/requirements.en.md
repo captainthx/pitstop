@@ -1,117 +1,58 @@
-# Pitstop MVP requirements and scope
+# Pitstop requirements and scope
 
-**English** | [ไทย](requirements.md)
+[ไทย](requirements.md) | [User guide](user-guide.en.md) | [Index](README.md)
 
-**Before running: prepare a Git repository, workflow, `.pitstop.json`, act 0.2.89, and a reachable Docker daemon.**
+This document defines current Docker checks behavior. Installation and runnable examples are in the user guide.
 
-This document separates user prerequisites from requirements Pitstop must meet. [User guide](user-guide.en.md) · [Home](../README.md)
+## Requirements
 
-## 1. System requirements
+- Host Git, Docker CLI and a reachable daemon; build the CLI with Go 1.26.5 from `go.mod`.
+- Target repository with at least one HEAD commit and schema version 2 `.pitstop.json` at Git root.
+- User-created/copied configuration per repository defining image, architecture, checks and selection; no config generator.
+- Linux `arm64` or `amd64` image containing `/bin/sh` and every command's tools.
+- Registry/network access as required by image pulls and project commands.
+- Local real execution is validated on macOS ARM64 / Docker Linux ARM64; native Windows and cross-architecture execution are unverified.
 
-| Requirement | Details |
-|---|---|
-| Git | Available on PATH |
-| act | **0.2.89**; other versions are rejected in the MVP |
-| Docker | Reachable daemon capable of running the configured image |
-| Go | **1.26.5 or newer** for source builds; not needed just to start a prebuilt binary |
-| Storage | Enough for a repository copy, images, caches, reports, and logs; no measured minimum is claimed |
-| Network | Access to images, actions, and workflow dependencies when they are not cached |
+## Supported behavior
 
-Pitstop checks readiness but does not install tools. The workflow and runner image prepare project tools such as Node.js or Go inside the runner.
+| Component | Contract |
+| --- | --- |
+| Config | One JSON document, version 2, strict fields/IDs; manual migration from earlier schema |
+| Commands | `doctor`, `list`, `run`, `version`; `-h`/`--help` and JSON output |
+| Selection | `jobs` defines default selection/order; `--job` chooses a subset |
+| Environment | Use a daemon image or pull when needed; two-minute preparation budget; no automatic build |
+| Snapshot | Current tracked edits/deletions and new non-ignored files; original repo is not mounted |
+| Isolation | Fresh container per check; no host bind mount, Docker socket mount or privileged mode |
+| Steps | `/bin/sh -e`, cwd `/workspace`, user `0:0`; shared files and a new shell per step |
+| Failure | Failed step skips the rest of that check; later independent checks still run |
+| Timeout | Default 20 minutes per check, positive `--timeout` override; covers create/copy/start/run |
+| Cancellation | Ctrl+C/SIGTERM stops scheduling and attempts bounded stop/removal of owned containers |
+| Concurrency | Per-repository lock; other repositories may run independently |
+| Evidence | Docker terminal state and step exit records; success text alone is insufficient |
+| Reports | Logs, source/image identity, configs, arguments, exit evidence and ownership records in user cache |
+| Cleanup | Remove owned containers/volumes, snapshots and temporary scripts; retain reports/logs; no image/global resource pruning |
 
-**Actually validated environment:** macOS ARM64, act 0.2.89, Docker 29.4.0/OrbStack, and a Linux ARM64 runner. Evidence covers React verify, Go lint/unit tests, and PostgreSQL/Testcontainers integration.
+## Result contract
 
-Configuration also accepts `linux/amd64`, but AMD64 application execution has not been validated. Host support for every operating system is not claimed.
+Configuration schema is 2; JSON envelope schema is 1. `workflowCoverage` is always `not_applicable`. `selectedCoverage=complete` means ordinary selected checks have sufficient evidence, not that they passed. Interrupted/runtime/unknown outcomes produce partial coverage.
 
-## 2. Project requirements
+Exit precedence: cancellation `130` → failed job `1` (including timeout/runtime failure) → invalid/blocked/unknown/log/report/cleanup problem `2` → all passed `0`. Storage and cleanup problems do not hide established failures.
 
-| Item | Requirement |
-|---|---|
-| Repository | A Git repository with at least one commit for `run` |
-| Workflow | One file per configuration, inside the repository, ending in `.yml` / `.yaml`, with a `pull_request` trigger |
-| Configuration | Root-level `.pitstop.json`, schema version `1`, valid JSON without unknown fields |
-| Job selection | At least one unique ID that exists in the workflow |
-| Runner | Explicit label, image, and architecture; label matches the job's `runs-on` |
-| Source | No unresolved merge, submodule, or rejected symlink |
+Step durations are `null`; check/run durations are measured. Pre-execution errors may have no report. There is no automatic report retention or artifact export.
 
-Configuration selects jobs and the runner. Validation commands remain in the workflow.
+## Unsupported features
 
-## 3. Implemented features
+- Execution of `.github/workflows/*.yml`, `uses:` actions or expressions.
+- Matrix, job dependencies (`needs`) and service containers.
+- Config-based secret/environment injection, host environment forwarding or cache volumes.
+- Automatic image builds, workflow/config conversion or `pitstop init`.
+- Self-hosted runner registration or uploading source to GitHub.
+- A provided installer link/release installation method.
 
-| Feature | What it provides |
-|---|---|
-| `doctor` | Preflight checks for repository, configuration, workflow, and tools |
-| `list` | Selected/blocked jobs and reasons |
-| `run` | Sequential execution of selected jobs through act and Docker |
-| `version` | Program version |
-| Working-tree snapshot | Tests edited and uncommitted files |
-| Job subset | Repeated `--job` flags select from the configuration |
-| JSON output | Machine-readable results with progress on stderr |
-| Reports and raw logs | Results, source identity, workflow evidence, and actual argv |
-| Timeout and cancellation | Per-job time limit and Ctrl+C handling |
-| Repository lock | Prevents overlapping runs for the same repository |
-| Cache | Reuses action/dependency caches |
-| Service integration adapter | Explicit opt-in integration with reported workflow adjustments |
+Snapshots reject submodules, unresolved merges and absolute/broken/escaping symlinks. Ignored untracked files and untracked `.env`/`.env.*`/`.secrets`/`.vars`/`.input` files are excluded; tracked files remain included. Exclusion is not secret scanning.
 
-## 4. Supported workflows
+CI can reuse project scripts, but matching results depend on the image/toolchain/OS/network. Workflow parity is not guaranteed.
 
-The generic runner supports **independent jobs on a static runner, without conditions that decide whether selected work executes**, such as lint, unit tests, or verify.
+## Validation
 
-| Pattern | MVP behavior |
-|---|---|
-| Independent job, static `runs-on`, supported executable steps | Supported when the runner matches configuration |
-| Local composite action | Metadata and nested composites are inspected; unsupported conditions/continue-on-error are blocked |
-| `needs`, job-level `if` | Blocked except for the validated service adapter shape |
-| Step condition | Conditions other than literal `true` are blocked |
-| Matrix / strategy | Blocked |
-| Dynamic runner / needs | Blocked |
-| Reusable workflow | Blocked |
-| Job `container` / `services` | Blocked |
-| `continue-on-error` | Blocked at job or step level |
-| Secret references | Blocked, including references in local composites |
-| Empty jobs or jobs that only skip work | Never counted as a successful execution |
-
-act manages remote action internals. Inspecting local metadata does not mean every action's internal behavior is inspected. Example profiles exclude deployment jobs; select the validation work you intend to execute.
-
-## 5. MVP behavior requirements
-
-| ID | Requirement | User-visible behavior |
-|---|---|---|
-| R01 | Reuse the original workflow | Lint/test/build commands stay in the workflow; config selects work |
-| R02 | Test current source | Working tree overrides staged content; a snapshot hash is retained |
-| R03 | Isolate original source | Execute a temporary copy and detect source changes during capture |
-| R04 | Make selection explicit | Never silently add dependency jobs; explain unsupported work |
-| R05 | Report evidence-backed outcomes | Exit 0 needs selected-job evidence; uncertainty never becomes passed |
-| R06 | Use stable exit precedence | Cancelled `130` → executed failure `1` → partial/preflight `2` → success `0` |
-| R07 | Preserve completed outcomes | An earlier failure survives a later job launch error |
-| R08 | Provide machine-readable JSON | Schema version `1`, one stdout document, progress on stderr |
-| R09 | Report completeness and changes | Separate selected/workflow coverage; forced integration reports adjustments |
-| R10 | Isolate local configuration | Temporary HOME/config; host tokens, secrets, and actrc are not engine inputs |
-| R11 | Bound execution and cleanup | Cancellation/timeout support and cleanup scoped to ownership-labeled runners |
-| R12 | Retain inspection evidence | Reports, logs, manifests, workflow hashes, timing, and argv remain; temporary snapshot/HOME are removed |
-
-Tracked `.env` files remain source inputs under R02. Configuration isolation under R10 does not remove files already tracked in Git.
-
-## 6. Integration adapter scope
-
-`recruit100-service-integration-v1` requires both `integration` in the configured selection and the explicit `--force-integration` flag. Declaring the adapter alone does not enable forced execution.
-
-- Verify the supported integration job shape and command.
-- Remove only integration's `needs` and `if` from a workflow copy.
-- Require a local Unix Docker endpoint; integration receives the socket for Testcontainers.
-- Keep `workflowCoverage=partial` on success because original conditions were changed.
-
-The normal service profile can run lint/test while visibly blocking integration.
-
-## 7. Current limitations
-
-- Submodules and absolute source symlinks are unsupported. Relative links must resolve inside the repository.
-- Local tokens/secrets are not supplied to make credential-dependent work pass.
-- Native conditional paths-filter support for the service workflow remains deferred.
-- `steps: []` cannot establish detailed step/test counts; only dependable evidence is reported.
-- Reports/logs have no automatic retention expiry. Users remove completed runs manually.
-- Local success still needs required GitHub checks and does not establish deployment readiness.
-
-## 8. Evidence and source documents
-
-[Actual validation](evidence/final-validation.md) · [Audit and resolutions](evidence/final-review.md) · [Original specification](design/pitstop-spec.md) · [Implementation plan](superpowers/plans/2026-10-05-pitstop-mvp-1.md)
+See [current Docker validation](evidence/docker-checks-validation.md) for tests, smoke and limits of the actual evidence. GitHub CI includes smoke; local validation does not establish remote CI success. Historical documents in the [index](README.md) do not define the current CLI's scope.
