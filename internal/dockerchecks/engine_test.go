@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"pitstop/internal/model"
 	"strings"
@@ -68,6 +69,35 @@ func TestCopyLogReportsShortWritesAndKeepsPrimaryLog(t *testing.T) {
 	}
 	if log.String() != "output" {
 		t.Fatalf("primary log was discarded: %q", log.String())
+	}
+}
+
+func TestWaitForStreamsDrainsHighVolumeBeforeWait(t *testing.T) {
+	cmd := exec.Command("sh", "-c", "yes x | head -c 4000000")
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	var output bytes.Buffer
+	streams := make(chan error, 2)
+	go func() { streams <- copyLog(stdout, &output, nil) }()
+	go func() { streams <- copyLog(stderr, io.Discard, nil) }()
+	streamErr, drained := waitForStreams(context.Background(), streams, stdout, stderr)
+	if !drained || streamErr != nil {
+		t.Fatalf("streams did not drain: drained=%v err=%v", drained, streamErr)
+	}
+	if err := cmd.Wait(); err != nil {
+		t.Fatal(err)
+	}
+	if output.Len() != 4000000 {
+		t.Fatalf("captured %d bytes, want 4000000", output.Len())
 	}
 }
 func TestReadResultRequiresEvidence(t *testing.T) {

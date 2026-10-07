@@ -164,7 +164,8 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 		r, e := dockerchecks.Run(ctx, env, snap, check, runDir, o.Timeout, o.Progress)
 		if e != nil {
 			runWarnings = append(runWarnings, e.Error())
-			if r.Status == "failed" {
+			cancelledResult := r.Status == "skipped" && r.ReasonCode != nil && *r.ReasonCode == "CANCELLED"
+			if r.Status == "failed" || r.Status == "passed" || cancelledResult {
 				results = append(results, r)
 				continue
 			}
@@ -190,6 +191,9 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 		results = append(results, r)
 	}
 	code := report.ExitCode(results, ctx.Err() != nil)
+	if code == 0 && len(runWarnings) > 0 {
+		code = 2
+	}
 	warnings := append([]string{}, runWarnings...)
 	if e := snapshot.Remove(snap); e != nil {
 		warnings = append(warnings, "CLEANUP_INCOMPLETE: source snapshot: "+e.Error())

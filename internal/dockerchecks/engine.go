@@ -209,18 +209,30 @@ func Run(ctx context.Context, env Environment, snap model.Snapshot, check model.
 	streams := make(chan error, 2)
 	go func() { streams <- copyLog(stdout, stdoutFile, progress) }()
 	go func() { streams <- copyLog(stderr, stderrFile, nil) }()
-	wait := make(chan error, 1)
-	go func() { wait <- startCmd.Wait() }()
-	var clientErr error
+	streamErr, streamsDrained := waitForStreams(jobCtx, streams, stdout, stderr)
 	timedOut, cancelled := false, false
-	select {
-	case clientErr = <-wait:
-	case <-jobCtx.Done():
-		if ctx.Err() != nil {
-			cancelled = true
-		} else {
-			timedOut = true
+	if jobCtx.Err() != nil {
+		cancelled = ctx.Err() != nil
+		timedOut = !cancelled
+	}
+	wait := make(chan error, 1)
+	if streamsDrained {
+		go func() { wait <- startCmd.Wait() }()
+	} else {
+		// waitForStreams closes both pipes before returning when cancellation
+		// interrupts a reader, so Wait is safe to start after the bounded drain.
+		go func() { wait <- startCmd.Wait() }()
+	}
+	var clientErr error
+	if !timedOut && !cancelled {
+		select {
+		case clientErr = <-wait:
+		case <-jobCtx.Done():
+			cancelled = ctx.Err() != nil
+			timedOut = !cancelled
 		}
+	}
+	if cancelled || timedOut {
 		stopCtx, stop := context.WithTimeout(context.Background(), 10*time.Second)
 		_ = command(stopCtx, env, "stop", "--time", "5", id).Run()
 		stop()
@@ -229,7 +241,9 @@ func Run(ctx context.Context, env Environment, snap model.Snapshot, check model.
 		case <-time.After(10 * time.Second):
 			forceCtx, forceCancel := context.WithTimeout(context.Background(), 10*time.Second)
 			if err := removeOwnedContainer(forceCtx, env, id, label); err != nil {
-				runErr = model.Err("CLEANUP_INCOMPLETE", "owned container cleanup failed", err)
+				if runErr == nil {
+					runErr = model.Err("CLEANUP_INCOMPLETE", "owned container cleanup failed", err)
+				}
 			} else {
 				removed = true
 			}
@@ -241,19 +255,14 @@ func Run(ctx context.Context, env Environment, snap model.Snapshot, check model.
 			}
 		}
 	}
-	streamErr := collectStreams(streams, stdout, stderr, 5*time.Second)
 	if cancelled || timedOut {
-		if timedOut {
-			result.Status = "failed"
-			result.ReasonCode = model.Reason("TIMEOUT")
-			result.Reason = model.Reason("container check timed out")
-			result.FailureCategory = model.Category("engine")
-		} else {
-			result.Status = "skipped"
-			result.Provenance = "unknown"
-			result.ReasonCode = model.Reason("CANCELLED")
+		result = cancelResult(result, check, cancellationError(jobCtx, ctx), start)
+		if evidenceErr := copyStoppedEvidence(env, id, evidenceDir, check, &result); evidenceErr != nil {
+			if runErr == nil {
+				runErr = evidenceErr
+			}
 		}
-		return finishResult(result, start), nil
+		return result, runErr
 	}
 	evidenceCtx, evidenceCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer evidenceCancel()
@@ -305,6 +314,22 @@ func cancellationError(jobCtx, parent context.Context) error {
 	}
 	return jobCtx.Err()
 }
+
+func copyStoppedEvidence(env Environment, id, evidenceDir string, check model.Check, result *model.JobResult) error {
+	evidenceCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	state, err := inspectState(evidenceCtx, env, id)
+	if err != nil {
+		return model.Err("ENGINE_OUTCOME_UNKNOWN", "cannot inspect stopped container outcome", err)
+	}
+	if err := command(evidenceCtx, env, "cp", id+":/pitstop/results/.", evidenceDir).Run(); err != nil {
+		return model.Err("ENGINE_OUTCOME_UNKNOWN", "cannot copy completed step evidence", err)
+	}
+	result.EngineExitCode = &state.ExitCode
+	result.Steps = stepResults(check, evidenceDir, -1)
+	return nil
+}
+
 func copyLog(r io.Reader, f io.Writer, progress io.Writer) error {
 	b := make([]byte, 32*1024)
 	var first error
@@ -335,23 +360,33 @@ func copyLog(r io.Reader, f io.Writer, progress io.Writer) error {
 		}
 	}
 }
-func collectStreams(streams <-chan error, stdout, stderr io.ReadCloser, timeout time.Duration) error {
+func waitForStreams(ctx context.Context, streams <-chan error, stdout, stderr io.ReadCloser) (error, bool) {
 	var first error
-	timer := time.NewTimer(timeout)
-	defer timer.Stop()
 	for remaining := 2; remaining > 0; remaining-- {
 		select {
 		case err := <-streams:
 			if err != nil && first == nil {
 				first = err
 			}
-		case <-timer.C:
+		case <-ctx.Done():
 			_ = stdout.Close()
 			_ = stderr.Close()
-			return firstOr(first, io.ErrNoProgress)
+			timer := time.NewTimer(5 * time.Second)
+			for remaining := remaining; remaining > 0; remaining-- {
+				select {
+				case err := <-streams:
+					if err != nil && first == nil {
+						first = err
+					}
+				case <-timer.C:
+					return firstOr(first, io.ErrNoProgress), false
+				}
+			}
+			timer.Stop()
+			return first, true
 		}
 	}
-	return first
+	return first, true
 }
 func firstOr(first, fallback error) error {
 	if first != nil {
