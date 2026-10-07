@@ -11,7 +11,6 @@ import (
 	"pitstop/internal/model"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -41,12 +40,25 @@ func Prepare(ctx context.Context, env Environment, runner model.RunnerConfig, pr
 	if targetInfo.Os != "linux" || targetInfo.Architecture != wantArch {
 		return Environment{}, model.Err("CONFIG_INVALID", "Docker image does not match runner architecture", nil)
 	}
-	info, err := inspectImage(prepareCtx, env, runner.Image)
-	if err != nil {
-		return Environment{}, model.Err("DOCKER_UNAVAILABLE", "cannot resolve Docker image ID", err)
-	}
-	env.Info.ImageID, env.Info.ImageDigest = info.ID, imageDigest(info)
+	// A platform-qualified inspect may expose a platform config ID that the
+	// daemon cannot accept as a create reference for a multi-platform tag.
+	// Prefer its immutable repository digest, and fall back to the config ID
+	// for images without a repository digest.
+	env.Info.ImageID, env.Info.ImageDigest = targetInfo.ID, imageDigest(targetInfo)
+	env.ImageReference = imageReference(targetInfo, runner.Image)
 	return env, nil
+}
+
+func imageReference(info imageInspect, image string) string {
+	for _, digest := range info.RepoDigests {
+		if strings.Contains(digest, "@sha256:") {
+			return digest
+		}
+	}
+	if info.ID != "" {
+		return info.ID
+	}
+	return image
 }
 
 func writeScripts(dir string, check model.Check) error {
@@ -86,16 +98,17 @@ type containerState struct {
 	Error     string
 }
 
-func Run(ctx context.Context, env Environment, snap model.Snapshot, check model.Check, runDir string, timeout time.Duration, progress io.Writer) (model.JobResult, error) {
+func Run(ctx context.Context, env Environment, snap model.Snapshot, check model.Check, runDir string, timeout time.Duration, progress io.Writer) (result model.JobResult, runErr error) {
 	start := time.Now()
 	if timeout <= 0 {
 		timeout = 20 * time.Minute
 	}
 	jobCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	result := model.JobResult{ID: check.ID, Provenance: "engine_exit", Steps: []model.StepResult{}, LogPath: filepath.Join(runDir, check.ID+".stdout")}
+	result = model.JobResult{ID: check.ID, Provenance: "engine_exit", LogPath: filepath.Join(runDir, check.ID+".stdout")}
 	scriptsDir := filepath.Join(runDir, "scripts-"+check.ID)
 	evidenceDir := filepath.Join(runDir, "evidence-"+check.ID)
+	result.Steps = stepResults(check, evidenceDir, -1)
 	defer os.RemoveAll(scriptsDir)
 	if err := writeScripts(scriptsDir, check); err != nil {
 		return result, err
@@ -120,14 +133,18 @@ func Run(ctx context.Context, env Environment, snap model.Snapshot, check model.
 	if err := os.WriteFile(filepath.Join(runDir, "engine-meta.json"), append(meta, '\n'), 0600); err != nil {
 		return result, err
 	}
-	createArgs := []string{"create", "--name", name, "--label", label, "--platform", env.Info.Architecture, "--pull", "never", "--init", "--user", "0:0", "--workdir", "/workspace", "--no-healthcheck", "--entrypoint", "/bin/sh", env.Info.ImageID, "/pitstop/run.sh"}
+	imageRef := env.Info.ImageID
+	if env.ImageReference != "" {
+		imageRef = env.ImageReference
+	}
+	createArgs := []string{"create", "--name", name, "--label", label, "--platform", env.Info.Architecture, "--pull", "never", "--init", "--user", "0:0", "--workdir", "/workspace", "--no-healthcheck", "--entrypoint", "/bin/sh", imageRef, "/pitstop/run.sh"}
 	if err := saveArgv(runDir, check.ID+"-create", createArgs); err != nil {
 		return result, err
 	}
 	createOut, err := command(jobCtx, env, createArgs...).CombinedOutput()
 	if err != nil {
-		if jobCtx.Err() != nil {
-			return cancelResult(result, jobCtx.Err(), start), nil
+		if jobCtx.Err() != nil || ctx.Err() != nil {
+			return cancelResult(result, check, cancellationError(jobCtx, ctx), start), nil
 		}
 		return result, model.Err("ENGINE_OUTCOME_UNKNOWN", "container did not launch", fmt.Errorf("%v: %s", err, strings.TrimSpace(string(createOut))))
 	}
@@ -135,11 +152,23 @@ func Run(ctx context.Context, env Environment, snap model.Snapshot, check model.
 	if id == "" {
 		return result, model.Err("ENGINE_OUTCOME_UNKNOWN", "Docker returned no container ID", nil)
 	}
+	removed := false
 	remove := func() {
+		if removed {
+			return
+		}
 		recordOwnedResource(runDir, id)
 		cleanupCtx, stop := context.WithTimeout(context.Background(), 10*time.Second)
 		defer stop()
-		_ = removeOwnedContainer(cleanupCtx, env, id, label)
+		if err := removeOwnedContainer(cleanupCtx, env, id, label); err != nil {
+			if runErr == nil {
+				runErr = model.Err("CLEANUP_INCOMPLETE", "owned container cleanup failed", err)
+			} else {
+				runErr = model.Err("CLEANUP_INCOMPLETE", runErr.Error()+"; owned container cleanup failed", err)
+			}
+		} else {
+			removed = true
+		}
 	}
 	defer remove()
 	copyArgs := []string{"cp", snap.Path + string(os.PathSeparator) + ".", id + ":/workspace"}
@@ -147,8 +176,8 @@ func Run(ctx context.Context, env Environment, snap model.Snapshot, check model.
 		return result, err
 	}
 	if err := command(jobCtx, env, copyArgs...).Run(); err != nil {
-		if jobCtx.Err() != nil {
-			return cancelResult(result, jobCtx.Err(), start), nil
+		if jobCtx.Err() != nil || ctx.Err() != nil {
+			return cancelResult(result, check, cancellationError(jobCtx, ctx), start), nil
 		}
 		return result, model.Err("ENGINE_OUTCOME_UNKNOWN", "cannot copy source into container", err)
 	}
@@ -157,6 +186,9 @@ func Run(ctx context.Context, env Environment, snap model.Snapshot, check model.
 		return result, err
 	}
 	if err := command(jobCtx, env, copyArgs...).Run(); err != nil {
+		if jobCtx.Err() != nil || ctx.Err() != nil {
+			return cancelResult(result, check, cancellationError(jobCtx, ctx), start), nil
+		}
 		return result, model.Err("ENGINE_OUTCOME_UNKNOWN", "cannot copy check scripts into container", err)
 	}
 	startCmd := command(jobCtx, env, "start", "--attach", id)
@@ -169,15 +201,16 @@ func Run(ctx context.Context, env Environment, snap model.Snapshot, check model.
 		return result, err
 	}
 	if err := startCmd.Start(); err != nil {
+		if jobCtx.Err() != nil || ctx.Err() != nil {
+			return cancelResult(result, check, cancellationError(jobCtx, ctx), start), nil
+		}
 		return result, model.Err("ENGINE_OUTCOME_UNKNOWN", "container start failed", err)
 	}
 	streams := make(chan error, 2)
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() { defer wg.Done(); streams <- copyLog(stdout, stdoutFile, progress) }()
-	go func() { defer wg.Done(); streams <- copyLog(stderr, stderrFile, nil) }()
+	go func() { streams <- copyLog(stdout, stdoutFile, progress) }()
+	go func() { streams <- copyLog(stderr, stderrFile, nil) }()
 	wait := make(chan error, 1)
-	go func() { wg.Wait(); wait <- startCmd.Wait() }()
+	go func() { wait <- startCmd.Wait() }()
 	var clientErr error
 	timedOut, cancelled := false, false
 	select {
@@ -195,17 +228,20 @@ func Run(ctx context.Context, env Environment, snap model.Snapshot, check model.
 		case clientErr = <-wait:
 		case <-time.After(10 * time.Second):
 			forceCtx, forceCancel := context.WithTimeout(context.Background(), 10*time.Second)
-			_ = removeOwnedContainer(forceCtx, env, id, label)
+			if err := removeOwnedContainer(forceCtx, env, id, label); err != nil {
+				runErr = model.Err("CLEANUP_INCOMPLETE", "owned container cleanup failed", err)
+			} else {
+				removed = true
+			}
 			forceCancel()
-			clientErr = <-wait
+			select {
+			case clientErr = <-wait:
+			case <-time.After(5 * time.Second):
+				clientErr = fmt.Errorf("Docker client did not exit after container removal")
+			}
 		}
 	}
-	var streamErr error
-	for i := 0; i < 2; i++ {
-		if e := <-streams; e != nil && streamErr == nil {
-			streamErr = e
-		}
-	}
+	streamErr := collectStreams(streams, stdout, stderr, 5*time.Second)
 	if cancelled || timedOut {
 		if timedOut {
 			result.Status = "failed"
@@ -226,6 +262,9 @@ func Run(ctx context.Context, env Environment, snap model.Snapshot, check model.
 		return result, model.Err("ENGINE_OUTCOME_UNKNOWN", "cannot inspect container outcome", inspectErr)
 	}
 	if err := command(evidenceCtx, env, "cp", id+":/pitstop/results/.", evidenceDir).Run(); err != nil {
+		if ctx.Err() != nil {
+			return cancelResult(result, check, ctx.Err(), start), nil
+		}
 		return result, model.Err("ENGINE_OUTCOME_UNKNOWN", "cannot copy step evidence", err)
 	}
 	if clientErr != nil && state.Error == "" && !state.OOMKilled {
@@ -237,8 +276,11 @@ func Run(ctx context.Context, env Environment, snap model.Snapshot, check model.
 	if err != nil {
 		return result, err
 	}
-	if streamErr != nil && result.Status == "passed" {
-		result.Status, result.Provenance, result.ReasonCode, result.Reason = "skipped", "unknown", model.Reason("ENGINE_OUTCOME_UNKNOWN"), model.Reason("log capture failed")
+	if streamErr != nil {
+		if result.Status == "passed" {
+			result.Status, result.Provenance, result.ReasonCode, result.Reason = "skipped", "unknown", model.Reason("ENGINE_OUTCOME_UNKNOWN"), model.Reason("log capture failed")
+		}
+		return result, model.Err("LOG_CAPTURE_FAILED", "log capture failed", streamErr)
 	}
 	return finishResult(result, start), nil
 }
@@ -247,7 +289,8 @@ func finishResult(r model.JobResult, started time.Time) model.JobResult {
 	r.DurationMs = time.Since(started).Milliseconds()
 	return r
 }
-func cancelResult(r model.JobResult, err error, started time.Time) model.JobResult {
+func cancelResult(r model.JobResult, check model.Check, err error, started time.Time) model.JobResult {
+	r.Steps = stepResults(check, "", -1)
 	if err == context.DeadlineExceeded {
 		r.Status, r.ReasonCode, r.Reason = "failed", model.Reason("TIMEOUT"), model.Reason("container check timed out")
 		r.FailureCategory = model.Category("engine")
@@ -256,6 +299,12 @@ func cancelResult(r model.JobResult, err error, started time.Time) model.JobResu
 	}
 	return finishResult(r, started)
 }
+func cancellationError(jobCtx, parent context.Context) error {
+	if parent.Err() != nil {
+		return parent.Err()
+	}
+	return jobCtx.Err()
+}
 func copyLog(r io.Reader, f io.Writer, progress io.Writer) error {
 	b := make([]byte, 32*1024)
 	var first error
@@ -263,12 +312,19 @@ func copyLog(r io.Reader, f io.Writer, progress io.Writer) error {
 		n, err := r.Read(b)
 		if n > 0 {
 			if progress != nil {
-				_, _ = progress.Write(b[:n])
-			}
-			if first == nil {
-				if _, e := f.Write(b[:n]); e != nil {
-					first = e
+				if written, e := progress.Write(b[:n]); e != nil {
+					if first == nil {
+						first = e
+					}
+				} else if written != n && first == nil {
+					first = io.ErrShortWrite
 				}
+			}
+			written, e := f.Write(b[:n])
+			if e != nil && first == nil {
+				first = e
+			} else if e == nil && written != n && first == nil {
+				first = io.ErrShortWrite
 			}
 		}
 		if err == io.EOF {
@@ -278,6 +334,30 @@ func copyLog(r io.Reader, f io.Writer, progress io.Writer) error {
 			return err
 		}
 	}
+}
+func collectStreams(streams <-chan error, stdout, stderr io.ReadCloser, timeout time.Duration) error {
+	var first error
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	for remaining := 2; remaining > 0; remaining-- {
+		select {
+		case err := <-streams:
+			if err != nil && first == nil {
+				first = err
+			}
+		case <-timer.C:
+			_ = stdout.Close()
+			_ = stderr.Close()
+			return firstOr(first, io.ErrNoProgress)
+		}
+	}
+	return first
+}
+func firstOr(first, fallback error) error {
+	if first != nil {
+		return first
+	}
+	return fallback
 }
 func inspectState(ctx context.Context, env Environment, id string) (containerState, error) {
 	out, err := command(ctx, env, "inspect", "--format", "{{json .State}}", id).Output()
@@ -346,10 +426,6 @@ func readResult(check model.Check, state containerState, evidenceDir string, r m
 	}
 	if !complete || state.Running || state.ExitCode != 0 {
 		r.Status, r.Provenance, r.ReasonCode, r.Reason = "skipped", "unknown", model.Reason("ENGINE_OUTCOME_UNKNOWN"), model.Reason("container outcome or complete evidence is missing")
-		return r, nil
-	}
-	if firstFail >= 0 {
-		r.Status, r.FailureCategory, r.Reason = "failed", model.Category("unknown"), model.Reason(fmt.Sprintf("check step exited with code %d", state.ExitCode))
 		return r, nil
 	}
 	r.Status = "passed"

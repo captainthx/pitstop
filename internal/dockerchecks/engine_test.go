@@ -1,11 +1,16 @@
 package dockerchecks
 
 import (
+	"bytes"
+	"context"
+	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"pitstop/internal/model"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestWriteScriptsPreservesOrderAndCommands(t *testing.T) {
@@ -19,13 +24,50 @@ func TestWriteScriptsPreservesOrderAndCommands(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := string(b)
-	for _, want := range []string{"/pitstop/step-0.sh", "/pitstop/step-1.sh", "step: first", "step: second", "printf 'a\\nb' > out"} {
-		if !strings.Contains(s, want) && want != "printf 'a\\nb' > out" {
+	for _, want := range []string{"/pitstop/step-0.sh", "/pitstop/step-1.sh", "step: first Name with spaces", "step: second"} {
+		if !strings.Contains(s, want) {
 			t.Fatalf("missing %q in %s", want, s)
 		}
 	}
+	step, err := os.ReadFile(filepath.Join(d, "step-0.sh"))
+	if err != nil || !strings.Contains(string(step), "printf 'a\\nb' > out") {
+		t.Fatalf("step script does not preserve command: %q %v", step, err)
+	}
 	if _, err := os.Stat(filepath.Join(d, "results")); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestCancelResultSkipsEveryStep(t *testing.T) {
+	c := model.Check{ID: "verify", Steps: []model.CheckStep{{ID: "one", Run: "true"}, {ID: "two", Run: "true"}}}
+	r := cancelResult(model.JobResult{ID: c.ID}, c, context.Canceled, time.Now())
+	if r.Status != "skipped" || r.ReasonCode == nil || *r.ReasonCode != "CANCELLED" || len(r.Steps) != 2 {
+		t.Fatalf("unexpected cancellation result: %#v", r)
+	}
+	for _, step := range r.Steps {
+		if step.Status == nil || *step.Status != "skipped" {
+			t.Fatalf("step was not skipped: %#v", step)
+		}
+	}
+}
+
+type shortWriter struct{}
+
+func (shortWriter) Write(p []byte) (int, error) {
+	if len(p) == 0 {
+		return 0, nil
+	}
+	return len(p) - 1, nil
+}
+
+func TestCopyLogReportsShortWritesAndKeepsPrimaryLog(t *testing.T) {
+	var log bytes.Buffer
+	err := copyLog(strings.NewReader("output"), &log, shortWriter{})
+	if !errors.Is(err, io.ErrShortWrite) {
+		t.Fatalf("expected progress short write, got %v", err)
+	}
+	if log.String() != "output" {
+		t.Fatalf("primary log was discarded: %q", log.String())
 	}
 }
 func TestReadResultRequiresEvidence(t *testing.T) {

@@ -148,6 +148,7 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 		checks[c.ID] = c
 	}
 	results := []model.JobResult{}
+	runWarnings := []string{}
 	for i, id := range cfg.Jobs {
 		if ctx.Err() != nil {
 			for _, rest := range cfg.Jobs[i:] {
@@ -162,12 +163,20 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 		}
 		r, e := dockerchecks.Run(ctx, env, snap, check, runDir, o.Timeout, o.Progress)
 		if e != nil {
+			runWarnings = append(runWarnings, e.Error())
+			if r.Status == "failed" {
+				results = append(results, r)
+				continue
+			}
 			code := "ENGINE_OUTCOME_UNKNOWN"
 			msg := e.Error()
 			if ctx.Err() != nil {
 				code = "CANCELLED"
 			}
-			r = model.JobResult{ID: id, Status: "skipped", Provenance: "unknown", ReasonCode: &code, Reason: &msg, Steps: []model.StepResult{}, LogPath: filepath.Join(runDir, id+".stdout")}
+			if len(r.Steps) == 0 {
+				r.Steps = []model.StepResult{}
+			}
+			r = model.JobResult{ID: id, Status: "skipped", Provenance: "unknown", ReasonCode: &code, Reason: &msg, Steps: r.Steps, LogPath: filepath.Join(runDir, id+".stdout")}
 			if ctx.Err() != nil {
 				results = append(results, r)
 				for _, rest := range cfg.Jobs[i+1:] {
@@ -181,7 +190,7 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 		results = append(results, r)
 	}
 	code := report.ExitCode(results, ctx.Err() != nil)
-	warnings := []string{}
+	warnings := append([]string{}, runWarnings...)
 	if e := snapshot.Remove(snap); e != nil {
 		warnings = append(warnings, "CLEANUP_INCOMPLETE: source snapshot: "+e.Error())
 		if code == 0 {
@@ -198,6 +207,9 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 			code = 2
 		}
 	}
+	if ctx.Err() != nil {
+		code = 130
+	}
 	coverage := "complete"
 	for _, r := range results {
 		if r.Status != "passed" && !(r.Status == "failed" && r.Provenance == "engine_exit" && (r.FailureCategory == nil || *r.FailureCategory != "engine")) {
@@ -207,19 +219,26 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 	}
 	rr := model.RunReport{RunID: runID, Repo: repo, Source: snap, Engine: env.Info, Jobs: results, Coverage: model.Coverage{Selected: coverage, Workflow: "not_applicable"}, Adjustments: []model.Adjustment{}, Warnings: warnings, DurationMs: time.Since(started).Milliseconds(), ReportPath: filepath.Join(runDir, "report.json")}
 	envelope := model.Envelope{SchemaVersion: model.SchemaVersion, Command: "run", ExitCode: code, Result: rr}
+	if ctx.Err() != nil {
+		envelope.ExitCode = 130
+	}
 	b, marshalErr := json.MarshalIndent(envelope, "", "  ")
 	if marshalErr != nil {
 		return fail(marshalErr)
 	}
 	if err := writeDockerMetadata(runDir, runID, started, cfg, snap); err != nil {
-		if envelope.ExitCode == 0 {
+		if ctx.Err() != nil {
+			envelope.ExitCode = 130
+		} else if envelope.ExitCode == 0 {
 			envelope.ExitCode = 2
 		}
 		envelope.Error = &model.ErrorInfo{Code: "REPORT_WRITE_FAILED", Message: err.Error()}
 		return envelope, err
 	}
 	if err := writeAtomic(rr.ReportPath, append(b, '\n')); err != nil {
-		if envelope.ExitCode == 0 {
+		if ctx.Err() != nil {
+			envelope.ExitCode = 130
+		} else if envelope.ExitCode == 0 {
 			envelope.ExitCode = 2
 		}
 		envelope.Error = &model.ErrorInfo{Code: "REPORT_WRITE_FAILED", Message: err.Error()}

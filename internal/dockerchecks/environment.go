@@ -16,6 +16,11 @@ type Environment struct {
 	DockerPath string
 	DockerHost string
 	Info       model.EngineInfo
+	// ImageReference is the immutable reference accepted by docker create.
+	// A multi-platform inspect can return a platform config ID that is not a
+	// create reference, so this may be the target repository digest while
+	// Info.ImageID remains the resolved platform config ID.
+	ImageReference string
 }
 
 func Check(ctx context.Context) (Environment, error) {
@@ -85,7 +90,7 @@ type imageNotFoundError struct{}
 func (imageNotFoundError) Error() string { return "configured image is not present locally" }
 
 func ImageReadiness(ctx context.Context, env Environment, runner model.RunnerConfig) (string, string) {
-	info, err := inspectImage(ctx, env, runner.Image)
+	info, err := inspectImage(ctx, env, runner.Image, runner.Architecture)
 	if err != nil && imageMissing(err) {
 		return "ready", "image will be pulled during run"
 	}
