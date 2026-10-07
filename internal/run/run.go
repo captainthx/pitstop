@@ -244,6 +244,20 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 		envelope.Error = &model.ErrorInfo{Code: "REPORT_WRITE_FAILED", Message: err.Error()}
 		return envelope, err
 	}
+	// A signal can arrive after the first serialization but before the report
+	// write completes. Re-serialize once so the persisted envelope and the
+	// process result retain cancellation precedence.
+	if ctx.Err() != nil {
+		envelope.ExitCode = 130
+		b, marshalErr = json.MarshalIndent(envelope, "", "  ")
+		if marshalErr != nil {
+			return fail(marshalErr)
+		}
+		if err := writeAtomic(rr.ReportPath, append(b, '\n')); err != nil {
+			envelope.Error = &model.ErrorInfo{Code: "REPORT_WRITE_FAILED", Message: err.Error()}
+			return envelope, err
+		}
+	}
 	return envelope, nil
 }
 
