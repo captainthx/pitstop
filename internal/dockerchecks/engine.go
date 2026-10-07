@@ -209,20 +209,16 @@ func Run(ctx context.Context, env Environment, snap model.Snapshot, check model.
 	streams := make(chan error, 2)
 	go func() { streams <- copyLog(stdout, stdoutFile, progress) }()
 	go func() { streams <- copyLog(stderr, stderrFile, nil) }()
-	streamErr, streamsDrained := waitForStreams(jobCtx, streams, stdout, stderr)
+	streamErr, _ := waitForStreams(jobCtx, streams, stdout, stderr)
 	timedOut, cancelled := false, false
 	if jobCtx.Err() != nil {
 		cancelled = ctx.Err() != nil
 		timedOut = !cancelled
 	}
 	wait := make(chan error, 1)
-	if streamsDrained {
-		go func() { wait <- startCmd.Wait() }()
-	} else {
-		// waitForStreams closes both pipes before returning when cancellation
-		// interrupts a reader, so Wait is safe to start after the bounded drain.
-		go func() { wait <- startCmd.Wait() }()
-	}
+	// waitForStreams closes both pipes before returning when cancellation
+	// interrupts a reader, so Wait is safe to start after the bounded drain.
+	go func() { wait <- startCmd.Wait() }()
 	var clientErr error
 	if !timedOut && !cancelled {
 		select {
