@@ -24,6 +24,15 @@ PITSTOP_BIN="$PWD/pitstop"
 TARGET_REPO="/absolute/path/to/your/repo"
 ```
 
+Explore features, commands, flags, and examples from the CLI:
+
+```sh
+"$PITSTOP_BIN" -h
+"$PITSTOP_BIN" run -h
+```
+
+Help works without configuring a target repository or starting Docker.
+
 Create `.pitstop.json` in the target repository using the [guide's example](docs/user-guide.en.md#2-configure-the-target-project), then run:
 
 ```sh

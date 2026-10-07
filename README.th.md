@@ -24,6 +24,15 @@ PITSTOP_BIN="$PWD/pitstop"
 TARGET_REPO="/absolute/path/to/your/repo"
 ```
 
+ดูฟีเจอร์ คำสั่ง flags และตัวอย่างจาก CLI ได้โดยตรง:
+
+```sh
+"$PITSTOP_BIN" -h
+"$PITSTOP_BIN" run -h
+```
+
+เปิด help ได้โดยยังไม่ต้องตั้งค่าโปรเจกต์เป้าหมายหรือเปิด Docker
+
 สร้าง `.pitstop.json` ในโปรเจกต์เป้าหมายตาม [ตัวอย่างในคู่มือ](docs/user-guide.md#2-ตั้งค่าโปรเจกต์ที่จะทดสอบ) แล้วรัน:
 
 ```sh
