@@ -83,6 +83,17 @@ func Human(w io.Writer, e model.Envelope) error {
 		}
 		return nil
 	}
+	if r, ok := e.Result.(model.InitResult); ok {
+		if _, err := fmt.Fprintf(w, "init: preset=%s architecture=%s config=%s dryRun=%t written=%t destinationExists=%t\n", r.Preset, r.Architecture, r.ConfigPath, r.DryRun, r.Written, r.DestinationExists); err != nil {
+			return err
+		}
+		for _, warning := range r.Warnings {
+			if _, err := fmt.Fprintln(w, "warning:", warning); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 	if r, ok := e.Result.(model.ListResult); ok {
 		if _, err := fmt.Fprintf(w, "repo: %s\nchecks: %s\n", r.Repo, r.ConfigPath); err != nil {
 			return err

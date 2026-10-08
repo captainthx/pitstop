@@ -49,7 +49,7 @@ func ExecuteContext(ctx context.Context, args []string, stdout, stderr io.Writer
 			name := command(args)
 			if cmd != nil {
 				switch cmd.Name() {
-				case "run", "doctor", "list", "version", "validate":
+				case "run", "doctor", "list", "version", "validate", "init":
 					name = cmd.Name()
 				}
 			}
@@ -65,7 +65,7 @@ func ExecuteContext(ctx context.Context, args []string, stdout, stderr io.Writer
 	return 0
 }
 func command(args []string) string {
-	valueFlags := map[string]bool{"--repo": true, "--job": true, "--arch": true, "--timeout": true, "--command": true}
+	valueFlags := map[string]bool{"--repo": true, "--job": true, "--arch": true, "--timeout": true, "--command": true, "--preset": true, "--image": true}
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		if a == "--" {
@@ -82,7 +82,7 @@ func command(args []string) string {
 			continue
 		}
 		switch a {
-		case "run", "doctor", "list", "version", "validate":
+		case "run", "doctor", "list", "version", "validate", "init":
 			return a
 		default:
 			return "pitstop"
@@ -99,7 +99,7 @@ func splitFlag(arg string) (string, bool) {
 }
 
 func jsonMode(args []string) bool {
-	valueFlags := map[string]bool{"--repo": true, "--job": true, "--arch": true, "--timeout": true, "--command": true}
+	valueFlags := map[string]bool{"--repo": true, "--job": true, "--arch": true, "--timeout": true, "--command": true, "--preset": true, "--image": true}
 	mode := false
 	for i := 0; i < len(args); i++ {
 		a := args[i]
@@ -141,7 +141,7 @@ func newRoot(ctx context.Context, stdout, stderr io.Writer) *cobra.Command {
 	root.SetErr(stderr)
 	var repo string
 	root.PersistentFlags().StringVar(&repo, "repo", ".", "target repository path")
-	root.AddCommand(versionCmd(stdout), doctorCmd(stdout, &repo), listCmd(stdout, &repo), runCmd(ctx, stdout, stderr, &repo), validateCmd(stdout, &repo))
+	root.AddCommand(versionCmd(stdout), doctorCmd(stdout, &repo), listCmd(stdout, &repo), runCmd(ctx, stdout, stderr, &repo), validateCmd(stdout, &repo), initCmd(stdout, &repo))
 	return root
 }
 func versionCmd(out io.Writer) *cobra.Command {

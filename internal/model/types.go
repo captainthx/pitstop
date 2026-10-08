@@ -303,6 +303,17 @@ type ValidateResult struct {
 	StepCount    int           `json:"stepCount"`
 	Issues       []ConfigIssue `json:"issues"`
 }
+type InitResult struct {
+	Repo              string   `json:"repo"`
+	ConfigPath        string   `json:"configPath"`
+	Preset            string   `json:"preset"`
+	Architecture      string   `json:"architecture"`
+	Config            Config   `json:"config"`
+	DryRun            bool     `json:"dryRun"`
+	Written           bool     `json:"written"`
+	DestinationExists bool     `json:"destinationExists"`
+	Warnings          []string `json:"warnings"`
+}
 type VersionResult struct {
 	Version   string  `json:"version"`
 	Commit    *string `json:"commit"`
