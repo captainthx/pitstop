@@ -2,5 +2,8 @@
   "schemaVersion": 2,
   "runner": {"image": "python:3.13-slim-bookworm", "architecture": "linux/arm64"},
   "jobs": ["verify"],
-  "checks": [{"id": "verify", "steps": [{"id": "test", "name": "Run manifest-backed tests", "run": "python -m pytest"}]}]
+  "checks": [{"id": "verify", "steps": [
+    {"id": "install", "name": "Install manifest-declared pytest", "run": "python -m pip install 'pytest>=8,<9'"},
+    {"id": "test", "name": "Run manifest-backed tests", "run": "python -m pytest"}
+  ]}]
 }

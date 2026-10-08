@@ -51,6 +51,7 @@ var bundleFiles = []string{
 	"assets/mappings/shared-script.json",
 	"assets/source/local-action/action.yml",
 	"assets/source/manifests/python-pyproject.toml",
+	"assets/source/manifests/rust-toolchain.toml",
 	"assets/source/scripts/check.sh",
 	"assets/workflows/java-maven.yml",
 	"assets/workflows/local-composite.yml",

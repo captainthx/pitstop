@@ -2,5 +2,8 @@
   "schemaVersion": 2,
   "runner": {"image": "python:3.13-slim-bookworm", "architecture": "linux/arm64"},
   "jobs": ["pytest"],
-  "checks": [{"id": "pytest", "steps": [{"id": "test", "name": "Run declared Python tests", "run": "python -m pytest"}]}]
+  "checks": [{"id": "pytest", "steps": [
+    {"id": "install", "name": "Install declared pytest dependency", "run": "python -m pip install 'pytest>=8,<9'"},
+    {"id": "test", "name": "Run declared Python tests", "run": "python -m pytest"}
+  ]}]
 }

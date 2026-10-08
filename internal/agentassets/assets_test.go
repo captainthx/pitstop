@@ -129,11 +129,23 @@ func TestBundleCompleteAndValid(t *testing.T) {
 			t.Fatalf("preset %s: %v", name, err)
 		}
 	}
+	baseBytes, err := agentassets.Preset("base")
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseConfig, err := config.Parse(baseBytes)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := baseConfig.Checks[0].Steps[0].Run; got != "printf '%s\\n' 'Edit .pitstop.json to define project checks' >&2; exit 2" {
+		t.Fatalf("base configure command = %q", got)
+	}
 
 	for _, path := range []string{
 		"assets/source/scripts/check.sh",
 		"assets/source/local-action/action.yml",
 		"assets/source/manifests/python-pyproject.toml",
+		"assets/source/manifests/rust-toolchain.toml",
 		"assets/images/node-go-tools/Dockerfile",
 		"assets/workflows/multi-test.yml",
 		"assets/workflows/multi-release.yml",
