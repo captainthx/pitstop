@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
 
 	"pitstop/internal/model"
@@ -12,10 +13,11 @@ func FuzzParse(f *testing.F) {
 	for _, seed := range [][]byte{
 		[]byte(`{"schemaVersion":2,"runner":{"image":"alpine:3.22","architecture":"linux/arm64"},"jobs":["verify"],"checks":[{"id":"verify","steps":[{"id":"check","run":"true"}]}]}`),
 		[]byte(`{"schemaVersion":2,"runner":{"image":"alpine:3.22","architecture":"linux/arm64"},"jobs":["verify"],"checks":[{"id":"verify","steps":[{"id":"check","run":"line 1\nline 2"}]}]}`),
-		[]byte(`{"schemaVersion":2,"runner":{"image":"alpine:3.22","architecture":"linux/arm64"},"jobs":["verify"],"checks":[{"id":"verify","steps":[{"id":"check","run":"true","id":"other"}]}]}`),
+		[]byte(`{"schemaVersion":2,"runner":{"image":"alpine:3.22","architecture":"linux/arm64"},"jobs":["verify"],"checks":[{"id":"verify","steps":[{"id":"check","run":"true","\u0069d":"other"}]}]}`),
 		[]byte(`{"schemaVersion":1,"workflow":"ci.yml"}`),
 		[]byte(`null`),
 		[]byte("\ufeff{}"),
+		[]byte(`{"schemaVersion":2,"runner":{"image":"alpine:3.22","architecture":"linux/arm64"},"jobs":["verify"],"checks":[{"id":"verify","steps":[{"id":"check","run":"` + strings.Repeat("[", model.MaxJSONDepth+1) + `"}]}]}`),
 		[]byte(`{"schemaVersion":2,"runner":{"image":"alpine:3.22","architecture":"linux/arm64"},"jobs":["verify"],"checks":[{"id":"verify","steps":[{"id":"check","run":"\u0000"}]}]}`),
 	} {
 		f.Add(seed)
@@ -38,6 +40,7 @@ func FuzzConfigRoundTrip(f *testing.F) {
 	for _, seed := range [][]byte{
 		[]byte(`{"schemaVersion":2,"runner":{"image":"alpine:3.22","architecture":"linux/arm64"},"jobs":["verify"],"checks":[{"id":"verify","steps":[{"id":"check","run":"true"}]}]}`),
 		[]byte(`{"schemaVersion":2,"runner":{"image":"node:22-bookworm","architecture":"linux/amd64"},"jobs":["verify"],"checks":[{"id":"verify","steps":[{"id":"check","name":"ทดสอบ","run":"printf '%s' \"$HOME\""}]}]}`),
+		[]byte(`{"schemaVersion":2,"runner":{"image":"alpine:3.22","architecture":"linux/arm64"},"jobs":["verify"],"checks":[{"id":"verify","steps":[{"id":"check","run":"line 1\nline 2"}]}]}`),
 	} {
 		f.Add(seed)
 	}
