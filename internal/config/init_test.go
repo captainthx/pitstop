@@ -12,6 +12,23 @@ import (
 	"pitstop/internal/model"
 )
 
+type replaceOnCancelContext struct {
+	context.Context
+	path  string
+	calls int
+}
+
+func (c *replaceOnCancelContext) Err() error {
+	c.calls++
+	if c.calls == 5 {
+		old := c.path + ".old"
+		_ = os.Rename(c.path, old)
+		_ = os.WriteFile(c.path, []byte("replacement"), 0600)
+		return context.Canceled
+	}
+	return nil
+}
+
 func initRepo(t *testing.T) string {
 	t.Helper()
 	d := t.TempDir()
@@ -109,5 +126,77 @@ func TestInitConcurrentCreators(t *testing.T) {
 	}
 	if success != 1 || exists != 1 {
 		t.Fatalf("success=%d exists=%d", success, exists)
+	}
+	if cfg, err := Load(d); err != nil || cfg.Checks[0].Steps[0].Run == "" {
+		t.Fatalf("winner wrote incomplete config: %#v, %v", cfg, err)
+	}
+}
+
+func TestInitCancellationPreservesReplacement(t *testing.T) {
+	d := initRepo(t)
+	path := filepath.Join(d, ".pitstop.json")
+	ctx := &replaceOnCancelContext{Context: context.Background(), path: path}
+	_, err := Init(ctx, d, InitOptions{Preset: "base", Architecture: "linux/amd64"})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("error=%v", err)
+	}
+	got, readErr := os.ReadFile(path)
+	if readErr != nil || string(got) != "replacement" {
+		t.Fatalf("replacement was removed: %q, %v", got, readErr)
+	}
+}
+
+func TestInitWriteFailuresCleanUpOwnedFile(t *testing.T) {
+	tests := []struct {
+		name string
+		set  func()
+	}{
+		{name: "write", set: func() { initWriteFile = func(*os.File, []byte) error { return errors.New("write failed") } }},
+		{name: "sync", set: func() { initSyncFile = func(*os.File) error { return errors.New("sync failed") } }},
+		{name: "close", set: func() { initCloseFile = func(f *os.File) error { _ = f.Close(); return errors.New("close failed") } }},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			oldWrite, oldSync, oldClose := initWriteFile, initSyncFile, initCloseFile
+			t.Cleanup(func() { initWriteFile, initSyncFile, initCloseFile = oldWrite, oldSync, oldClose })
+			test.set()
+			d := initRepo(t)
+			result, err := Init(context.Background(), d, InitOptions{Preset: "base", Architecture: "linux/amd64"})
+			var me *model.Error
+			if !errors.As(err, &me) || me.Code != "WRITE_FAILED" || result.Written {
+				t.Fatalf("result=%#v error=%v", result, err)
+			}
+			if _, statErr := os.Stat(filepath.Join(d, ".pitstop.json")); !errors.Is(statErr, os.ErrNotExist) {
+				t.Fatalf("failed init left destination: %v", statErr)
+			}
+		})
+	}
+}
+
+func TestInitWriteFailurePreservesReplacement(t *testing.T) {
+	d := initRepo(t)
+	path := filepath.Join(d, ".pitstop.json")
+	oldWrite := initWriteFile
+	t.Cleanup(func() { initWriteFile = oldWrite })
+	initWriteFile = func(f *os.File, _ []byte) error {
+		if err := f.Close(); err != nil {
+			return err
+		}
+		if err := os.Rename(path, path+".old"); err != nil {
+			return err
+		}
+		if err := os.WriteFile(path, []byte("replacement"), 0600); err != nil {
+			return err
+		}
+		return errors.New("controlled write failure")
+	}
+	result, err := Init(context.Background(), d, InitOptions{Preset: "base", Architecture: "linux/amd64"})
+	var me *model.Error
+	if !errors.As(err, &me) || me.Code != "WRITE_FAILED" || result.Written {
+		t.Fatalf("result=%#v error=%v", result, err)
+	}
+	got, readErr := os.ReadFile(path)
+	if readErr != nil || string(got) != "replacement" {
+		t.Fatalf("replacement was removed: %q, %v", got, readErr)
 	}
 }

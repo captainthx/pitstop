@@ -24,6 +24,10 @@ type InitOptions struct {
 
 const configName = ".pitstop.json"
 
+var initWriteFile = writeAll
+var initSyncFile = func(f *os.File) error { return f.Sync() }
+var initCloseFile = func(f *os.File) error { return f.Close() }
+
 func Init(ctx context.Context, repo string, opts InitOptions) (model.InitResult, error) {
 	if err := ctx.Err(); err != nil {
 		return model.InitResult{}, err
@@ -123,28 +127,42 @@ func Init(ctx context.Context, repo string, opts InitOptions) (model.InitResult,
 		}
 		return result, model.Err("WRITE_FAILED", "could not create configuration file", err)
 	}
+	createdInfo, err := f.Stat()
+	if err != nil {
+		_ = f.Close()
+		return result, model.Err("WRITE_FAILED", "could not identify configuration file", err)
+	}
 	claimed := true
 	cleanup := func() {
-		if claimed {
+		if !claimed {
+			return
+		}
+		current, openErr := root.OpenFile(configName, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
+		if openErr != nil {
+			return
+		}
+		currentInfo, statErr := current.Stat()
+		_ = current.Close()
+		if statErr == nil && os.SameFile(createdInfo, currentInfo) {
 			_ = root.Remove(configName)
 		}
 	}
 	if err := ctx.Err(); err != nil {
-		_ = f.Close()
+		_ = initCloseFile(f)
 		cleanup()
 		return result, err
 	}
-	if err := writeAll(f, encoded); err != nil {
-		_ = f.Close()
+	if err := initWriteFile(f, encoded); err != nil {
+		_ = initCloseFile(f)
 		cleanup()
 		return result, model.Err("WRITE_FAILED", "could not write configuration file", err)
 	}
-	if err := f.Sync(); err != nil {
-		_ = f.Close()
+	if err := initSyncFile(f); err != nil {
+		_ = initCloseFile(f)
 		cleanup()
 		return result, model.Err("WRITE_FAILED", "could not sync configuration file", err)
 	}
-	if err := f.Close(); err != nil {
+	if err := initCloseFile(f); err != nil {
 		cleanup()
 		return result, model.Err("WRITE_FAILED", "could not close configuration file", err)
 	}

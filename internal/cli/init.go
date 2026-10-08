@@ -22,6 +22,9 @@ func initCmd(out io.Writer, repo *string) *cobra.Command {
 				return writeInitError(out, jsonOut, err)
 			}
 			resolved, err := config.ResolveRepo(*repo)
+			if ctxErr := cmd.Context().Err(); ctxErr != nil {
+				return writeInitError(out, jsonOut, ctxErr)
+			}
 			if err != nil {
 				return err
 			}
