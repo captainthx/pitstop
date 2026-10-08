@@ -48,6 +48,9 @@ func Parse(data []byte) (model.Config, error) {
 	if version != model.ConfigSchemaVersion {
 		return model.Config{}, invalid("unsupported config schemaVersion")
 	}
+	if err := validateV2Shape(root); err != nil {
+		return model.Config{}, invalid("invalid configuration shape")
+	}
 
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
@@ -142,7 +145,7 @@ func walkValue(dec *json.Decoder, depth int) error {
 		return err
 	}
 	if tok == nil {
-		return io.ErrUnexpectedEOF
+		return nil
 	}
 	delim, ok := tok.(json.Delim)
 	if !ok {
@@ -176,9 +179,6 @@ func walkObject(dec *json.Decoder, depth int) error {
 		if !ok {
 			return io.ErrUnexpectedEOF
 		}
-		if canonical, known := canonicalField[strings.ToLower(name)]; known && canonical != name {
-			return io.ErrUnexpectedEOF
-		}
 		if _, exists := seen[name]; exists {
 			return io.ErrUnexpectedEOF
 		}
@@ -192,19 +192,6 @@ func walkObject(dec *json.Decoder, depth int) error {
 		return io.ErrUnexpectedEOF
 	}
 	return nil
-}
-
-var canonicalField = map[string]string{
-	"schemaversion": "schemaVersion",
-	"runner":        "runner",
-	"jobs":          "jobs",
-	"checks":        "checks",
-	"image":         "image",
-	"architecture":  "architecture",
-	"id":            "id",
-	"steps":         "steps",
-	"name":          "name",
-	"run":           "run",
 }
 
 func walkArray(dec *json.Decoder, depth int) error {
@@ -221,6 +208,93 @@ func walkArray(dec *json.Decoder, depth int) error {
 		return io.ErrUnexpectedEOF
 	}
 	return nil
+}
+
+func validateV2Shape(root map[string]json.RawMessage) error {
+	if err := checkObjectFields(root, map[string]struct{}{
+		"schemaVersion": {}, "runner": {}, "jobs": {}, "checks": {},
+	}, map[string]struct{}{
+		"schemaVersion": {}, "runner": {}, "jobs": {}, "checks": {},
+	}); err != nil {
+		return err
+	}
+	if _, err := strictObject(root["runner"], map[string]struct{}{
+		"image": {}, "architecture": {},
+	}, map[string]struct{}{
+		"image": {}, "architecture": {},
+	}); err != nil {
+		return err
+	}
+	checks, err := rawArray(root["checks"])
+	if err != nil {
+		return err
+	}
+	for _, checkRaw := range checks {
+		check, err := strictObject(checkRaw, map[string]struct{}{
+			"id": {}, "steps": {},
+		}, map[string]struct{}{
+			"id": {}, "steps": {},
+		})
+		if err != nil {
+			return err
+		}
+		steps, err := rawArray(check["steps"])
+		if err != nil {
+			return err
+		}
+		for _, stepRaw := range steps {
+			if _, err := strictObject(stepRaw, map[string]struct{}{
+				"id": {}, "name": {}, "run": {},
+			}, map[string]struct{}{
+				"id": {}, "run": {},
+			}); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func checkObjectFields(object map[string]json.RawMessage, allowed, required map[string]struct{}) error {
+	if object == nil {
+		return io.ErrUnexpectedEOF
+	}
+	for name := range object {
+		if _, ok := allowed[name]; !ok {
+			return io.ErrUnexpectedEOF
+		}
+		if bytes.Equal(bytes.TrimSpace(object[name]), []byte("null")) {
+			return io.ErrUnexpectedEOF
+		}
+	}
+	for name := range required {
+		if _, ok := object[name]; !ok {
+			return io.ErrUnexpectedEOF
+		}
+	}
+	return nil
+}
+
+func strictObject(raw json.RawMessage, allowed, required map[string]struct{}) (map[string]json.RawMessage, error) {
+	var object map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &object); err != nil {
+		return nil, err
+	}
+	if err := checkObjectFields(object, allowed, required); err != nil {
+		return nil, err
+	}
+	return object, nil
+}
+
+func rawArray(raw json.RawMessage) ([]json.RawMessage, error) {
+	var values []json.RawMessage
+	if err := json.Unmarshal(raw, &values); err != nil {
+		return nil, err
+	}
+	if values == nil {
+		return nil, io.ErrUnexpectedEOF
+	}
+	return values, nil
 }
 
 func validateEscapedSurrogates(data []byte) error {

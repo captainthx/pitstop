@@ -23,3 +23,11 @@
 ## Commit
 
 Task commit: `feat(config): add strict confined parser` (hash reported by the agent after final amend).
+
+## Round 1 review fixes
+
+- RED: `rtk go test ./internal/config -run '^TestParseStrictShape$' -count=1` failed because the Unicode simple-fold alias `"ſteps"` was accepted.
+- GREEN: `rtk go test ./internal/config ./internal/model -count=1` passed (20 tests).
+- GREEN: `rtk go test ./... -count=1` passed (43 tests across 9 packages); `rtk git diff --check` passed.
+- Added explicit exact v2 object-shape checks, kept v1 migration before v2 shape/null checks, and added broken/unreadable/concurrent replacement file regressions plus unsupported-version and large duplicate fixtures.
+- Fix commit follows this report update.

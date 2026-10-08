@@ -42,6 +42,7 @@ func TestParseStrictShape(t *testing.T) {
 		strings.Replace(validConfig, `"checks":[{"id":"verify"`, `"checks":[{"id":null`, 1),
 		strings.Replace(validConfig, `"checks":[{"id":"verify"`, `"checks":[{"id":1`, 1),
 		strings.Replace(validConfig, `"checks":[{"id":"verify","steps"`, `"checks":[{"id":"verify"}`, 1),
+		strings.Replace(validConfig, `"steps"`, `"ſteps"`, 1),
 		strings.Replace(validConfig, `"steps":[{"id"`, `"steps":[{"ID"`, 1),
 		strings.Replace(validConfig, `"steps":[{"id":"check"`, `"steps":[{"id":null`, 1),
 		strings.Replace(validConfig, `"steps":[{"id":"check"`, `"steps":[{"id":1`, 1),
@@ -98,6 +99,14 @@ func TestParsePreservesRun(t *testing.T) {
 	}
 }
 
+func TestParseV1MigrationSkipsV2ShapeRequirements(t *testing.T) {
+	for _, input := range []string{`{"schemaVersion":1,"ſteps":0}`, `{"schemaVersion":1,"workflow":null}`} {
+		if _, err := Parse([]byte(input)); err == nil || !strings.Contains(err.Error(), "schemaVersion 1") {
+			t.Fatalf("legacy payload did not reach migration error: %v", err)
+		}
+	}
+}
+
 func TestParseSizeAndDepth(t *testing.T) {
 	parts := strings.Split(validConfig, `"true"`)
 	room := model.MaxConfigBytes - len(parts[0]) - len(parts[1]) - 2
@@ -110,6 +119,13 @@ func TestParseSizeAndDepth(t *testing.T) {
 	}
 	if got, err := Parse([]byte(atLimit + "a")); err == nil || !reflect.DeepEqual(got, model.Config{}) {
 		t.Fatalf("accepted config over byte limit: %#v %v", got, err)
+	}
+	if got, err := Parse([]byte(`{"schemaVersion":3,"unused":{"x":0}}`)); err == nil || !reflect.DeepEqual(got, model.Config{}) || !strings.Contains(err.Error(), "unsupported config schemaVersion") {
+		t.Fatalf("unsupported schema version was not rejected explicitly: %#v %v", got, err)
+	}
+	largeDuplicate := `{"schemaVersion":3,"unused":{"` + strings.Repeat(`x":0,`, 5000) + `\u0078":1}}`
+	if got, err := Parse([]byte(largeDuplicate)); err == nil || !reflect.DeepEqual(got, model.Config{}) || strings.Contains(err.Error(), "unsupported config schemaVersion") {
+		t.Fatalf("large unused duplicate bypassed generic preflight: %#v %v", got, err)
 	}
 
 	nested := "0"

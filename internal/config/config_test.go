@@ -10,6 +10,7 @@ import (
 	"pitstop/internal/model"
 	"runtime"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -86,6 +87,32 @@ func TestLoadRejectsSpecialFiles(t *testing.T) {
 			t.Fatal("symlink accepted")
 		}
 	})
+	t.Run("broken symlink", func(t *testing.T) {
+		d := t.TempDir()
+		if err := os.Symlink(filepath.Join(d, "missing"), filepath.Join(d, ".pitstop.json")); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := Load(d); err == nil {
+			t.Fatal("broken symlink accepted")
+		}
+	})
+	t.Run("unreadable regular file", func(t *testing.T) {
+		d := t.TempDir()
+		path := filepath.Join(d, ".pitstop.json")
+		if err := os.WriteFile(path, []byte(validConfig), 0600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Chmod(path, 0000); err != nil {
+			t.Fatal(err)
+		}
+		defer os.Chmod(path, 0600)
+		if _, err := Load(d); err == nil {
+			if os.Geteuid() == 0 {
+				t.Skip("root bypasses regular-file permission bits")
+			}
+			t.Fatal("unreadable regular file accepted")
+		}
+	})
 	t.Run("fifo", func(t *testing.T) {
 		d := t.TempDir()
 		path := filepath.Join(d, ".pitstop.json")
@@ -118,6 +145,45 @@ func TestLoadRejectsSpecialFiles(t *testing.T) {
 		if _, err := Load(d); err == nil {
 			t.Fatal("socket accepted")
 		}
+	})
+	t.Run("concurrent symlink replacement", func(t *testing.T) {
+		d := t.TempDir()
+		outsideDir := t.TempDir()
+		outside := filepath.Join(outsideDir, "outside.json")
+		outsideConfig := strings.Replace(validConfig, `"run":"true"`, `"run":"outside"`, 1)
+		if err := os.WriteFile(outside, []byte(outsideConfig), 0600); err != nil {
+			t.Fatal(err)
+		}
+		path := filepath.Join(d, ".pitstop.json")
+		if err := os.WriteFile(path, []byte(validConfig), 0600); err != nil {
+			t.Fatal(err)
+		}
+		stop := make(chan struct{})
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			tmp := filepath.Join(d, ".pitstop.tmp")
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+				}
+				_ = os.WriteFile(tmp, []byte(validConfig), 0600)
+				_ = os.Rename(tmp, path)
+				_ = os.Remove(path)
+				_ = os.Symlink(outside, path)
+			}
+		}()
+		for i := 0; i < 200; i++ {
+			c, err := Load(d)
+			if err == nil && c.Checks[0].Steps[0].Run != "true" {
+				t.Fatalf("read outside contents during replacement: %q", c.Checks[0].Steps[0].Run)
+			}
+		}
+		close(stop)
+		wg.Wait()
 	})
 }
 
