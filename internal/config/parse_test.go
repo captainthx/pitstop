@@ -215,3 +215,14 @@ func TestParseV1MigrationCarriesIssue(t *testing.T) {
 		t.Fatalf("migration issue = %#v (%v)", ve, err)
 	}
 }
+
+func TestParseJobsElementTypesCarryJSONPointers(t *testing.T) {
+	for _, value := range []string{"1", "null", "true", "{}", "[]"} {
+		input := strings.Replace(validConfig, `"jobs":["verify"]`, `"jobs":[`+value+`]`, 1)
+		got, err := Parse([]byte(input))
+		var ve *model.ValidationError
+		if err == nil || !reflect.DeepEqual(got, model.Config{}) || !errors.As(err, &ve) || ve.Issue.Code != "JSON_TYPE" || ve.Issue.Path != "/jobs/0" {
+			t.Fatalf("jobs element %s: config=%#v issue=%#v err=%v", value, got, ve, err)
+		}
+	}
+}

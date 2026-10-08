@@ -247,6 +247,12 @@ func validateV2Shape(root map[string]json.RawMessage) error {
 	if err := ensureType(root["jobs"], "/jobs", "array"); err != nil {
 		return err
 	}
+	jobs, _ := rawArray(root["jobs"])
+	for i, raw := range jobs {
+		if err := ensureType(raw, "/jobs/"+strconv.Itoa(i), "string"); err != nil {
+			return err
+		}
+	}
 	checks, err := rawArray(root["checks"])
 	if err != nil {
 		return issue("JSON_TYPE", "/checks", "checks must be an array")
