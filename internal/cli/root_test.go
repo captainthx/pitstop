@@ -367,12 +367,14 @@ func TestValidateCancellationWinsOverResolveRepoFailure(t *testing.T) {
 	t.Setenv("PATH", fakeBin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	done := make(chan struct{})
 	go func() {
+		defer close(done)
+		defer func() { _ = os.WriteFile(stop, []byte("release"), 0600) }()
 		deadline := time.NewTimer(time.Second)
 		defer deadline.Stop()
 		for {
 			if _, err := os.Stat(started); err == nil {
-				_ = os.WriteFile(stop, []byte("stop"), 0600)
 				cancel()
 				return
 			}
@@ -385,7 +387,14 @@ func TestValidateCancellationWinsOverResolveRepoFailure(t *testing.T) {
 		}
 	}()
 	var out, errOut bytes.Buffer
-	if code := ExecuteContext(ctx, []string{"validate", "--repo", d, "--json"}, &out, &errOut); code != 130 {
+	code := ExecuteContext(ctx, []string{"validate", "--repo", d, "--json"}, &out, &errOut)
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		_ = os.WriteFile(stop, []byte("release-timeout"), 0600)
+		t.Fatal("fake Git release did not complete")
+	}
+	if code != 130 {
 		t.Fatalf("code=%d stdout=%s stderr=%s", code, out.String(), errOut.String())
 	}
 	var envelope model.Envelope
