@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 2,
+  "runner": {"image": "maven:3.9.11-eclipse-temurin-21", "architecture": "linux/arm64"},
+  "jobs": ["maven"],
+  "checks": [{"id": "maven", "steps": [{"id": "test", "name": "Run Maven wrapper tests", "run": "./mvnw -B -ntp test"}]}]
+}

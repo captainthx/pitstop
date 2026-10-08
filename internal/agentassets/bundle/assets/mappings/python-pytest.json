@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 2,
+  "runner": {"image": "python:3.13-slim-bookworm", "architecture": "linux/arm64"},
+  "jobs": ["pytest"],
+  "checks": [{"id": "pytest", "steps": [{"id": "test", "name": "Run declared Python tests", "run": "python -m pytest"}]}]
+}

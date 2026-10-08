@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "runner": {"image": "rust:1.88.0-bookworm", "architecture": "linux/arm64"},
+  "runner": {"image": "rust:1.98.1-bookworm", "architecture": "linux/arm64"},
   "jobs": ["verify"],
   "checks": [{"id": "verify", "steps": [
     {"id": "test", "name": "Run locked Cargo tests", "run": "cargo test --locked"},

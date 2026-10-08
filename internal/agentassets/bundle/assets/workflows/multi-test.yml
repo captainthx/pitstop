@@ -6,13 +6,3 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: npm test
----
-name: release
-on:
-  push:
-    tags: ['v*']
-jobs:
-  publish:
-    runs-on: ubuntu-24.04
-    steps:
-      - run: npm publish

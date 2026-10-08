@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "runner": {"image": "mcr.microsoft.com/dotnet/sdk:9.0.305", "architecture": "linux/arm64"},
+  "runner": {"image": "mcr.microsoft.com/dotnet/sdk:9.0.301", "architecture": "linux/arm64"},
   "jobs": ["verify"],
   "checks": [{"id": "verify", "steps": [
     {"id": "restore", "name": "Restore project", "run": "dotnet restore"},

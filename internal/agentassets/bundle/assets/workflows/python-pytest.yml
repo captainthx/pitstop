@@ -1,0 +1,8 @@
+name: python checks
+on: [push]
+jobs:
+  pytest:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m pytest

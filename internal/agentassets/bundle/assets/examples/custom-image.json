@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "runner": {"image": "pitstop-local/project-tools:2026.10", "architecture": "linux/arm64"},
+  "runner": {"image": "pitstop-local/node-go-tools:2026.10", "architecture": "linux/arm64"},
   "jobs": ["verify"],
   "checks": [{"id": "verify", "steps": [
     {"id": "check", "name": "Run reviewed project checks", "run": "./scripts/check.sh"}

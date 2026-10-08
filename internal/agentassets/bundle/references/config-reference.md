@@ -13,7 +13,7 @@ Prerequisites are part of the evidence:
 | Yarn Classic | A pinned Yarn 1 `packageManager`, Corepack bootstrap, and lockfile; use `--frozen-lockfile`. |
 | Yarn Berry | A pinned Yarn 4 `packageManager`, Corepack bootstrap, and lockfile; use `--immutable`. |
 | Go | The module's selected Go toolchain and real vet, test, and build targets. |
-| Python pip | A requirements or project dependency file containing the project's test and lint dependencies. |
+| Python pip | A requirements or project dependency file declaring `pytest` (and lint dependencies); pin versions or hashes when reproducibility is required. |
 | Python uv | A locked `uv.lock`, project test dependencies, and `uv sync --locked` before `uv run`. |
 | Maven / Gradle | A checked-in `mvnw` or `gradlew` wrapper and project test task. |
 | .NET | A reviewed solution or project file; restore before `dotnet test --no-restore`. |

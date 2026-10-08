@@ -1,4 +1,4 @@
-package agentassets
+package agentassets_test
 
 import (
 	"crypto/sha256"
@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"pitstop/internal/agentassets"
 	"pitstop/internal/config"
 )
 
@@ -20,11 +21,11 @@ func TestBundleCompleteAndValid(t *testing.T) {
 		"go", "python-pip", "python-uv", "java-maven", "java-gradle", "dotnet",
 		"rust", "php-composer", "ruby-bundler",
 	}
-	if got := PresetNames(); !reflect.DeepEqual(got, expected) {
+	if got := agentassets.PresetNames(); !reflect.DeepEqual(got, expected) {
 		t.Fatalf("preset names = %v, want %v", got, expected)
 	}
 
-	files := Files()
+	files := agentassets.Files()
 	if !sort.StringsAreSorted(files) {
 		t.Fatal("bundle files are not sorted")
 	}
@@ -34,7 +35,7 @@ func TestBundleCompleteAndValid(t *testing.T) {
 			t.Fatalf("invalid or duplicate bundle path %q", path)
 		}
 		seen[path] = true
-		data, err := ReadFile(path)
+		data, err := agentassets.ReadFile(path)
 		if err != nil {
 			t.Fatalf("read %s: %v", path, err)
 		}
@@ -53,14 +54,14 @@ func TestBundleCompleteAndValid(t *testing.T) {
 			SHA256 string `json:"sha256"`
 		} `json:"files"`
 	}
-	manifestBytes, err := ReadFile("manifest.json")
+	manifestBytes, err := agentassets.ReadFile("manifest.json")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
 		t.Fatalf("manifest: %v", err)
 	}
-	if manifest.Owner != "pitstop" || manifest.BundleVersion != BundleVersion {
+	if manifest.Owner != "pitstop" || manifest.BundleVersion != agentassets.BundleVersion {
 		t.Fatalf("manifest identity = %q/%q", manifest.Owner, manifest.BundleVersion)
 	}
 	wantManifest := append([]string(nil), files...)
@@ -68,7 +69,7 @@ func TestBundleCompleteAndValid(t *testing.T) {
 	gotManifest := make([]string, 0, len(manifest.Files))
 	for _, file := range manifest.Files {
 		gotManifest = append(gotManifest, file.Path)
-		data, err := ReadFile(file.Path)
+		data, err := agentassets.ReadFile(file.Path)
 		if err != nil {
 			t.Fatalf("manifest file %s: %v", file.Path, err)
 		}
@@ -82,7 +83,7 @@ func TestBundleCompleteAndValid(t *testing.T) {
 	}
 
 	for _, path := range []string{"SKILL.md", "references/config-reference.md", "references/workflow-mapping.md", "references/examples.md"} {
-		data, err := ReadFile(path)
+		data, err := agentassets.ReadFile(path)
 		if err != nil {
 			t.Fatalf("read linked document %s: %v", path, err)
 		}
@@ -94,7 +95,7 @@ func TestBundleCompleteAndValid(t *testing.T) {
 			if !validBundlePath(resolved) {
 				t.Fatalf("%s links outside bundle: %s", path, link)
 			}
-			if _, err := ReadFile(resolved); err != nil {
+			if _, err := agentassets.ReadFile(resolved); err != nil {
 				t.Fatalf("%s links to %s: %v", path, link, err)
 			}
 		}
@@ -110,7 +111,7 @@ func TestBundleCompleteAndValid(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parse root example %s: %v", pair.root, err)
 		}
-		templateBytes, err := Preset(pair.preset)
+		templateBytes, err := agentassets.Preset(pair.preset)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -124,9 +125,42 @@ func TestBundleCompleteAndValid(t *testing.T) {
 	}
 
 	for _, name := range expected {
-		if _, err := Preset(name); err != nil {
+		if _, err := agentassets.Preset(name); err != nil {
 			t.Fatalf("preset %s: %v", name, err)
 		}
+	}
+
+	for _, path := range []string{
+		"assets/source/scripts/check.sh",
+		"assets/source/local-action/action.yml",
+		"assets/source/manifests/python-pyproject.toml",
+		"assets/images/node-go-tools/Dockerfile",
+		"assets/workflows/multi-test.yml",
+		"assets/workflows/multi-release.yml",
+		"assets/workflows/python-pytest.yml",
+		"assets/workflows/java-maven.yml",
+		"assets/workflows/rust-cargo.yml",
+		"assets/mappings/python-pytest.json",
+		"assets/mappings/java-maven.json",
+		"assets/mappings/rust-cargo.json",
+	} {
+		if _, err := agentassets.ReadFile(path); err != nil {
+			t.Fatalf("required source fixture %s: %v", path, err)
+		}
+	}
+	assertAssetContains(t, "assets/source/scripts/check.sh", "npm run check")
+	assertAssetContains(t, "assets/source/local-action/action.yml", "npm run check")
+	assertAssetContains(t, "assets/source/manifests/python-pyproject.toml", "pytest")
+}
+
+func assertAssetContains(t *testing.T, path, want string) {
+	t.Helper()
+	data, err := agentassets.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	if !strings.Contains(string(data), want) {
+		t.Fatalf("%s does not contain %q", path, want)
 	}
 }
 

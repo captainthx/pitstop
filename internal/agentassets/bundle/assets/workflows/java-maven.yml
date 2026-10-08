@@ -1,0 +1,8 @@
+name: java checks
+on: [push]
+jobs:
+  maven:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./mvnw -B -ntp test
