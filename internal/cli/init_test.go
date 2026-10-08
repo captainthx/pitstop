@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -40,10 +41,46 @@ func decodeInitEnvelope(t *testing.T, data []byte) model.Envelope {
 	return envelope
 }
 
+func initTreeState(t *testing.T, root string) map[string]string {
+	t.Helper()
+	state := map[string]string{}
+	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		if rel == "." {
+			return nil
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		value := info.Mode().String()
+		if info.Mode().IsRegular() {
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			value += ":" + string(data)
+		}
+		state[rel] = value
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return state
+}
+
 func TestInitCLIJSONNoHEADAndPermissions(t *testing.T) {
 	d := cliInitRepo(t)
 	var out, errOut bytes.Buffer
-	if code := Execute([]string{"init", "--repo", d, "--preset", "custom", "--image", "alpine:3.22", "--command", "echo a,b\necho $HOME", "--arch", "linux/amd64", "--json"}, &out, &errOut); code != 0 {
+	command := "printf 'สวัสดี,世界\\n'\necho $HOME"
+	if code := Execute([]string{"init", "--repo", d, "--preset", "custom", "--image", "alpine:3.22", "--command", command, "--arch", "linux/amd64", "--json"}, &out, &errOut); code != 0 {
 		t.Fatalf("code=%d stdout=%s stderr=%s", code, out.String(), errOut.String())
 	}
 	envelope := decodeInitEnvelope(t, out.Bytes())
@@ -59,7 +96,7 @@ func TestInitCLIJSONNoHEADAndPermissions(t *testing.T) {
 		t.Fatalf("mode=%o", info.Mode().Perm())
 	}
 	cfg, err := config.Load(d)
-	if err != nil || cfg.Checks[0].Steps[0].Run != "echo a,b\necho $HOME" {
+	if err != nil || cfg.Checks[0].Steps[0].Run != command {
 		t.Fatalf("config=%#v err=%v", cfg, err)
 	}
 }
@@ -189,5 +226,47 @@ func TestInitCLIStdoutFailure(t *testing.T) {
 	var errOut bytes.Buffer
 	if code := Execute([]string{"init", "--repo", d, "--dry-run", "--json"}, failingWriter{}, &errOut); code != 2 || !strings.Contains(errOut.String(), "stdout failed") {
 		t.Fatalf("code=%d stderr=%q", code, errOut.String())
+	}
+}
+
+func TestInitCLIIsOfflineAndDoesNotRunCommands(t *testing.T) {
+	d := cliInitRepo(t)
+	beforeRepo := initTreeState(t, d)
+	home := t.TempDir()
+	cache := filepath.Join(home, "cache")
+	if err := os.MkdirAll(cache, 0700); err != nil {
+		t.Fatal(err)
+	}
+	beforeHome := initTreeState(t, home)
+	beforeCache := initTreeState(t, cache)
+	marker := filepath.Join(t.TempDir(), "executed")
+	fake := t.TempDir()
+	for _, name := range []string{"docker", "node", "go", "npm", "pnpm", "yarn", "python", "curl", "wget", "ssh"} {
+		script := "#!/bin/sh\nprintf called > '" + marker + "'\nexit 99\n"
+		if err := os.WriteFile(filepath.Join(fake, name), []byte(script), 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CACHE_HOME", cache)
+	t.Setenv("PATH", fake+string(os.PathListSeparator)+os.Getenv("PATH"))
+	commandMarker := filepath.Join(t.TempDir(), "command-executed")
+	var out, errOut bytes.Buffer
+	if code := Execute([]string{"init", "--repo", d, "--preset", "custom", "--image", "alpine:3.22", "--command", "touch " + commandMarker, "--arch", "linux/amd64", "--json"}, &out, &errOut); code != 0 {
+		t.Fatalf("code=%d stdout=%s stderr=%s", code, out.String(), errOut.String())
+	}
+	if _, err := os.Stat(marker); err == nil {
+		t.Fatal("init executed a fake tool")
+	}
+	if _, err := os.Stat(commandMarker); err == nil {
+		t.Fatal("init executed a configured command")
+	}
+	afterRepo := initTreeState(t, d)
+	delete(afterRepo, ".pitstop.json")
+	if !reflect.DeepEqual(beforeRepo, afterRepo) {
+		t.Fatalf("init changed files besides .pitstop.json: before=%v after=%v", beforeRepo, afterRepo)
+	}
+	if !reflect.DeepEqual(beforeHome, initTreeState(t, home)) || !reflect.DeepEqual(beforeCache, initTreeState(t, cache)) {
+		t.Fatal("init changed isolated home/cache state")
 	}
 }

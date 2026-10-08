@@ -6,9 +6,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 
+	"pitstop/internal/agentassets"
 	"pitstop/internal/model"
 )
 
@@ -16,6 +18,19 @@ type replaceOnCancelContext struct {
 	context.Context
 	path  string
 	calls int
+}
+
+type cancelAfterOpenContext struct {
+	context.Context
+	calls int
+}
+
+func (c *cancelAfterOpenContext) Err() error {
+	c.calls++
+	if c.calls == 4 {
+		return context.Canceled
+	}
+	return nil
 }
 
 func (c *replaceOnCancelContext) Err() error {
@@ -97,6 +112,47 @@ func TestInitRejectsSymlinkDestination(t *testing.T) {
 	}
 }
 
+func TestInitRejectsBrokenSymlinkDestination(t *testing.T) {
+	d := initRepo(t)
+	path := filepath.Join(d, ".pitstop.json")
+	if err := os.Symlink(filepath.Join(d, "missing"), path); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Init(context.Background(), d, InitOptions{Preset: "base", Architecture: "linux/amd64"})
+	var me *model.Error
+	if !errors.As(err, &me) || me.Code != "CONFIG_EXISTS" {
+		t.Fatalf("error=%v", err)
+	}
+	if _, lstatErr := os.Lstat(path); lstatErr != nil {
+		t.Fatalf("broken symlink was changed: %v", lstatErr)
+	}
+}
+
+func TestInitAllPresetsProduceParseableConfigs(t *testing.T) {
+	for _, preset := range agentassets.PresetNames() {
+		t.Run(preset, func(t *testing.T) {
+			d := t.TempDir()
+			result, err := Init(context.Background(), d, InitOptions{Preset: preset, Architecture: "linux/amd64"})
+			if err != nil || !result.Written {
+				t.Fatalf("result=%#v error=%v", result, err)
+			}
+			if _, err := Load(d); err != nil {
+				t.Fatalf("generated config did not parse: %v", err)
+			}
+		})
+	}
+	t.Run("custom", func(t *testing.T) {
+		d := t.TempDir()
+		result, err := Init(context.Background(), d, InitOptions{Preset: "custom", Image: "alpine:3.22", Commands: []string{"printf '✓\\n'"}, Architecture: "linux/amd64"})
+		if err != nil || !result.Written {
+			t.Fatalf("result=%#v error=%v", result, err)
+		}
+		if _, err := Load(d); err != nil {
+			t.Fatalf("generated config did not parse: %v", err)
+		}
+	})
+}
+
 func TestInitConcurrentCreators(t *testing.T) {
 	d := initRepo(t)
 	results := make(chan error, 2)
@@ -146,7 +202,24 @@ func TestInitCancellationPreservesReplacement(t *testing.T) {
 	}
 }
 
-func TestInitWriteFailuresCleanUpOwnedFile(t *testing.T) {
+func TestInitCancellationRetainsInspectableFile(t *testing.T) {
+	d := initRepo(t)
+	ctx := &cancelAfterOpenContext{Context: context.Background()}
+	result, err := Init(ctx, d, InitOptions{Preset: "base", Architecture: "linux/amd64"})
+	var me *model.Error
+	if !errors.As(err, &me) || me.Code != "CANCELLED" || result.Written || !strings.Contains(me.Message, initRecoveryMessage) {
+		t.Fatalf("result=%#v error=%v", result, err)
+	}
+	if _, statErr := os.Stat(filepath.Join(d, ".pitstop.json")); statErr != nil {
+		t.Fatalf("cancelled init did not retain destination: %v", statErr)
+	}
+	_, retryErr := Init(context.Background(), d, InitOptions{Preset: "base", Architecture: "linux/amd64"})
+	if !errors.As(retryErr, &me) || me.Code != "CONFIG_EXISTS" {
+		t.Fatalf("retry error=%v", retryErr)
+	}
+}
+
+func TestInitWriteFailuresRetainInspectableFile(t *testing.T) {
 	tests := []struct {
 		name string
 		set  func()
@@ -163,11 +236,15 @@ func TestInitWriteFailuresCleanUpOwnedFile(t *testing.T) {
 			d := initRepo(t)
 			result, err := Init(context.Background(), d, InitOptions{Preset: "base", Architecture: "linux/amd64"})
 			var me *model.Error
-			if !errors.As(err, &me) || me.Code != "WRITE_FAILED" || result.Written {
+			if !errors.As(err, &me) || me.Code != "WRITE_FAILED" || result.Written || !strings.Contains(me.Message, initRecoveryMessage) {
 				t.Fatalf("result=%#v error=%v", result, err)
 			}
-			if _, statErr := os.Stat(filepath.Join(d, ".pitstop.json")); !errors.Is(statErr, os.ErrNotExist) {
-				t.Fatalf("failed init left destination: %v", statErr)
+			if _, statErr := os.Stat(filepath.Join(d, ".pitstop.json")); statErr != nil {
+				t.Fatalf("failed init did not retain destination: %v", statErr)
+			}
+			_, retryErr := Init(context.Background(), d, InitOptions{Preset: "base", Architecture: "linux/amd64"})
+			if !errors.As(retryErr, &me) || me.Code != "CONFIG_EXISTS" {
+				t.Fatalf("retry error=%v", retryErr)
 			}
 		})
 	}
@@ -192,7 +269,7 @@ func TestInitWriteFailurePreservesReplacement(t *testing.T) {
 	}
 	result, err := Init(context.Background(), d, InitOptions{Preset: "base", Architecture: "linux/amd64"})
 	var me *model.Error
-	if !errors.As(err, &me) || me.Code != "WRITE_FAILED" || result.Written {
+	if !errors.As(err, &me) || me.Code != "WRITE_FAILED" || result.Written || !strings.Contains(me.Message, initRecoveryMessage) {
 		t.Fatalf("result=%#v error=%v", result, err)
 	}
 	got, readErr := os.ReadFile(path)
