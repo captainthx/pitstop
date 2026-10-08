@@ -94,6 +94,17 @@ func Human(w io.Writer, e model.Envelope) error {
 		}
 		return nil
 	}
+	if r, ok := e.Result.(model.SkillInstallResult); ok {
+		if _, err := fmt.Fprintf(w, "skill install: agent=%s scope=%s action=%s installed=%t target=%s version=%s dryRun=%t\n", r.Agent, r.Scope, r.Action, r.Installed, r.TargetPath, r.BundleVersion, r.DryRun); err != nil {
+			return err
+		}
+		for _, warning := range r.Warnings {
+			if _, err := fmt.Fprintln(w, "warning:", warning); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 	if r, ok := e.Result.(model.ListResult); ok {
 		if _, err := fmt.Fprintf(w, "repo: %s\nchecks: %s\n", r.Repo, r.ConfigPath); err != nil {
 			return err

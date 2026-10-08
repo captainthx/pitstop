@@ -51,6 +51,10 @@ func ExecuteContext(ctx context.Context, args []string, stdout, stderr io.Writer
 				switch cmd.Name() {
 				case "run", "doctor", "list", "version", "validate", "init":
 					name = cmd.Name()
+				case "install":
+					if cmd.Parent() != nil && cmd.Parent().Name() == "skill" {
+						name = "skill install"
+					}
 				}
 			}
 			e := model.Envelope{SchemaVersion: model.SchemaVersion, Command: name, ExitCode: 2, Error: &model.ErrorInfo{Code: "CONFIG_INVALID", Message: err.Error()}}
@@ -84,6 +88,11 @@ func command(args []string) string {
 		switch a {
 		case "run", "doctor", "list", "version", "validate", "init":
 			return a
+		case "skill":
+			if i+1 < len(args) && args[i+1] == "install" {
+				return "skill install"
+			}
+			return "skill"
 		default:
 			return "pitstop"
 		}
@@ -135,13 +144,13 @@ func writeCommandResult(out io.Writer, e model.Envelope, jsonOut bool) error {
 	return nil
 }
 func newRoot(ctx context.Context, stdout, stderr io.Writer) *cobra.Command {
-	root := &cobra.Command{Use: "pitstop", Short: "Run repository checks in isolated Docker containers.", Long: "Run configured checks in fresh Docker containers using the current working-tree snapshot.\n\nFeatures:\n  - Run selected checks without installing their toolchain on the host.\n  - Keep steps in one job filesystem while isolating jobs from one another.\n  - Capture step evidence, logs, reports, timeout, cancellation, and cleanup.\n\nConfigure .pitstop.json with schemaVersion 2, a Docker image, and checks.", Example: "  pitstop doctor --repo /path/to/repo\n  pitstop list --repo /path/to/repo\n  pitstop run --repo /path/to/repo --json", SilenceUsage: true, SilenceErrors: true}
+	root := &cobra.Command{Use: "pitstop", Short: "Run repository checks in isolated Docker containers.", Long: "Run configured checks in fresh Docker containers using the current working-tree snapshot.\n\nFeatures:\n  - Run selected checks without installing their toolchain on the host.\n  - Keep steps in one job filesystem while isolating jobs from one another.\n  - Capture step evidence, logs, reports, timeout, cancellation, and cleanup.\n\nConfigure .pitstop.json with schemaVersion 2, a Docker image, and checks.", Example: "  pitstop doctor --repo /path/to/repo\n  pitstop list --repo /path/to/repo\n  pitstop run --repo /path/to/repo --json\n  pitstop skill install --agent codex --scope project --dry-run --json", SilenceUsage: true, SilenceErrors: true}
 	root.SetContext(ctx)
 	root.SetOut(stdout)
 	root.SetErr(stderr)
 	var repo string
 	root.PersistentFlags().StringVar(&repo, "repo", ".", "target repository path")
-	root.AddCommand(versionCmd(stdout), doctorCmd(stdout, &repo), listCmd(stdout, &repo), runCmd(ctx, stdout, stderr, &repo), validateCmd(stdout, &repo), initCmd(stdout, &repo))
+	root.AddCommand(versionCmd(stdout), doctorCmd(stdout, &repo), listCmd(stdout, &repo), runCmd(ctx, stdout, stderr, &repo), validateCmd(stdout, &repo), initCmd(stdout, &repo), skillCmd(stdout, &repo))
 	return root
 }
 func versionCmd(out io.Writer) *cobra.Command {

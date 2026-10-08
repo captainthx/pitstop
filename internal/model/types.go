@@ -314,6 +314,17 @@ type InitResult struct {
 	DestinationExists bool     `json:"destinationExists"`
 	Warnings          []string `json:"warnings"`
 }
+type SkillInstallResult struct {
+	Agent         string   `json:"agent"`
+	Scope         string   `json:"scope"`
+	TargetPath    string   `json:"targetPath"`
+	BundleVersion string   `json:"bundleVersion"`
+	Files         []string `json:"files"`
+	DryRun        bool     `json:"dryRun"`
+	Action        string   `json:"action"`
+	Installed     bool     `json:"installed"`
+	Warnings      []string `json:"warnings"`
+}
 type VersionResult struct {
 	Version   string  `json:"version"`
 	Commit    *string `json:"commit"`
