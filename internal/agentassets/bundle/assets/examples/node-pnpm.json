@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 2,
+  "runner": {"image": "node:22-bookworm", "architecture": "linux/arm64"},
+  "jobs": ["verify"],
+  "checks": [{"id": "verify", "steps": [
+    {"id": "bootstrap", "name": "Bootstrap pinned pnpm", "run": "corepack install --global pnpm@9.15.9"},
+    {"id": "install", "name": "Install dependencies", "run": "pnpm install --frozen-lockfile"},
+    {"id": "check", "name": "Run project checks", "run": "pnpm run check"}
+  ]}]
+}

@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 2,
+  "runner": {"image": "gradle:8.14-jdk21", "architecture": "linux/arm64"},
+  "jobs": ["verify"],
+  "checks": [{"id": "verify", "steps": [
+    {"id": "test", "name": "Run Gradle wrapper tests", "run": "./gradlew --no-daemon test"}
+  ]}]
+}
