@@ -34,7 +34,12 @@ func WriteEnvelope(w io.Writer, e model.Envelope) error {
 func Human(w io.Writer, e model.Envelope) error {
 	if e.Error != nil {
 		_, err := fmt.Fprintf(w, "pitstop: %s (%s)\n", e.Error.Message, e.Error.Code)
-		if _, ok := e.Result.(model.RunReport); !ok || err != nil {
+		if _, ok := e.Result.(model.RunReport); !ok {
+			if _, validate := e.Result.(model.ValidateResult); !validate || err != nil {
+				return err
+			}
+		}
+		if err != nil {
 			return err
 		}
 	}
@@ -54,6 +59,17 @@ func Human(w io.Writer, e model.Envelope) error {
 			fmt.Fprintln(w, "warning:", warning)
 		}
 		return err
+	}
+	if r, ok := e.Result.(model.ValidateResult); ok {
+		if _, err := fmt.Fprintf(w, "validate: valid=%t repo=%s config=%s architecture=%s checks=%d steps=%d\n", r.Valid, r.Repo, r.ConfigPath, r.Architecture, r.CheckCount, r.StepCount); err != nil {
+			return err
+		}
+		for _, issue := range r.Issues {
+			if _, err := fmt.Fprintf(w, "  %s %s: %s\n", issue.Code, issue.Path, issue.Message); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
 	if r, ok := e.Result.(model.ListResult); ok {
 		fmt.Fprintf(w, "repo: %s\nchecks: %s\n", r.Repo, r.ConfigPath)

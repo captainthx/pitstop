@@ -293,6 +293,16 @@ type ListResult struct {
 	ConfigPath string    `json:"configPath"`
 	Jobs       []ListJob `json:"jobs"`
 }
+type ValidateResult struct {
+	Repo         string        `json:"repo"`
+	ConfigPath   string        `json:"configPath"`
+	Valid        bool          `json:"valid"`
+	SelectedJobs []string      `json:"selectedJobs"`
+	Architecture string        `json:"architecture"`
+	CheckCount   int           `json:"checkCount"`
+	StepCount    int           `json:"stepCount"`
+	Issues       []ConfigIssue `json:"issues"`
+}
 type VersionResult struct {
 	Version   string  `json:"version"`
 	Commit    *string `json:"commit"`

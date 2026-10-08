@@ -11,6 +11,7 @@ import (
 	"pitstop/internal/model"
 	"pitstop/internal/report"
 	"pitstop/internal/run"
+	"strings"
 	"time"
 )
 
@@ -21,49 +22,117 @@ var BuildTime string
 type exitError struct{ code int }
 
 func (e exitError) Error() string { return fmt.Sprintf("pitstop exited %d", e.code) }
+
+type outputError struct{ err error }
+
+func (e outputError) Error() string { return e.err.Error() }
+func (e outputError) Unwrap() error { return e.err }
+
 func Execute(args []string, stdout, stderr io.Writer) int {
 	return ExecuteContext(context.Background(), args, stdout, stderr)
 }
 func ExecuteContext(ctx context.Context, args []string, stdout, stderr io.Writer) int {
-	jsonMode := false
-	for _, a := range args {
-		if a == "--json" || a == "--json=true" {
-			jsonMode = true
-		}
-		if a == "--json=false" {
-			jsonMode = false
-		}
-	}
+	jsonMode := jsonMode(args)
 	root := newRoot(ctx, stdout, stderr)
 	root.SetArgs(args)
-	if err := root.Execute(); err != nil {
+	cmd, err := root.ExecuteC()
+	if err != nil {
 		if x, ok := err.(exitError); ok {
 			return x.code
 		}
+		var oe outputError
+		if errors.As(err, &oe) {
+			_, _ = fmt.Fprintln(stderr, oe.err)
+			return 2
+		}
 		if jsonMode {
-			_ = report.WriteEnvelope(stdout, model.Envelope{SchemaVersion: model.SchemaVersion, Command: command(args), ExitCode: 2, Error: &model.ErrorInfo{Code: "CONFIG_INVALID", Message: err.Error()}})
+			name := command(args)
+			if cmd != nil {
+				switch cmd.Name() {
+				case "run", "doctor", "list", "version", "validate":
+					name = cmd.Name()
+				}
+			}
+			e := model.Envelope{SchemaVersion: model.SchemaVersion, Command: name, ExitCode: 2, Error: &model.ErrorInfo{Code: "CONFIG_INVALID", Message: err.Error()}}
+			if werr := report.WriteEnvelope(stdout, e); werr != nil {
+				_, _ = fmt.Fprintln(stderr, werr)
+			}
 		} else {
-			fmt.Fprintln(stderr, err)
+			_, _ = fmt.Fprintln(stderr, err)
 		}
 		return 2
 	}
 	return 0
 }
 func command(args []string) string {
-	for i, a := range args {
+	valueFlags := map[string]bool{"--repo": true, "--job": true, "--arch": true, "--timeout": true, "--command": true}
+	for i := 0; i < len(args); i++ {
+		a := args[i]
 		if a == "--" {
 			break
 		}
-		if a == "--repo" {
-			_ = i
+		name, hasValue := splitFlag(a)
+		if valueFlags[name] {
+			if !hasValue && i+1 < len(args) && args[i+1] != "--" {
+				i++
+			}
+			continue
+		}
+		if strings.HasPrefix(a, "-") {
 			continue
 		}
 		switch a {
-		case "run", "doctor", "list", "version":
+		case "run", "doctor", "list", "version", "validate":
 			return a
+		default:
+			return "pitstop"
 		}
 	}
 	return "pitstop"
+}
+
+func splitFlag(arg string) (string, bool) {
+	if i := strings.IndexByte(arg, '='); i >= 0 {
+		return arg[:i], true
+	}
+	return arg, false
+}
+
+func jsonMode(args []string) bool {
+	valueFlags := map[string]bool{"--repo": true, "--job": true, "--arch": true, "--timeout": true, "--command": true}
+	mode := false
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if a == "--" {
+			break
+		}
+		name, hasValue := splitFlag(a)
+		if name == "--json" {
+			if hasValue {
+				mode = strings.TrimPrefix(a, "--json=") != "false"
+			} else {
+				mode = true
+			}
+			continue
+		}
+		if valueFlags[name] && !hasValue && i+1 < len(args) && args[i+1] != "--" {
+			i++
+		}
+	}
+	return mode
+}
+
+func writeCommandResult(out io.Writer, e model.Envelope, jsonOut bool) error {
+	var err error
+	if jsonOut {
+		err = report.WriteEnvelope(out, e)
+	} else {
+		err = report.Human(out, e)
+	}
+	if err != nil {
+		return outputError{err: err}
+	}
+	return nil
 }
 func newRoot(ctx context.Context, stdout, stderr io.Writer) *cobra.Command {
 	root := &cobra.Command{Use: "pitstop", Short: "Run repository checks in isolated Docker containers.", Long: "Run configured checks in fresh Docker containers using the current working-tree snapshot.\n\nFeatures:\n  - Run selected checks without installing their toolchain on the host.\n  - Keep steps in one job filesystem while isolating jobs from one another.\n  - Capture step evidence, logs, reports, timeout, cancellation, and cleanup.\n\nConfigure .pitstop.json with schemaVersion 2, a Docker image, and checks.", Example: "  pitstop doctor --repo /path/to/repo\n  pitstop list --repo /path/to/repo\n  pitstop run --repo /path/to/repo --json", SilenceUsage: true, SilenceErrors: true}
@@ -72,7 +141,7 @@ func newRoot(ctx context.Context, stdout, stderr io.Writer) *cobra.Command {
 	root.SetErr(stderr)
 	var repo string
 	root.PersistentFlags().StringVar(&repo, "repo", ".", "target repository path")
-	root.AddCommand(versionCmd(stdout), doctorCmd(stdout, &repo), listCmd(stdout, &repo), runCmd(ctx, stdout, stderr, &repo))
+	root.AddCommand(versionCmd(stdout), doctorCmd(stdout, &repo), listCmd(stdout, &repo), runCmd(ctx, stdout, stderr, &repo), validateCmd(stdout, &repo))
 	return root
 }
 func versionCmd(out io.Writer) *cobra.Command {
@@ -87,7 +156,7 @@ func versionCmd(out io.Writer) *cobra.Command {
 		}
 		e := model.Envelope{SchemaVersion: model.SchemaVersion, Command: "version", ExitCode: 0, Result: r}
 		if jsonOut {
-			return report.WriteEnvelope(out, e)
+			return writeCommandResult(out, e, true)
 		}
 		_, err := fmt.Fprintf(out, "pitstop %s\n", Version)
 		return err
@@ -139,11 +208,7 @@ func doctorCmd(out io.Writer, repo *string) *cobra.Command {
 			code = 130
 		}
 		env := model.Envelope{SchemaVersion: model.SchemaVersion, Command: "doctor", ExitCode: code, Result: r}
-		if jsonOut {
-			e = report.WriteEnvelope(out, env)
-		} else {
-			e = report.Human(out, env)
-		}
+		e = writeCommandResult(out, env, jsonOut)
 		if e != nil {
 			return e
 		}
@@ -163,10 +228,7 @@ func listCmd(out io.Writer, repo *string) *cobra.Command {
 			return err
 		}
 		e := model.Envelope{SchemaVersion: model.SchemaVersion, Command: "list", ExitCode: 0, Result: r}
-		if jsonOut {
-			return report.WriteEnvelope(out, e)
-		}
-		return report.Human(out, e)
+		return writeCommandResult(out, e, jsonOut)
 	}}
 	c.Flags().BoolVar(&jsonOut, "json", false, "JSON output")
 	return c
@@ -204,17 +266,16 @@ func runCmd(ctx context.Context, out, errOut io.Writer, repo *string) *cobra.Com
 			progress = errOut
 		}
 		e, err := run.Execute(ctx, run.Options{Repo: *repo, Jobs: jobs, Timeout: timeout, Architecture: arch, Progress: progress})
-		if jsonOut {
-			if werr := report.WriteEnvelope(out, e); werr != nil {
-				return werr
-			}
-		} else {
-			_ = report.Human(out, e)
+		if werr := writeCommandResult(out, e, jsonOut); werr != nil {
+			return werr
 		}
 		if e.ExitCode != 0 {
 			return exitError{e.ExitCode}
 		}
-		return err
+		if err != nil {
+			return exitError{2}
+		}
+		return nil
 	}}
 	c.Flags().BoolVar(&jsonOut, "json", false, "JSON output")
 	c.Flags().StringSliceVar(&jobs, "job", nil, "configured check ID (repeatable or comma-separated)")
