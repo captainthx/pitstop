@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -107,6 +108,18 @@ func TestParseV1MigrationSkipsV2ShapeRequirements(t *testing.T) {
 	}
 }
 
+func TestParseRejectsVersionAliasesBeforeMigration(t *testing.T) {
+	for _, input := range []string{
+		`{"schemaVersion":1,"SchemaVersion":2}`,
+		`{"schemaVersion":1,"ſchemaVersion":2}`,
+	} {
+		got, err := Parse([]byte(input))
+		if err == nil || !reflect.DeepEqual(got, model.Config{}) || strings.Contains(err.Error(), "schemaVersion 1") {
+			t.Fatalf("accepted version alias as legacy migration: %#v %v", got, err)
+		}
+	}
+}
+
 func TestParseSizeAndDepth(t *testing.T) {
 	parts := strings.Split(validConfig, `"true"`)
 	room := model.MaxConfigBytes - len(parts[0]) - len(parts[1]) - 2
@@ -123,9 +136,21 @@ func TestParseSizeAndDepth(t *testing.T) {
 	if got, err := Parse([]byte(`{"schemaVersion":3,"unused":{"x":0}}`)); err == nil || !reflect.DeepEqual(got, model.Config{}) || !strings.Contains(err.Error(), "unsupported config schemaVersion") {
 		t.Fatalf("unsupported schema version was not rejected explicitly: %#v %v", got, err)
 	}
-	largeDuplicate := `{"schemaVersion":3,"unused":{"` + strings.Repeat(`x":0,`, 5000) + `\u0078":1}}`
-	if got, err := Parse([]byte(largeDuplicate)); err == nil || !reflect.DeepEqual(got, model.Config{}) || strings.Contains(err.Error(), "unsupported config schemaVersion") {
-		t.Fatalf("large unused duplicate bypassed generic preflight: %#v %v", got, err)
+	var large strings.Builder
+	large.WriteString(`{"schemaVersion":1,"unused":{`)
+	for i := 0; i < 5000; i++ {
+		if i > 0 {
+			large.WriteByte(',')
+		}
+		large.WriteString(`"member` + strconv.Itoa(i) + `":0`)
+	}
+	large.WriteString(`}}`)
+	if _, err := Parse([]byte(large.String())); err == nil || !strings.Contains(err.Error(), "schemaVersion 1") {
+		t.Fatalf("large unused v1 object did not reach migration: %v", err)
+	}
+	duplicate := strings.TrimSuffix(strings.TrimSuffix(large.String(), `}`), `}`) + `,"\u006dember4999":1}}`
+	if got, err := Parse([]byte(duplicate)); err == nil || !reflect.DeepEqual(got, model.Config{}) || strings.Contains(err.Error(), "schemaVersion 1") {
+		t.Fatalf("large unused decoded duplicate bypassed preflight: %#v %v", got, err)
 	}
 
 	nested := "0"

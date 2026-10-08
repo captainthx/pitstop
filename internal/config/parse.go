@@ -179,6 +179,9 @@ func walkObject(dec *json.Decoder, depth int) error {
 		if !ok {
 			return io.ErrUnexpectedEOF
 		}
+		if depth == 1 && strings.EqualFold(name, "schemaVersion") && name != "schemaVersion" {
+			return io.ErrUnexpectedEOF
+		}
 		if _, exists := seen[name]; exists {
 			return io.ErrUnexpectedEOF
 		}

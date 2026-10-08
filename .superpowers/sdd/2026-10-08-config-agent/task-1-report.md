@@ -31,3 +31,11 @@ Task commit: `feat(config): add strict confined parser` (hash reported by the ag
 - GREEN: `rtk go test ./... -count=1` passed (43 tests across 9 packages); `rtk git diff --check` passed.
 - Added explicit exact v2 object-shape checks, kept v1 migration before v2 shape/null checks, and added broken/unreadable/concurrent replacement file regressions plus unsupported-version and large duplicate fixtures.
 - Fix commit follows this report update.
+
+## Round 2 review fixes
+
+- RED: `rtk go test ./internal/config -run '^TestParseRejectsVersionAliasesBeforeMigration$' -count=1` failed because `{\"schemaVersion\":1,\"SchemaVersion\":2}` reached the v1 migration error.
+- GREEN: `rtk go test ./internal/config ./internal/model -count=1` passed (21 tests).
+- GREEN: `rtk go test ./... -count=1` passed (44 tests across 9 packages); `rtk git diff --check` passed.
+- Added a root-only Unicode simple-fold guard for schemaVersion aliases and distinct 5,000-member v1 fixtures, including an escaped duplicate at the final member; legacy non-version fields remain permissive.
+- Fix commit follows this report update.
