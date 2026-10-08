@@ -53,6 +53,12 @@ Snapshots reject submodules, unresolved merges and absolute/broken/escaping syml
 
 CI can reuse project scripts, but matching results depend on the image/toolchain/OS/network. Workflow parity is not guaranteed.
 
+## Config and AI agent plan (2026-10-08)
+
+The [design](superpowers/specs/2026-10-08-config-agent-design.md) and [implementation plan](superpowers/plans/2026-10-08-config-agent.md) cover base/starters across languages/build tools, `init`, `validate` and `skill install`. A user's agent reads manifests/scripts/workflows to create configuration; Pitstop does not embed an AI provider or execute workflow YAML. These features are not implemented yet.
+
+Validation will share one acceptance pipeline with run/doctor/list, covering strict JSON, bounded input, safe file access, semantic limits and regression/fuzz checks. Passing validation means the config follows supported rules, not that shell/image execution is safe or checks cover all CI behavior. See the [roadmap](roadmap.md) for deferred scope and development triggers.
+
 ## Validation
 
 See [current Docker validation](evidence/docker-checks-validation.md) for tests, smoke and limits of the actual evidence. GitHub CI includes smoke; local validation does not establish remote CI success. Historical documents in the [index](README.md) do not define the current CLI's scope.

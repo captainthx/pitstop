@@ -14,6 +14,16 @@
 - [Docker checks design](superpowers/specs/2026-10-07-docker-checks-design.md)
 - [Docker checks implementation plan](superpowers/plans/2026-10-07-docker-checks.md)
 
+## แผนงานถัดไป / Planned next work
+
+Updated 2026-10-08: เอกสารด้านล่างเป็นงานที่วางแผนไว้ ยังไม่มี `init`, `validate` หรือ `skill install` ใน CLI ปัจจุบัน / These documents describe planned behavior; the new commands are not implemented yet.
+
+- [Config initialization, validation and agent skill design](superpowers/specs/2026-10-08-config-agent-design.md)
+- [Implementation plan with validation/security acceptance checks](superpowers/plans/2026-10-08-config-agent.md)
+- [Development roadmap and deferred scope](roadmap.md)
+
+การอัปเดตคู่มือ commands ใหม่จะทำพร้อม implementation และหลักฐานตรวจจริง / Current command guides will change when implementation and verification land.
+
 ## เอกสารประวัติ / Historical documents
 
 `design/`, แผนก่อน Docker checks และหลักฐานอื่นใน `evidence/` บันทึกระบบก่อนหน้า อาจมีชื่อเครื่องมือ, config schema หรือคำสั่งที่เลิกใช้แล้ว ใช้เพื่อดูที่มาของงานเท่านั้น ให้ใช้คู่มือด้านบนสำหรับการติดตั้งและใช้งานปัจจุบัน

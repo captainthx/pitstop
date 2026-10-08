@@ -6,6 +6,8 @@ Run your project's lint, test and build commands in Linux containers before comm
 
 **Start here:** build the CLI → copy an example to the target repo's `.pitstop.json` → edit the image/commands → `pitstop doctor` → `pitstop run`.
 
+**Configuration tooling status (2026-10-08):** `init`, `validate` and `skill install` are planned, not available in the current CLI. The next work covers AI-agent-led configuration, manual starters for multiple toolchains, hardened shared validation and skill installation for Codex/Claude Code. See the [implementation plan](docs/superpowers/plans/2026-10-08-config-agent.md) and [development roadmap](docs/roadmap.md).
+
 ## What Pitstop handles
 
 You choose the **environment** through a Docker image and the **checks** through configuration. Pitstop handles the rest:
@@ -113,4 +115,5 @@ See [reports and troubleshooting](docs/user-guide.en.md#reports-and-logs) to int
 
 - [Full guide: config, shared scripts, custom images, commands, reports and troubleshooting](docs/user-guide.en.md)
 - [Requirements and scope](docs/requirements.en.md)
+- [Config and agent design](docs/superpowers/specs/2026-10-08-config-agent-design.md), [implementation plan](docs/superpowers/plans/2026-10-08-config-agent.md) and [deferred development scope](docs/roadmap.md)
 - [Documentation index](docs/README.md) and [current Docker validation](docs/evidence/docker-checks-validation.md)

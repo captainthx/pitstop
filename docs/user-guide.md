@@ -4,6 +4,8 @@
 
 คู่มือนี้อธิบาย CLI ที่รัน Docker checks ด้วย `.pitstop.json` schema version 2
 
+สถานะ 2026-10-08: CLI ปัจจุบันมี `doctor`, `list`, `run`, `version` ส่วน `init`, `validate`, `skill install`, ตัวอย่าง toolchains เพิ่มเติม และคู่มือ AI agent อยู่ใน [แผนงานถัดไป](superpowers/plans/2026-10-08-config-agent.md) ดู [roadmap](roadmap.md) สำหรับขอบเขตที่ยังไม่รวม
+
 ## สิ่งที่ต้องเตรียม
 
 | ส่วน | สิ่งที่ต้องมี |
@@ -105,6 +107,8 @@ your-project/
 IDs ยาว 1–64 ตัวอักษร เริ่มด้วยตัวอักษรอังกฤษหรือตัวเลข ที่เหลือใช้ตัวอักษรอังกฤษ ตัวเลข `_` หรือ `-` ได้ เช่น `verify`, `unit-test`, `build_web`
 
 Config ต้องเป็น JSON document เดียว ไม่มี comments และไม่รับ fields ที่ไม่รู้จัก เช่น `env`, `uses` หรือ `engine` ถ้าต้องกำหนด environment variable ให้กำหนดใน shell command/script ของ step ส่วนค่าใน shell ของ host ไม่ถูกส่งเข้า container อัตโนมัติ
+
+คำสั่งใน `run` เป็น shell code ที่ตั้งใจ execute ใน container การตรวจ config ปัจจุบันไม่ได้รับรองว่าคำสั่งหรือ image ปลอดภัย และไม่รับรองความครบของ GitHub CI แผน validator ใหม่จะเพิ่มการปฏิเสธ duplicate/case-variant keys, malformed Unicode, unsafe file types และข้อมูลเกิน limits ตาม [validation design](superpowers/specs/2026-10-08-config-agent-design.md) กฎเพิ่มเติมเหล่านี้ยังไม่ได้ implement
 
 **`jobs` คือ selection ไม่ใช่รายการ steps** คุณอาจนิยาม checks หลายกลุ่ม แต่เลือกรันเพียงบางกลุ่ม:
 

@@ -4,6 +4,8 @@
 
 This guide describes Docker checks configured with `.pitstop.json` schema version 2.
 
+Status 2026-10-08: current commands are `doctor`, `list`, `run` and `version`. `init`, `validate`, `skill install`, additional toolchain examples and agent guidance are in the [next implementation plan](superpowers/plans/2026-10-08-config-agent.md). See the [roadmap](roadmap.md) for deferred scope.
+
 ## Prerequisites
 
 | Component | Requirement |
@@ -105,6 +107,8 @@ All fields below are required except `name`. Image, architecture and jobs have n
 IDs contain 1–64 characters. Start with an ASCII letter or digit; remaining characters may also include `_` and `-`. Examples: `verify`, `unit-test`, `build_web`.
 
 Use one JSON document, without comments. Unknown fields such as `env`, `uses` or `engine` are rejected. Set environment variables inside a step's command/script if needed; host shell variables are not automatically forwarded into containers.
+
+Step `run` values intentionally contain shell code executed in containers. Current config checks do not certify command/image safety or GitHub CI coverage. The new validator plan adds rejection of duplicate/case-variant keys, malformed Unicode, unsafe file types and inputs exceeding limits; see the [validation design](superpowers/specs/2026-10-08-config-agent-design.md). These additional rules are not implemented yet.
 
 **`jobs` selects checks, not steps.** You may define several checks and select only some:
 

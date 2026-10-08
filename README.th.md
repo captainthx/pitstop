@@ -6,6 +6,8 @@
 
 **เริ่มต้น:** build CLI → คัดลอกตัวอย่างเป็น `.pitstop.json` ใน repo เป้าหมาย → แก้ image/คำสั่ง → `pitstop doctor` → `pitstop run`
 
+**สถานะเครื่องมือ config (2026-10-08):** `init`, `validate` และ `skill install` ยังอยู่ในแผน ไม่มีใน CLI ปัจจุบัน งานถัดไปครอบคลุม AI agent สร้าง config, starters หลายภาษา/build tools, shared validator ที่เข้มงวดขึ้น และติดตั้ง skill สำหรับ Codex/Claude Code ดู [implementation plan](docs/superpowers/plans/2026-10-08-config-agent.md) และ [แนวทางพัฒนาต่อ](docs/roadmap.md)
+
 ## Pitstop ทำอะไรให้
 
 คุณกำหนด **environment** ผ่าน Docker image และ **คำสั่งตรวจ** ผ่าน config ส่วน Pitstop จัดการขั้นตอนที่เหลือ:
@@ -113,4 +115,5 @@ pitstop run -h
 
 - [คู่มือครบ: config, shared scripts, custom image, commands, reports และ troubleshooting](docs/user-guide.md)
 - [ขอบเขตและข้อกำหนด](docs/requirements.md)
+- [Design งาน config/agent](docs/superpowers/specs/2026-10-08-config-agent-design.md), [implementation plan](docs/superpowers/plans/2026-10-08-config-agent.md) และ [ขอบเขตที่เก็บไว้พัฒนาต่อ](docs/roadmap.md)
 - [สารบัญเอกสาร](docs/README.md) และ [หลักฐานทดสอบ Docker ปัจจุบัน](docs/evidence/docker-checks-validation.md)

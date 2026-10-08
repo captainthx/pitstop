@@ -53,6 +53,12 @@ Snapshot ไม่รองรับ submodules, unresolved merges, absolute/bro
 
 การใช้ shared script ร่วมกับ CI ทำได้ แต่ความเหมือนของผลขึ้นกับ image/toolchain/OS/network ที่ตั้งไว้ ไม่มีการรับประกัน workflow parity
 
+## แผน config และ AI agent (2026-10-08)
+
+มี [design](superpowers/specs/2026-10-08-config-agent-design.md) และ [implementation plan](superpowers/plans/2026-10-08-config-agent.md) สำหรับ base/starter configs หลายภาษา/build tools, `init`, `validate` และ `skill install` ใช้ AI agent ของผู้ใช้ช่วยอ่าน manifests/scripts/workflows แล้วสร้าง config ไม่ฝัง AI provider ใน Pitstop และไม่ execute workflow YAML โดยตรง งานเหล่านี้ยังไม่ได้ implement
+
+Validation จะใช้ acceptance pipeline เดียวกับ run/doctor/list รวม strict JSON, bounded input, safe file access, semantic limits และ tests/fuzz ตามแผน การผ่าน validation หมายถึง config ถูกต้องตามกฎ ไม่ได้รับรองว่า shell/image ปลอดภัยหรือ checks ครอบคลุม CI ทั้งหมด ดู [roadmap](roadmap.md) สำหรับขอบเขตที่ยังไม่รวมและเกณฑ์พัฒนาต่อ
+
 ## หลักฐานและการตรวจสอบ
 
 ดู [Docker validation ปัจจุบัน](evidence/docker-checks-validation.md) สำหรับ tests, smoke และข้อจำกัดของหลักฐานที่รันจริง GitHub CI มี smoke แต่ผล local ไม่ได้ยืนยันว่า remote CI รันผ่านแล้ว เอกสารในหมวดประวัติของ [สารบัญ](README.md) ไม่ใช่ขอบเขตของ CLI ปัจจุบัน
