@@ -8,7 +8,7 @@ Added `TestValidateOfflineAndNoWrites` before implementation. The required focus
 
 Implemented the offline `validate` command, `ValidateResult`, shared command result writing/output error sentinel, command-aware JSON fallback, and human validation summaries. Validation uses `ResolveRepo`, `Load`, and `ApplyOverrides`; it reports one bounded issue with no partial config and does not execute configured commands or Docker. Added JSON failure, cancellation, flag-value, and one-envelope tests.
 
-`rtk go test ./internal/config ./internal/model ./internal/cli ./internal/run -count=1`: PASS (56 tests).
+`rtk go test ./internal/config ./internal/model ./internal/cli ./internal/run -count=1`: PASS (58 tests).
 
 The output-failure test uses a writer that always returns an error and confirms exit 2 with the failure reported only on stderr.
 
