@@ -48,7 +48,8 @@ func Parse(data []byte) (model.Config, error) {
 		return model.Config{}, issue("FIELD_REQUIRED", "/schemaVersion", "schemaVersion is required")
 	}
 	if version == 1 {
-		return model.Config{}, model.Err("CONFIG_INVALID", "schemaVersion 1 act workflows are no longer supported; migrate to schemaVersion 2 Docker checks", nil)
+		message := "schemaVersion 1 act workflows are no longer supported; migrate to schemaVersion 2 Docker checks"
+		return model.Config{}, model.Err("CONFIG_INVALID", message, &model.ValidationError{Issue: model.ConfigIssue{Code: "SCHEMA_VERSION", Path: "/schemaVersion", Message: message}})
 	}
 	if version != model.ConfigSchemaVersion {
 		return model.Config{}, issue("SCHEMA_VERSION", "/schemaVersion", "unsupported config schemaVersion")
@@ -57,7 +58,7 @@ func Parse(data []byte) (model.Config, error) {
 		return model.Config{}, err
 	}
 	if err := validateV2Shape(root); err != nil {
-		return model.Config{}, issue("JSON_TYPE", "", "invalid configuration shape")
+		return model.Config{}, err
 	}
 
 	dec := json.NewDecoder(bytes.NewReader(data))
@@ -107,7 +108,7 @@ func readConfig(repo string) (data []byte, err error) {
 		return nil, err
 	}
 	if len(data) > model.MaxConfigBytes {
-		return nil, os.ErrInvalid
+		return nil, errConfigSize
 	}
 	return data, nil
 }
@@ -228,66 +229,102 @@ func walkArray(dec *json.Decoder, depth int) error {
 }
 
 func validateV2Shape(root map[string]json.RawMessage) error {
-	if err := checkObjectFields(root, map[string]struct{}{
-		"schemaVersion": {}, "runner": {}, "jobs": {}, "checks": {},
-	}, map[string]struct{}{
-		"schemaVersion": {}, "runner": {}, "jobs": {}, "checks": {},
-	}); err != nil {
+	for _, field := range []string{"schemaVersion", "runner", "jobs", "checks"} {
+		if _, ok := root[field]; !ok {
+			return issue("FIELD_REQUIRED", safePath("", field), "required configuration field is missing")
+		}
+	}
+	runner, err := objectField(root["runner"], "/runner")
+	if err != nil {
 		return err
 	}
-	if _, err := strictObject(root["runner"], map[string]struct{}{
-		"image": {}, "architecture": {},
-	}, map[string]struct{}{
-		"image": {}, "architecture": {},
-	}); err != nil {
+	if err := requiredField(runner, "image", "/runner/image", "string"); err != nil {
+		return err
+	}
+	if err := requiredField(runner, "architecture", "/runner/architecture", "string"); err != nil {
+		return err
+	}
+	if err := ensureType(root["jobs"], "/jobs", "array"); err != nil {
 		return err
 	}
 	checks, err := rawArray(root["checks"])
 	if err != nil {
-		return err
+		return issue("JSON_TYPE", "/checks", "checks must be an array")
 	}
-	for _, checkRaw := range checks {
-		check, err := strictObject(checkRaw, map[string]struct{}{
-			"id": {}, "steps": {},
-		}, map[string]struct{}{
-			"id": {}, "steps": {},
-		})
+	for i, checkRaw := range checks {
+		checkPath := "/checks/" + strconv.Itoa(i)
+		check, err := objectField(checkRaw, checkPath)
 		if err != nil {
 			return err
 		}
-		steps, err := rawArray(check["steps"])
-		if err != nil {
+		if err := requiredField(check, "id", checkPath+"/id", "string"); err != nil {
 			return err
 		}
-		for _, stepRaw := range steps {
-			if _, err := strictObject(stepRaw, map[string]struct{}{
-				"id": {}, "name": {}, "run": {},
-			}, map[string]struct{}{
-				"id": {}, "run": {},
-			}); err != nil {
+		if err := requiredField(check, "steps", checkPath+"/steps", "array"); err != nil {
+			return err
+		}
+		steps, _ := rawArray(check["steps"])
+		for j, stepRaw := range steps {
+			stepPath := checkPath + "/steps/" + strconv.Itoa(j)
+			step, err := objectField(stepRaw, stepPath)
+			if err != nil {
 				return err
+			}
+			if err := requiredField(step, "id", stepPath+"/id", "string"); err != nil {
+				return err
+			}
+			if err := requiredField(step, "run", stepPath+"/run", "string"); err != nil {
+				return err
+			}
+			if raw, ok := step["name"]; ok {
+				if err := ensureType(raw, stepPath+"/name", "string"); err != nil {
+					return err
+				}
 			}
 		}
 	}
 	return nil
 }
 
-func checkObjectFields(object map[string]json.RawMessage, allowed, required map[string]struct{}) error {
-	if object == nil {
-		return io.ErrUnexpectedEOF
+func objectField(raw json.RawMessage, path string) (map[string]json.RawMessage, error) {
+	if err := ensureType(raw, path, "object"); err != nil {
+		return nil, err
 	}
-	for name := range object {
-		if _, ok := allowed[name]; !ok {
-			return io.ErrUnexpectedEOF
-		}
-		if bytes.Equal(bytes.TrimSpace(object[name]), []byte("null")) {
-			return io.ErrUnexpectedEOF
-		}
+	var object map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &object); err != nil {
+		return nil, issue("JSON_TYPE", path, "field must be an object")
 	}
-	for name := range required {
-		if _, ok := object[name]; !ok {
-			return io.ErrUnexpectedEOF
-		}
+	return object, nil
+}
+
+func requiredField(object map[string]json.RawMessage, name, path, kind string) error {
+	raw, ok := object[name]
+	if !ok {
+		return issue("FIELD_REQUIRED", path, "required configuration field is missing")
+	}
+	return ensureType(raw, path, kind)
+}
+
+func ensureType(raw json.RawMessage, path, kind string) error {
+	if len(bytes.TrimSpace(raw)) == 0 || bytes.Equal(bytes.TrimSpace(raw), []byte("null")) {
+		return issue("JSON_TYPE", path, "field has an invalid type")
+	}
+	var ok bool
+	switch kind {
+	case "object":
+		var value map[string]json.RawMessage
+		ok = json.Unmarshal(raw, &value) == nil
+	case "array":
+		var value []json.RawMessage
+		ok = json.Unmarshal(raw, &value) == nil
+	case "string":
+		var value string
+		ok = json.Unmarshal(raw, &value) == nil
+	default:
+		ok = false
+	}
+	if !ok {
+		return issue("JSON_TYPE", path, "field has an invalid type")
 	}
 	return nil
 }
@@ -447,7 +484,7 @@ func safePath(base, key string) string {
 			b.WriteString("~0")
 		case r == '/':
 			b.WriteString("~1")
-		case unicode.IsControl(r):
+		case unicode.IsControl(r) || unicode.In(r, unicode.Cf):
 			fmt.Fprintf(&b, "\\u%04x", r)
 		default:
 			b.WriteRune(r)
@@ -461,17 +498,6 @@ func safePath(base, key string) string {
 		}
 	}
 	return path
-}
-
-func strictObject(raw json.RawMessage, allowed, required map[string]struct{}) (map[string]json.RawMessage, error) {
-	var object map[string]json.RawMessage
-	if err := json.Unmarshal(raw, &object); err != nil {
-		return nil, err
-	}
-	if err := checkObjectFields(object, allowed, required); err != nil {
-		return nil, err
-	}
-	return object, nil
 }
 
 func rawArray(raw json.RawMessage) ([]json.RawMessage, error) {

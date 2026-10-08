@@ -1,12 +1,15 @@
 package config
 
 import (
+	"errors"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
 	"pitstop/internal/model"
 )
+
+var errConfigSize = errors.New("configuration exceeds the size limit")
 
 func ResolveRepo(path string) (string, error) {
 	if path == "" {
@@ -26,7 +29,11 @@ func ResolveRepo(path string) (string, error) {
 func Load(repo string) (model.Config, error) {
 	b, err := readConfig(repo)
 	if err != nil {
-		return model.Config{}, model.Err("CONFIG_INVALID", ".pitstop.json is required for run", err)
+		code, message := "FILE_INVALID", "configuration file is invalid or unavailable"
+		if errors.Is(err, errConfigSize) {
+			code, message = "SIZE_LIMIT", "configuration exceeds the size limit"
+		}
+		return model.Config{}, model.Err("CONFIG_INVALID", message, &model.ValidationError{Issue: model.ConfigIssue{Code: code, Message: message}})
 	}
 	return Parse(b)
 }
@@ -42,10 +49,10 @@ func ApplyOverrides(c model.Config, jobs []string, architecture string) (model.C
 		seen := make(map[string]struct{}, len(jobs))
 		for _, id := range jobs {
 			if _, ok := configured[id]; !ok {
-				return model.Config{}, overrideIssue("SELECTION_INVALID", "job is not in configured selection")
+				return model.Config{}, overrideIssue("SELECTION_INVALID", "/jobs", "job is not in configured selection")
 			}
 			if _, ok := seen[id]; ok {
-				return model.Config{}, overrideIssue("SELECTION_INVALID", "job selection contains duplicates")
+				return model.Config{}, overrideIssue("SELECTION_INVALID", "/jobs", "job selection contains duplicates")
 			}
 			seen[id] = struct{}{}
 		}
@@ -60,6 +67,6 @@ func ApplyOverrides(c model.Config, jobs []string, architecture string) (model.C
 	return effective, nil
 }
 
-func overrideIssue(code, message string) error {
-	return model.Err("CONFIG_INVALID", message, &model.ValidationError{Issue: model.ConfigIssue{Code: code, Message: message}})
+func overrideIssue(code, path, message string) error {
+	return model.Err("CONFIG_INVALID", message, &model.ValidationError{Issue: model.ConfigIssue{Code: code, Path: path, Message: message}})
 }

@@ -207,6 +207,20 @@ func TestLoadBoundsOpenedFile(t *testing.T) {
 	}
 }
 
+func TestLoadFileIssuesAreStructured(t *testing.T) {
+	var ve *model.ValidationError
+	if _, err := Load(t.TempDir()); !errors.As(err, &ve) || ve.Issue.Code != "FILE_INVALID" {
+		t.Fatalf("missing file issue = %#v (%v)", ve, err)
+	}
+	d := t.TempDir()
+	if err := os.WriteFile(filepath.Join(d, ".pitstop.json"), []byte(strings.Repeat("x", model.MaxConfigBytes+1)), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load(d); !errors.As(err, &ve) || ve.Issue.Code != "SIZE_LIMIT" {
+		t.Fatalf("oversized file issue = %#v (%v)", ve, err)
+	}
+}
+
 func TestOverridesMatchConfiguredSelection(t *testing.T) {
 	c := model.Config{SchemaVersion: 2, Jobs: []string{"verify", "lint"}, Runner: model.RunnerConfig{Image: "node:22-bookworm", Architecture: "linux/arm64"}, Checks: []model.Check{{ID: "verify", Steps: []model.CheckStep{{ID: "s", Run: "true"}}}, {ID: "lint", Steps: []model.CheckStep{{ID: "s", Run: "true"}}}}}
 	originalJobs := append([]string(nil), c.Jobs...)
@@ -218,7 +232,8 @@ func TestOverridesMatchConfiguredSelection(t *testing.T) {
 		t.Fatal("ApplyOverrides mutated input jobs")
 	}
 	for _, jobs := range [][]string{{"unknown"}, {"verify", "verify"}} {
-		if _, err := ApplyOverrides(c, jobs, ""); err == nil {
+		var ve *model.ValidationError
+		if _, err := ApplyOverrides(c, jobs, ""); !errors.As(err, &ve) || ve.Issue.Code != "SELECTION_INVALID" || ve.Issue.Path != "/jobs" {
 			t.Fatalf("accepted invalid selection %v", jobs)
 		}
 	}

@@ -137,13 +137,49 @@ func TestConfigImageBounds(t *testing.T) {
 func TestValidationDiagnosticsNoContent(t *testing.T) {
 	secret := "TOPSECRET-echo-payload"
 	c := Config{SchemaVersion: 2, Jobs: []string{"verify"}, Runner: RunnerConfig{Image: "node:22-bookworm", Architecture: "linux/arm64"}, Checks: []Check{{ID: "verify", Steps: []CheckStep{{ID: "check", Run: secret}}}}}
-	c.Checks[0].Steps[0].Run = ""
+	c.Checks[0].Steps[0].Run += "\x00tail"
 	var ve *ValidationError
 	err := c.Validate()
 	if !errors.As(err, &ve) || ve.Issue.Path != "/checks/0/steps/0/run" {
 		t.Fatalf("missing trusted validation issue: %#v", err)
 	}
-	if strings.Contains(err.Error(), secret) || strings.Contains(err.Error(), "\x1b") {
+	if c.Checks[0].Steps[0].Run == "" || strings.Contains(err.Error(), secret) || strings.Contains(err.Error(), "\x1b") {
 		t.Fatalf("diagnostic leaked content: %q", err)
+	}
+}
+
+func TestConfigTotalStepsAndNameBoundaries(t *testing.T) {
+	c := Config{SchemaVersion: 2, Runner: RunnerConfig{Image: "node:22-bookworm", Architecture: "linux/arm64"}}
+	for i := 0; i < 16; i++ {
+		id := "check" + strconv.Itoa(i)
+		c.Jobs = append(c.Jobs, id)
+		check := Check{ID: id}
+		for j := 0; j < MaxStepsPerCheck; j++ {
+			check.Steps = append(check.Steps, CheckStep{ID: "step" + strconv.Itoa(j), Run: "true"})
+		}
+		c.Checks = append(c.Checks, check)
+	}
+	if err := c.Validate(); err != nil {
+		t.Fatalf("2048 steps rejected: %v", err)
+	}
+	over := c
+	over.Jobs = append(append([]string(nil), c.Jobs...), "overflow")
+	over.Checks = append(append([]Check(nil), c.Checks...), Check{ID: "overflow", Steps: []CheckStep{{ID: "step", Run: "true"}}})
+	if err := over.Validate(); err == nil {
+		t.Fatal("2049 steps accepted")
+	}
+	name := c
+	name.Checks = []Check{{ID: "verify", Steps: []CheckStep{{ID: "step", Name: strings.Repeat("a", MaxNameBytes), Run: "true"}}}}
+	name.Jobs = []string{"verify"}
+	if err := name.Validate(); err != nil {
+		t.Fatalf("256-byte name rejected: %v", err)
+	}
+	name.Checks[0].Steps[0].Name += "a"
+	if err := name.Validate(); err == nil {
+		t.Fatal("257-byte name accepted")
+	}
+	name.Checks[0].Steps[0].Name = ""
+	if err := name.Validate(); err != nil {
+		t.Fatalf("absent name representation rejected: %v", err)
 	}
 }

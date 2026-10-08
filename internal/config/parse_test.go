@@ -186,3 +186,32 @@ func TestParseStructuredIssues(t *testing.T) {
 		t.Fatalf("empty name issue = %#v (%v)", ve, err)
 	}
 }
+
+func TestParseShapeIssuesCarryJSONPointers(t *testing.T) {
+	var ve *model.ValidationError
+	if _, err := Parse([]byte(validConfig)); err != nil {
+		t.Fatalf("absent optional name rejected: %v", err)
+	}
+	missing := strings.Replace(validConfig, `,"run":"true"`, "", 1)
+	_, err := Parse([]byte(missing))
+	if !errors.As(err, &ve) || ve.Issue.Code != "FIELD_REQUIRED" || ve.Issue.Path != "/checks/0/steps/0/run" {
+		t.Fatalf("missing run issue = %#v (%v)", ve, err)
+	}
+	_, err = Parse([]byte(strings.Replace(validConfig, `"run":"true"`, `"run":1`, 1)))
+	if !errors.As(err, &ve) || ve.Issue.Code != "JSON_TYPE" || ve.Issue.Path != "/checks/0/steps/0/run" {
+		t.Fatalf("wrong run issue = %#v (%v)", ve, err)
+	}
+	input := validConfig[:len(validConfig)-1] + `,"unknown\u202eKey":1}`
+	_, err = Parse([]byte(input))
+	if !errors.As(err, &ve) || ve.Issue.Code != "JSON_UNKNOWN_FIELD" || strings.ContainsRune(ve.Issue.Path, '\u202e') || !strings.Contains(ve.Issue.Path, `\u202e`) {
+		t.Fatalf("format-control path = %#v (%v)", ve, err)
+	}
+}
+
+func TestParseV1MigrationCarriesIssue(t *testing.T) {
+	var ve *model.ValidationError
+	_, err := Parse([]byte(`{"schemaVersion":1,"workflow":"ci.yml"}`))
+	if !errors.As(err, &ve) || ve.Issue.Code != "SCHEMA_VERSION" || ve.Issue.Path != "/schemaVersion" || !strings.Contains(err.Error(), "schemaVersion 1") {
+		t.Fatalf("migration issue = %#v (%v)", ve, err)
+	}
+}
