@@ -23,6 +23,9 @@ func validateCmd(out io.Writer, repo *string) *cobra.Command {
 			}
 			resolved, err := config.ResolveRepo(*repo)
 			if err != nil {
+				if ctxErr := cmd.Context().Err(); ctxErr != nil {
+					return writeValidateError(out, jsonOut, ctxErr)
+				}
 				return err
 			}
 			if err := cmd.Context().Err(); err != nil {

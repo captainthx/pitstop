@@ -13,6 +13,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 type failingWriter struct{}
@@ -80,6 +81,9 @@ func treeState(root string) (map[string]string, error) {
 
 func TestValidateOfflineAndNoWrites(t *testing.T) {
 	d := t.TempDir()
+	fixtureHome := t.TempDir()
+	t.Setenv("HOME", fixtureHome)
+	t.Setenv("XDG_CACHE_HOME", filepath.Join(fixtureHome, "cache"))
 	if out, err := exec.Command("git", "init", "-q", d).CombinedOutput(); err != nil {
 		t.Fatal(string(out))
 	}
@@ -131,7 +135,7 @@ func TestValidateOfflineAndNoWrites(t *testing.T) {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(repoBefore, repoAfter) || !reflect.DeepEqual(cacheBefore, cacheAfter) {
-		t.Fatalf("validate changed repo/cache state: repo=%v cache=%v", repoAfter, cacheAfter)
+		t.Fatal("validate changed repo/cache state")
 	}
 }
 
@@ -285,15 +289,23 @@ func TestValidateCommandFlagsAndEnvelope(t *testing.T) {
 		{[]string{"validate", "--repo", d, "unexpected", "--json"}, 2, true, "validate"},
 		{[]string{"validate", "--repo", d, "--unknown", "--json"}, 2, true, "validate"},
 		{[]string{"validate", "--repo", "--json"}, 2, false, "validate"},
+		{[]string{"validate", "--repo"}, 2, false, ""},
+		{[]string{"validate", "--arch"}, 2, false, ""},
+		{[]string{"validate", "--json", "--arch"}, 2, true, "validate"},
 	} {
 		var out, errOut bytes.Buffer
 		if code := Execute(tc.args, &out, &errOut); code != tc.code {
 			t.Fatalf("args=%v code=%d want=%d stdout=%q stderr=%q", tc.args, code, tc.code, out.String(), errOut.String())
 		}
 		if tc.json {
+			decoder := json.NewDecoder(&out)
 			var envelope model.Envelope
-			if err := json.Unmarshal(out.Bytes(), &envelope); err != nil || envelope.Command != tc.command {
+			if err := decoder.Decode(&envelope); err != nil || envelope.Command != tc.command {
 				t.Fatalf("args=%v envelope=%#v err=%v", tc.args, envelope, err)
+			}
+			var extra any
+			if err := decoder.Decode(&extra); err != io.EOF {
+				t.Fatalf("args=%v emitted more than one envelope: %v", tc.args, err)
 			}
 		} else if out.Len() > 0 && strings.Contains(out.String(), "\"schemaVersion\"") {
 			t.Fatalf("args=%v unexpectedly emitted JSON: %q", tc.args, out.String())
@@ -305,9 +317,80 @@ func TestValidateCommandFlagsAndEnvelope(t *testing.T) {
 			t.Fatalf("%s code=%d stdout=%q stderr=%q", name, code, out.String(), errOut.String())
 		}
 		var envelope model.Envelope
-		if err := json.Unmarshal(out.Bytes(), &envelope); err != nil || envelope.Command != name {
+		decoder := json.NewDecoder(&out)
+		if err := decoder.Decode(&envelope); err != nil || envelope.Command != name {
 			t.Fatalf("%s envelope=%#v err=%v", name, envelope, err)
 		}
+		var extra any
+		if err := decoder.Decode(&extra); err != io.EOF {
+			t.Fatalf("%s emitted more than one envelope: %v", name, err)
+		}
+	}
+}
+
+func TestValidateAcceptsSpaceAndCommandNamedRepositories(t *testing.T) {
+	parent := t.TempDir()
+	config := `{"schemaVersion":2,"runner":{"image":"alpine:3.22","architecture":"linux/arm64"},"jobs":["verify"],"checks":[{"id":"verify","steps":[{"id":"check","run":"true"}]}]}`
+	for _, name := range []string{"run", "validate"} {
+		d := filepath.Join(parent, "space dir", name)
+		if err := os.MkdirAll(d, 0700); err != nil {
+			t.Fatal(err)
+		}
+		if out, err := exec.Command("git", "init", "-q", d).CombinedOutput(); err != nil {
+			t.Fatal(string(out))
+		}
+		if err := os.WriteFile(filepath.Join(d, ".pitstop.json"), []byte(config), 0600); err != nil {
+			t.Fatal(err)
+		}
+		var out, errOut bytes.Buffer
+		if code := Execute([]string{"validate", "--repo", d, "--json"}, &out, &errOut); code != 0 {
+			t.Fatalf("repo=%q code=%d stdout=%s stderr=%s", d, code, out.String(), errOut.String())
+		}
+		var envelope model.Envelope
+		if err := json.Unmarshal(out.Bytes(), &envelope); err != nil || envelope.Command != "validate" {
+			t.Fatalf("repo=%q envelope=%#v err=%v", d, envelope, err)
+		}
+	}
+}
+
+func TestValidateCancellationWinsOverResolveRepoFailure(t *testing.T) {
+	d := t.TempDir()
+	fakeBin := t.TempDir()
+	started := filepath.Join(t.TempDir(), "git-started")
+	stop := filepath.Join(t.TempDir(), "git-stop")
+	script := "#!/bin/sh\ntouch \"$PITSTOP_GIT_STARTED\"\nwhile [ ! -f \"$PITSTOP_GIT_STOP\" ]; do sleep 0.01; done\nexit 1\n"
+	if err := os.WriteFile(filepath.Join(fakeBin, "git"), []byte(script), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PITSTOP_GIT_STARTED", started)
+	t.Setenv("PITSTOP_GIT_STOP", stop)
+	t.Setenv("PATH", fakeBin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		deadline := time.NewTimer(time.Second)
+		defer deadline.Stop()
+		for {
+			if _, err := os.Stat(started); err == nil {
+				_ = os.WriteFile(stop, []byte("stop"), 0600)
+				cancel()
+				return
+			}
+			select {
+			case <-deadline.C:
+				cancel()
+				return
+			case <-time.After(time.Millisecond):
+			}
+		}
+	}()
+	var out, errOut bytes.Buffer
+	if code := ExecuteContext(ctx, []string{"validate", "--repo", d, "--json"}, &out, &errOut); code != 130 {
+		t.Fatalf("code=%d stdout=%s stderr=%s", code, out.String(), errOut.String())
+	}
+	var envelope model.Envelope
+	if err := json.Unmarshal(out.Bytes(), &envelope); err != nil || envelope.ExitCode != 130 || envelope.Error == nil || envelope.Error.Code != "CANCELLED" {
+		t.Fatalf("envelope=%#v err=%v", envelope, err)
 	}
 }
 
