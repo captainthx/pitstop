@@ -53,8 +53,9 @@ type manifestEntry struct {
 }
 
 type bundle struct {
-	files []string
-	data  map[string][]byte
+	files  []string
+	data   map[string][]byte
+	hashes map[string]string
 }
 
 // These narrow hooks keep transaction boundary failures testable without introducing a filesystem abstraction.
@@ -295,13 +296,14 @@ func loadBundle() (bundle, error) {
 		}
 		data[path] = contents
 	}
-	var m manifest
-	if err := json.Unmarshal(data["manifest.json"], &m); err != nil || m.Owner != "pitstop" || m.BundleVersion != agentassets.BundleVersion {
+	m, err := parseManifest(data["manifest.json"])
+	if err != nil || m.BundleVersion != agentassets.BundleVersion {
 		return bundle{}, installError("SKILL_INSTALL_FAILED", "embedded bundle manifest is invalid", err)
 	}
 	want := append([]string(nil), files...)
 	want = removeString(want, "manifest.json")
 	got := make([]string, 0, len(m.Files))
+	hashes := map[string]string{"manifest.json": hashBytes(data["manifest.json"])}
 	for _, entry := range m.Files {
 		got = append(got, entry.Path)
 		contents, ok := data[entry.Path]
@@ -312,38 +314,44 @@ func loadBundle() (bundle, error) {
 		if entry.SHA256 != hex.EncodeToString(hash[:]) {
 			return bundle{}, installError("SKILL_INSTALL_FAILED", "embedded bundle manifest hash mismatch", nil)
 		}
+		hashes[entry.Path] = entry.SHA256
 	}
 	if !reflectStringsEqual(got, want) {
 		return bundle{}, installError("SKILL_INSTALL_FAILED", "embedded bundle manifest is incomplete", nil)
 	}
-	return bundle{files: files, data: data}, nil
+	return bundle{files: files, data: data, hashes: hashes}, nil
 }
 
 func verifyOwnedBundle(root *os.Root, target string) error {
 	manifestPath := filepath.ToSlash(filepath.Join(target, "manifest.json"))
-	trustedBundles := agentassets.TrustedBundles()
+	trustedManifests := agentassets.TrustedManifests()
 	maxManifestSize := 0
-	for _, trusted := range trustedBundles {
-		if len(trusted.Manifest) > maxManifestSize {
-			maxManifestSize = len(trusted.Manifest)
+	for _, trusted := range trustedManifests {
+		if len(trusted) > maxManifestSize {
+			maxManifestSize = len(trusted)
 		}
 	}
 	manifestBytes, err := readRegular(root, manifestPath, maxManifestSize)
 	if err != nil {
 		return err
 	}
-	for _, trusted := range trustedBundles {
-		if !bytes.Equal(manifestBytes, trusted.Manifest) {
+	for _, trusted := range trustedManifests {
+		if !bytes.Equal(manifestBytes, trusted) {
 			continue
 		}
-		files := make([]string, 0, len(trusted.Files))
-		data := make(map[string][]byte, len(trusted.Files))
-		for path, contents := range trusted.Files {
-			files = append(files, path)
-			data[path] = append([]byte(nil), contents...)
+		m, err := parseManifest(trusted)
+		if err != nil {
+			return errors.New("trusted bundle manifest is invalid")
 		}
+		files := make([]string, 0, len(m.Files)+1)
+		hashes := map[string]string{"manifest.json": hashBytes(trusted)}
+		for _, entry := range m.Files {
+			files = append(files, entry.Path)
+			hashes[entry.Path] = entry.SHA256
+		}
+		files = append(files, "manifest.json")
 		sort.Strings(files)
-		return verifyBundle(root, target, bundle{files: files, data: data})
+		return verifyBundle(root, target, bundle{files: files, hashes: hashes})
 	}
 	return errors.New("destination manifest is not a trusted Pitstop manifest")
 }
@@ -412,11 +420,16 @@ func verifyBundle(root *os.Root, target string, b bundle) error {
 			return fmt.Errorf("unknown bundle file: %s", rel)
 		}
 		info, err := entry.Info()
-		if err != nil || !info.Mode().IsRegular() || int64(len(b.data[rel])) != info.Size() {
+		data, hasData := b.data[rel]
+		maxSize := int64(1 << 20)
+		if hasData {
+			maxSize = int64(len(data))
+		}
+		if err != nil || !info.Mode().IsRegular() || info.Size() > maxSize || (hasData && info.Size() != int64(len(data))) {
 			return fmt.Errorf("invalid bundle file: %s", rel)
 		}
-		contents, err := readRegular(root, filepath.ToSlash(filepath.Join(target, filepath.FromSlash(rel))), len(b.data[rel]))
-		if err != nil || !bytes.Equal(contents, b.data[rel]) {
+		contents, err := readRegular(root, filepath.ToSlash(filepath.Join(target, filepath.FromSlash(rel))), int(maxSize))
+		if err != nil || (hasData && !bytes.Equal(contents, data)) || hashBytes(contents) != b.hashes[rel] {
 			return fmt.Errorf("bundle content mismatch: %s", rel)
 		}
 		seen[rel] = true
@@ -447,6 +460,24 @@ func readRegular(root *os.Root, path string, size int) ([]byte, error) {
 		return nil, errors.New("file exceeds expected size")
 	}
 	return data, nil
+}
+
+func parseManifest(data []byte) (manifest, error) {
+	var m manifest
+	if err := json.Unmarshal(data, &m); err != nil || m.Owner != "pitstop" || len(m.Files) == 0 {
+		return manifest{}, errors.New("invalid manifest")
+	}
+	for _, entry := range m.Files {
+		if !isValidBundlePath(entry.Path) || len(entry.SHA256) != sha256.Size*2 {
+			return manifest{}, errors.New("invalid manifest file entry")
+		}
+	}
+	return m, nil
+}
+
+func hashBytes(data []byte) string {
+	hash := sha256.Sum256(data)
+	return hex.EncodeToString(hash[:])
 }
 
 func targetState(root *os.Root, target string) (bool, error) {

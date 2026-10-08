@@ -91,6 +91,10 @@ func TestInstallForcePreservesUnknownDestination(t *testing.T) {
 	if _, err := Install(context.Background(), Options{Agent: "codex", Scope: "project", Repo: repo}); err != nil {
 		t.Fatal(err)
 	}
+	original, err := os.ReadFile(filepath.Join(target, "SKILL.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	sentinel := []byte("user-authored")
 	if err := os.WriteFile(filepath.Join(target, "extra.txt"), sentinel, 0600); err != nil {
 		t.Fatal(err)
@@ -103,6 +107,10 @@ func TestInstallForcePreservesUnknownDestination(t *testing.T) {
 	got, readErr := os.ReadFile(filepath.Join(target, "extra.txt"))
 	if readErr != nil || string(got) != string(sentinel) {
 		t.Fatalf("unknown file changed: %q err=%v", got, readErr)
+	}
+	got, readErr = os.ReadFile(filepath.Join(target, "SKILL.md"))
+	if readErr != nil || !bytes.Equal(got, original) {
+		t.Fatalf("owned file changed: readErr=%v", readErr)
 	}
 }
 
@@ -281,16 +289,42 @@ func TestInstallForceUpgradesKnownHistoricalBundle(t *testing.T) {
 	if err := os.MkdirAll(target, 0700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(target, "SKILL.md"), []byte("old trusted pitstop skill\n"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	oldManifest := `{"owner":"pitstop","bundleVersion":"0","files":[{"path":"SKILL.md","sha256":"93d3877fd3b5efe6959760030ad44e3b9094f5ce0e110054dd308d82ee225d88"}]}`
-	if err := os.WriteFile(filepath.Join(target, "manifest.json"), []byte(oldManifest), 0600); err != nil {
-		t.Fatal(err)
-	}
+	writeHistoricalDraft(t, target)
 	result, err := Install(context.Background(), Options{Agent: "codex", Scope: "project", Repo: repo, Force: true})
 	if err != nil || !result.Installed {
 		t.Fatalf("historical upgrade result=%#v err=%v", result, err)
+	}
+}
+
+func writeHistoricalDraft(t *testing.T, target string) {
+	t.Helper()
+	manifests := agentassets.TrustedManifests()
+	if len(manifests) < 2 {
+		t.Fatal("historical manifest missing")
+	}
+	m, err := parseManifest(manifests[1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range m.Files {
+		fixture := filepath.Join("..", "agentassets", "testdata", "ff87a16", filepath.FromSlash(entry.Path))
+		data, readErr := os.ReadFile(fixture)
+		if errors.Is(readErr, os.ErrNotExist) {
+			data, readErr = agentassets.ReadFile(entry.Path)
+		}
+		if readErr != nil {
+			t.Fatalf("historical fixture %s: %v", entry.Path, readErr)
+		}
+		path := filepath.Join(target, filepath.FromSlash(entry.Path))
+		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, data, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(target, "manifest.json"), manifests[1], 0600); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -325,6 +359,37 @@ func TestInstallStagingFailureLeavesNoDestination(t *testing.T) {
 	resolvedRepo, _ := filepath.EvalSymlinks(repo)
 	if _, statErr := os.Stat(filepath.Join(resolvedRepo, ".agents", "skills", "pitstop-config")); !errors.Is(statErr, os.ErrNotExist) {
 		t.Fatalf("destination survived staging failure: %v", statErr)
+	}
+}
+
+func TestInstallForceStagingFailurePreservesOwnedBundle(t *testing.T) {
+	repo := skillTestRepo(t)
+	if _, err := Install(context.Background(), Options{Agent: "codex", Scope: "project", Repo: repo}); err != nil {
+		t.Fatal(err)
+	}
+	resolvedRepo, _ := filepath.EvalSymlinks(repo)
+	target := filepath.Join(resolvedRepo, ".agents", "skills", "pitstop-config")
+	original := make(map[string][]byte)
+	for _, path := range agentassets.Files() {
+		data, err := os.ReadFile(filepath.Join(target, filepath.FromSlash(path)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		original[path] = data
+	}
+	previous := installWrite
+	installWrite = func(*os.File, []byte) error { return errors.New("replacement staging write fault") }
+	defer func() { installWrite = previous }()
+	result, err := Install(context.Background(), Options{Agent: "codex", Scope: "project", Repo: repo, Force: true})
+	var installErr *model.Error
+	if err == nil || result.Installed || !errors.As(err, &installErr) || installErr.Code != "SKILL_INSTALL_FAILED" {
+		t.Fatalf("replacement staging fault result=%#v err=%v", result, err)
+	}
+	for path, want := range original {
+		got, readErr := os.ReadFile(filepath.Join(target, filepath.FromSlash(path)))
+		if readErr != nil || !bytes.Equal(got, want) {
+			t.Fatalf("original %s changed: readErr=%v", path, readErr)
+		}
 	}
 }
 
@@ -375,12 +440,19 @@ func TestInstallForceRejectsMissingManifestAndInsideSymlink(t *testing.T) {
 			}
 			resolvedRepo, _ := filepath.EvalSymlinks(repo)
 			target := filepath.Join(resolvedRepo, ".agents", "skills", "pitstop-config")
+			original, err := os.ReadFile(filepath.Join(target, "SKILL.md"))
+			if err != nil {
+				t.Fatal(err)
+			}
 			if err := tc.edit(target); err != nil {
 				t.Fatal(err)
 			}
 			result, err := Install(context.Background(), Options{Agent: "codex", Scope: "project", Repo: repo, Force: true})
 			if err == nil || result.Installed {
 				t.Fatalf("unsafe bundle accepted: result=%#v err=%v", result, err)
+			}
+			if got, readErr := os.ReadFile(filepath.Join(target, "SKILL.md")); readErr != nil || !bytes.Equal(got, original) {
+				t.Fatalf("owned file changed: readErr=%v", readErr)
 			}
 		})
 	}
@@ -393,6 +465,10 @@ func TestInstallForceRejectsForgedManifest(t *testing.T) {
 	}
 	resolvedRepo, _ := filepath.EvalSymlinks(repo)
 	target := filepath.Join(resolvedRepo, ".agents", "skills", "pitstop-config")
+	original, err := os.ReadFile(filepath.Join(target, "SKILL.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
 	manifestPath := filepath.Join(target, "manifest.json")
 	manifest, err := os.ReadFile(manifestPath)
 	if err != nil {
@@ -405,6 +481,9 @@ func TestInstallForceRejectsForgedManifest(t *testing.T) {
 	result, err := Install(context.Background(), Options{Agent: "codex", Scope: "project", Repo: repo, Force: true})
 	if err == nil || result.Installed {
 		t.Fatalf("forged manifest accepted: result=%#v err=%v", result, err)
+	}
+	if got, readErr := os.ReadFile(filepath.Join(target, "SKILL.md")); readErr != nil || !bytes.Equal(got, original) {
+		t.Fatalf("owned file changed or disappeared: readErr=%v", readErr)
 	}
 }
 

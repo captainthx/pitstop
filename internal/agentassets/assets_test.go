@@ -1,6 +1,7 @@
 package agentassets_test
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -14,6 +15,25 @@ import (
 	"pitstop/internal/agentassets"
 	"pitstop/internal/config"
 )
+
+func TestTrustedManifestsIncludeCurrentAndUnreleasedDraft(t *testing.T) {
+	manifests := agentassets.TrustedManifests()
+	if len(manifests) != 2 || bytes.Equal(manifests[0], manifests[1]) {
+		t.Fatalf("trusted manifest registry = %d entries or lacks distinct draft", len(manifests))
+	}
+	for i, data := range manifests {
+		var manifest struct {
+			Owner string `json:"owner"`
+			Files []struct {
+				Path   string `json:"path"`
+				SHA256 string `json:"sha256"`
+			} `json:"files"`
+		}
+		if err := json.Unmarshal(data, &manifest); err != nil || manifest.Owner != "pitstop" || len(manifest.Files) == 0 {
+			t.Fatalf("manifest %d invalid: %v", i, err)
+		}
+	}
+}
 
 func TestBundleCompleteAndValid(t *testing.T) {
 	expected := []string{

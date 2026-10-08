@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 2,
+  "runner": {"image": "alpine:3.22", "architecture": "linux/arm64"},
+  "jobs": ["verify"],
+  "checks": [{"id": "verify", "steps": [{"id": "script", "name": "Run reviewed shared script", "run": "sh scripts/check.sh"}]}]
+}
