@@ -44,21 +44,33 @@ func Human(w io.Writer, e model.Envelope) error {
 		}
 	}
 	if r, ok := e.Result.(model.RunReport); ok {
-		_, err := fmt.Fprintf(w, "pitstop run %s: exit %d engine=%s selected=%s workflow=%s duration=%dms report=%s\n", r.RunID, e.ExitCode, r.Engine.Name, r.Coverage.Selected, r.Coverage.Workflow, r.DurationMs, r.ReportPath)
+		if _, err := fmt.Fprintf(w, "pitstop run %s: exit %d engine=%s selected=%s workflow=%s duration=%dms report=%s\n", r.RunID, e.ExitCode, r.Engine.Name, r.Coverage.Selected, r.Coverage.Workflow, r.DurationMs, r.ReportPath); err != nil {
+			return err
+		}
 		for _, j := range r.Jobs {
-			fmt.Fprintf(w, "  %s: %s", j.ID, j.Status)
+			if _, err := fmt.Fprintf(w, "  %s: %s", j.ID, j.Status); err != nil {
+				return err
+			}
 			if j.ReasonCode != nil {
-				fmt.Fprintf(w, " (%s)", *j.ReasonCode)
+				if _, err := fmt.Fprintf(w, " (%s)", *j.ReasonCode); err != nil {
+					return err
+				}
 			}
 			if j.Reason != nil {
-				fmt.Fprintf(w, " %s", *j.Reason)
+				if _, err := fmt.Fprintf(w, " %s", *j.Reason); err != nil {
+					return err
+				}
 			}
-			fmt.Fprintf(w, " log=%s\n", j.LogPath)
+			if _, err := fmt.Fprintf(w, " log=%s\n", j.LogPath); err != nil {
+				return err
+			}
 		}
 		for _, warning := range r.Warnings {
-			fmt.Fprintln(w, "warning:", warning)
+			if _, err := fmt.Fprintln(w, "warning:", warning); err != nil {
+				return err
+			}
 		}
-		return err
+		return nil
 	}
 	if r, ok := e.Result.(model.ValidateResult); ok {
 		if _, err := fmt.Fprintf(w, "validate: valid=%t repo=%s config=%s architecture=%s checks=%d steps=%d\n", r.Valid, r.Repo, r.ConfigPath, r.Architecture, r.CheckCount, r.StepCount); err != nil {
@@ -72,7 +84,9 @@ func Human(w io.Writer, e model.Envelope) error {
 		return nil
 	}
 	if r, ok := e.Result.(model.ListResult); ok {
-		fmt.Fprintf(w, "repo: %s\nchecks: %s\n", r.Repo, r.ConfigPath)
+		if _, err := fmt.Fprintf(w, "repo: %s\nchecks: %s\n", r.Repo, r.ConfigPath); err != nil {
+			return err
+		}
 		for _, j := range r.Jobs {
 			status := "excluded"
 			if j.Selected {
@@ -81,18 +95,28 @@ func Human(w io.Writer, e model.Envelope) error {
 			if !j.Eligible {
 				status += " blocked"
 			}
-			fmt.Fprintf(w, "  %s: %s", j.ID, status)
-			if len(j.Reasons) > 0 {
-				fmt.Fprintf(w, " (%s)", strings.Join(j.Reasons, "; "))
+			if _, err := fmt.Fprintf(w, "  %s: %s", j.ID, status); err != nil {
+				return err
 			}
-			fmt.Fprintln(w)
+			if len(j.Reasons) > 0 {
+				if _, err := fmt.Fprintf(w, " (%s)", strings.Join(j.Reasons, "; ")); err != nil {
+					return err
+				}
+			}
+			if _, err := fmt.Fprintln(w); err != nil {
+				return err
+			}
 		}
 		return nil
 	}
 	if r, ok := e.Result.(model.DoctorResult); ok {
-		fmt.Fprintf(w, "doctor: ready=%t\n", r.Ready)
+		if _, err := fmt.Fprintf(w, "doctor: ready=%t\n", r.Ready); err != nil {
+			return err
+		}
 		for _, c := range r.Checks {
-			fmt.Fprintf(w, "  %s: %s %s\n", c.Name, c.Status, c.Message)
+			if _, err := fmt.Fprintf(w, "  %s: %s %s\n", c.Name, c.Status, c.Message); err != nil {
+				return err
+			}
 		}
 		return nil
 	}

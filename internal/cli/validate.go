@@ -29,16 +29,25 @@ func validateCmd(out io.Writer, repo *string) *cobra.Command {
 				return writeValidateError(out, jsonOut, err)
 			}
 			configPath := filepath.Join(resolved, ".pitstop.json")
-			cfg, err := config.Load(resolved)
-			if err != nil {
-				return writeValidateConfigError(out, jsonOut, resolved, configPath, err)
+			cfg, loadErr := config.Load(resolved)
+			if loadErr != nil {
+				if ctxErr := cmd.Context().Err(); ctxErr != nil {
+					return writeValidateError(out, jsonOut, ctxErr)
+				}
+				return writeValidateConfigError(out, jsonOut, resolved, configPath, loadErr)
 			}
 			if err := cmd.Context().Err(); err != nil {
 				return writeValidateError(out, jsonOut, err)
 			}
-			effective, err := config.ApplyOverrides(cfg, jobs, arch)
-			if err != nil {
-				return writeValidateConfigError(out, jsonOut, resolved, configPath, err)
+			effective, overrideErr := config.ApplyOverrides(cfg, jobs, arch)
+			if overrideErr != nil {
+				if ctxErr := cmd.Context().Err(); ctxErr != nil {
+					return writeValidateError(out, jsonOut, ctxErr)
+				}
+				return writeValidateConfigError(out, jsonOut, resolved, configPath, overrideErr)
+			}
+			if err := cmd.Context().Err(); err != nil {
+				return writeValidateError(out, jsonOut, err)
 			}
 			result := validateResult(resolved, configPath, effective)
 			envelope := model.Envelope{SchemaVersion: model.SchemaVersion, Command: "validate", ExitCode: 0, Result: result}

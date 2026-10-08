@@ -17,7 +17,7 @@ func FuzzParse(f *testing.F) {
 		[]byte(`{"schemaVersion":1,"workflow":"ci.yml"}`),
 		[]byte(`null`),
 		[]byte("\ufeff{}"),
-		[]byte(`{"schemaVersion":2,"runner":{"image":"alpine:3.22","architecture":"linux/arm64"},"jobs":["verify"],"checks":[{"id":"verify","steps":[{"id":"check","run":"` + strings.Repeat("[", model.MaxJSONDepth+1) + `"}]}]}`),
+		[]byte(`{"schemaVersion":1,"unused":` + strings.Repeat("[", model.MaxJSONDepth+1) + `0` + strings.Repeat("]", model.MaxJSONDepth+1) + `}`),
 		[]byte(`{"schemaVersion":2,"runner":{"image":"alpine:3.22","architecture":"linux/arm64"},"jobs":["verify"],"checks":[{"id":"verify","steps":[{"id":"check","run":"\u0000"}]}]}`),
 	} {
 		f.Add(seed)
