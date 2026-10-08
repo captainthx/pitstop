@@ -206,3 +206,30 @@ func TestLoadBoundsOpenedFile(t *testing.T) {
 		t.Fatal("oversized config accepted")
 	}
 }
+
+func TestOverridesMatchConfiguredSelection(t *testing.T) {
+	c := model.Config{SchemaVersion: 2, Jobs: []string{"verify", "lint"}, Runner: model.RunnerConfig{Image: "node:22-bookworm", Architecture: "linux/arm64"}, Checks: []model.Check{{ID: "verify", Steps: []model.CheckStep{{ID: "s", Run: "true"}}}, {ID: "lint", Steps: []model.CheckStep{{ID: "s", Run: "true"}}}}}
+	originalJobs := append([]string(nil), c.Jobs...)
+	got, err := ApplyOverrides(c, []string{"lint"}, "linux/amd64")
+	if err != nil || len(got.Jobs) != 1 || got.Jobs[0] != "lint" || got.Runner.Architecture != "linux/amd64" {
+		t.Fatalf("apply overrides = %#v, %v", got, err)
+	}
+	if strings.Join(c.Jobs, ",") != strings.Join(originalJobs, ",") {
+		t.Fatal("ApplyOverrides mutated input jobs")
+	}
+	for _, jobs := range [][]string{{"unknown"}, {"verify", "verify"}} {
+		if _, err := ApplyOverrides(c, jobs, ""); err == nil {
+			t.Fatalf("accepted invalid selection %v", jobs)
+		}
+	}
+	for _, arch := range []string{"", "linux/arm64", "linux/amd64"} {
+		if got, err := ApplyOverrides(c, nil, arch); err != nil || got.Runner.Architecture != map[string]string{"": "linux/arm64", "linux/arm64": "linux/arm64", "linux/amd64": "linux/amd64"}[arch] {
+			t.Fatalf("architecture %q: %#v, %v", arch, got, err)
+		}
+	}
+	for _, arch := range []string{"darwin/arm64", "linux/386"} {
+		if _, err := ApplyOverrides(c, nil, arch); err == nil {
+			t.Fatalf("accepted invalid architecture %q", arch)
+		}
+	}
+}

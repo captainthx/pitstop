@@ -1,8 +1,10 @@
 package model
 
 import (
+	"strconv"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 )
 
 // SchemaVersion is the version of the JSON envelope, not the project config.
@@ -10,6 +12,29 @@ const SchemaVersion = 1
 const ConfigSchemaVersion = 2
 const MaxConfigBytes = 1048576
 const MaxJSONDepth = 16
+const MaxJobs = 128
+const MaxChecks = 128
+const MaxStepsPerCheck = 128
+const MaxTotalSteps = 2048
+const MaxRunBytes = 65536
+const MaxNameBytes = 256
+const MaxImageBytes = 1024
+const MaxIssueMessageBytes = 512
+const MaxIssuePathBytes = 256
+
+type ConfigIssue struct {
+	Code    string `json:"code"`
+	Path    string `json:"path"`
+	Message string `json:"message"`
+}
+
+type ValidationError struct{ Issue ConfigIssue }
+
+func (e *ValidationError) Error() string { return e.Issue.Message }
+
+func issue(code, path, message string) error {
+	return Err("CONFIG_INVALID", message, &ValidationError{Issue: ConfigIssue{Code: code, Path: path, Message: message}})
+}
 
 type Error struct {
 	Code, Message string
@@ -48,62 +73,118 @@ type CheckStep struct {
 }
 
 func (c Config) Validate() error {
-	if c.SchemaVersion != ConfigSchemaVersion || len(c.Jobs) == 0 || len(c.Checks) == 0 || c.Runner.Image == "" {
-		return Err("CONFIG_INVALID", "schemaVersion 2, jobs, runner.image, and checks are required", nil)
+	if c.SchemaVersion != ConfigSchemaVersion {
+		return issue("SCHEMA_VERSION", "/schemaVersion", "schemaVersion must be 2")
+	}
+	if len(c.Jobs) == 0 {
+		return issue("FIELD_REQUIRED", "/jobs", "jobs is required")
+	}
+	if len(c.Jobs) > MaxJobs {
+		return issue("LIMIT_EXCEEDED", "/jobs", "jobs exceeds the configured limit")
+	}
+	if len(c.Checks) == 0 {
+		return issue("FIELD_REQUIRED", "/checks", "checks is required")
+	}
+	if len(c.Checks) > MaxChecks {
+		return issue("LIMIT_EXCEEDED", "/checks", "checks exceeds the configured limit")
+	}
+	if c.Runner.Image == "" {
+		return issue("FIELD_REQUIRED", "/runner/image", "runner.image is required")
 	}
 	if c.Runner.Architecture != "linux/arm64" && c.Runner.Architecture != "linux/amd64" {
-		return Err("CONFIG_INVALID", "runner.architecture must be linux/arm64 or linux/amd64", nil)
+		return issue("FIELD_INVALID", "/runner/architecture", "runner.architecture is unsupported")
 	}
-	if invalidText(c.Runner.Image, true) || strings.HasPrefix(c.Runner.Image, "-") {
-		return Err("CONFIG_INVALID", "runner.image must be a non-empty image reference without whitespace or control characters", nil)
+	if len(c.Runner.Image) > MaxImageBytes || strings.HasPrefix(c.Runner.Image, "-") || !validImage(c.Runner.Image) {
+		return issue("FIELD_INVALID", "/runner/image", "runner.image is invalid")
 	}
 	seen := map[string]bool{}
-	for _, j := range c.Jobs {
-		if !validID(j) || seen[j] {
-			return Err("CONFIG_INVALID", "jobs must contain unique valid IDs", nil)
+	for i, j := range c.Jobs {
+		path := "/jobs/" + strconv.Itoa(i)
+		if !validID(j) {
+			return issue("ID_INVALID", path, "job ID is invalid")
+		}
+		if seen[j] {
+			return issue("ID_DUPLICATE", path, "job IDs must be unique")
 		}
 		seen[j] = true
 	}
 	checks := map[string]bool{}
-	for _, check := range c.Checks {
-		if !validID(check.ID) || checks[check.ID] {
-			return Err("CONFIG_INVALID", "checks must contain unique valid IDs", nil)
+	totalSteps := 0
+	for i, check := range c.Checks {
+		checkPath := "/checks/" + strconv.Itoa(i)
+		if !validID(check.ID) {
+			return issue("ID_INVALID", checkPath+"/id", "check ID is invalid")
+		}
+		if checks[check.ID] {
+			return issue("ID_DUPLICATE", checkPath+"/id", "check IDs must be unique")
 		}
 		checks[check.ID] = true
 		if len(check.Steps) == 0 {
-			return Err("CONFIG_INVALID", "each check must contain at least one step", nil)
+			return issue("FIELD_REQUIRED", checkPath+"/steps", "each check requires a step")
+		}
+		if len(check.Steps) > MaxStepsPerCheck {
+			return issue("LIMIT_EXCEEDED", checkPath+"/steps", "steps per check exceeds the configured limit")
+		}
+		totalSteps += len(check.Steps)
+		if totalSteps > MaxTotalSteps {
+			return issue("LIMIT_EXCEEDED", checkPath+"/steps", "total steps exceeds the configured limit")
 		}
 		steps := map[string]bool{}
-		for _, step := range check.Steps {
-			if !validID(step.ID) || steps[step.ID] {
-				return Err("CONFIG_INVALID", "steps must contain unique valid IDs", nil)
+		for j, step := range check.Steps {
+			stepPath := checkPath + "/steps/" + strconv.Itoa(j)
+			if !validID(step.ID) {
+				return issue("ID_INVALID", stepPath+"/id", "step ID is invalid")
 			}
-			if invalidText(step.Run, false) {
-				return Err("CONFIG_INVALID", "step.run must be non-empty and contain no NUL", nil)
+			if steps[step.ID] {
+				return issue("ID_DUPLICATE", stepPath+"/id", "step IDs must be unique")
+			}
+			if step.Name != "" {
+				if len(step.Name) > MaxNameBytes || strings.TrimSpace(step.Name) == "" || hasUnsafeNameRune(step.Name) {
+					return issue("FIELD_INVALID", stepPath+"/name", "step.name is invalid")
+				}
+			}
+			if invalidRun(step.Run) {
+				return issue("FIELD_INVALID", stepPath+"/run", "step.run is invalid")
 			}
 			steps[step.ID] = true
 		}
 	}
-	for _, j := range c.Jobs {
+	for i, j := range c.Jobs {
 		if !checks[j] {
-			return Err("CONFIG_INVALID", "jobs must refer to defined checks", nil)
+			return issue("SELECTION_INVALID", "/jobs/"+strconv.Itoa(i), "job must refer to a defined check")
 		}
 	}
 	return nil
 }
-func invalidText(s string, allowWhitespace bool) bool {
-	if s == "" || strings.IndexByte(s, 0) >= 0 {
+func invalidRun(s string) bool {
+	if s == "" || !utf8.ValidString(s) || len(s) > MaxRunBytes || strings.TrimSpace(s) == "" {
 		return true
 	}
-	if !allowWhitespace {
-		return strings.TrimSpace(s) == ""
-	}
 	for _, r := range s {
-		if unicode.IsSpace(r) || unicode.IsControl(r) {
+		if unicode.IsControl(r) && r != '\n' && r != '\r' && r != '\t' {
 			return true
 		}
 	}
 	return false
+}
+func hasUnsafeNameRune(s string) bool {
+	if !utf8.ValidString(s) {
+		return true
+	}
+	for _, r := range s {
+		if unicode.IsControl(r) || unicode.In(r, unicode.Cf) {
+			return true
+		}
+	}
+	return false
+}
+func validImage(s string) bool {
+	for _, r := range s {
+		if !(r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z' || r >= '0' && r <= '9' || strings.ContainsRune("._:/@-", r)) {
+			return false
+		}
+	}
+	return s != ""
 }
 func validID(s string) bool {
 	if len(s) == 0 || len(s) > 64 || !((s[0] >= 'A' && s[0] <= 'Z') || (s[0] >= 'a' && s[0] <= 'z') || (s[0] >= '0' && s[0] <= '9')) {

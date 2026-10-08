@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"pitstop/internal/model"
+	"strings"
 	"testing"
 	"time"
 )
@@ -19,6 +20,85 @@ func TestExecuteMissingConfigIsActionable(t *testing.T) {
 	e, err := Execute(context.Background(), Options{Repo: d})
 	if err == nil || e.ExitCode != 2 || e.Error == nil || e.Error.Code != "CONFIG_INVALID" {
 		t.Fatalf("envelope=%#v err=%v", e, err)
+	}
+}
+
+func TestExecuteRejectsInvalidOriginalBeforeDocker(t *testing.T) {
+	d := t.TempDir()
+	if out, err := exec.Command("git", "init", "-q", d).CombinedOutput(); err != nil {
+		t.Fatal(string(out))
+	}
+	marker := filepath.Join(d, "docker-called")
+	fakeBin := t.TempDir()
+	docker := filepath.Join(fakeBin, "docker")
+	if err := os.WriteFile(docker, []byte("#!/bin/sh\nprintf called > '"+marker+"'\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", fakeBin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	bad := strings.Replace(`{"schemaVersion":2,"runner":{"image":"alpine:3.22","architecture":"linux/arm64"},"jobs":["verify"],"checks":[{"id":"verify","steps":[{"id":"check","run":"true"}]}]}`, `"run":"true"`, `"run":"echo\u0000secret"`, 1)
+	if err := os.WriteFile(filepath.Join(d, ".pitstop.json"), []byte(bad), 0600); err != nil {
+		t.Fatal(err)
+	}
+	e, err := Execute(context.Background(), Options{Repo: d})
+	if err == nil || e.Error == nil || e.Error.Code != "CONFIG_INVALID" {
+		t.Fatalf("envelope=%#v err=%v", e, err)
+	}
+	if _, statErr := os.Stat(marker); statErr == nil {
+		t.Fatal("Docker was invoked for invalid original config")
+	}
+}
+
+func TestExecuteRejectsInvalidCapturedConfigBeforePrepare(t *testing.T) {
+	d := t.TempDir()
+	if out, err := exec.Command("git", "init", "-q", d).CombinedOutput(); err != nil {
+		t.Fatal(string(out))
+	}
+	valid := `{"schemaVersion":2,"runner":{"image":"alpine:3.22","architecture":"linux/arm64"},"jobs":["verify"],"checks":[{"id":"verify","steps":[{"id":"check","run":"true"}]}]}`
+	if err := os.WriteFile(filepath.Join(d, ".pitstop.json"), []byte(valid), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if out, err := exec.Command("git", "-C", d, "add", ".pitstop.json").CombinedOutput(); err != nil {
+		t.Fatal(string(out))
+	}
+	if out, err := exec.Command("git", "-C", d, "-c", "user.email=test@example.com", "-c", "user.name=test", "commit", "-qm", "config").CombinedOutput(); err != nil {
+		t.Fatal(string(out))
+	}
+	fakeBin := t.TempDir()
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
+	gitWrapper := filepath.Join(fakeBin, "git")
+	gitScript := "#!/bin/sh\n" +
+		"\"$PITSTOP_REAL_GIT\" \"$@\"\nstatus=$?\n" +
+		"clone=\nprev=\nlast=\nfor arg in \"$@\"; do\n  if [ \"$prev\" = \"-C\" ]; then clone=\"$arg\"; fi\n  prev=\"$arg\"\n  last=\"$arg\"\ndone\n" +
+		"if [ \"$1\" = clone ]; then clone=\"$last\"; case \"$clone\" in */snapshot) (while [ ! -f \"$clone/../manifest.txt\" ]; do :; done; i=0; while [ $i -lt 10000 ]; do printf '%s\\n' \"$PITSTOP_INVALID_CONFIG\" > \"$clone/.pitstop.json\"; i=$((i+1)); done) </dev/null >/dev/null 2>&1 &;; esac; fi\n" +
+		"exit $status\n"
+	if err := os.WriteFile(gitWrapper, []byte(gitScript), 0700); err != nil {
+		t.Fatal(err)
+	}
+	dockerLog := filepath.Join(d, "docker.log")
+	docker := filepath.Join(fakeBin, "docker")
+	dockerScript := "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$PITSTOP_DOCKER_LOG\"\ncase \"$*\" in *'version --format'*) printf '25.0\\n';; esac\n"
+	if err := os.WriteFile(docker, []byte(dockerScript), 0700); err != nil {
+		t.Fatal(err)
+	}
+	invalidCaptured := strings.Replace(valid, `"run":"true"`, `"run":"echo\u0000captured"`, 1)
+	t.Setenv("PITSTOP_REAL_GIT", realGit)
+	t.Setenv("PITSTOP_INVALID_CONFIG", invalidCaptured)
+	t.Setenv("PITSTOP_DOCKER_LOG", dockerLog)
+	t.Setenv("DOCKER_HOST", "unix:///chosen.sock")
+	t.Setenv("PATH", fakeBin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	e, err := Execute(context.Background(), Options{Repo: d})
+	if err == nil || e.Error == nil || e.Error.Code != "CONFIG_INVALID" {
+		t.Fatalf("envelope=%#v err=%v", e, err)
+	}
+	log, readErr := os.ReadFile(dockerLog)
+	if readErr != nil {
+		t.Fatal(readErr)
+	}
+	if strings.Contains(string(log), "image inspect") {
+		t.Fatalf("Docker image preparation ran after invalid captured config: %s", log)
 	}
 }
 func TestAcquireRepoLock(t *testing.T) {

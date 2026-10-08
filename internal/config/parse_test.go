@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"reflect"
 	"strconv"
 	"strings"
@@ -121,9 +122,8 @@ func TestParseRejectsVersionAliasesBeforeMigration(t *testing.T) {
 }
 
 func TestParseSizeAndDepth(t *testing.T) {
-	parts := strings.Split(validConfig, `"true"`)
-	room := model.MaxConfigBytes - len(parts[0]) - len(parts[1]) - 2
-	atLimit := parts[0] + `"` + strings.Repeat("a", room) + `"` + parts[1]
+	room := model.MaxConfigBytes - len(validConfig)
+	atLimit := strings.TrimSuffix(validConfig, "}") + strings.Repeat(" ", room) + "}"
 	if len(atLimit) != model.MaxConfigBytes {
 		t.Fatalf("test fixture is %d bytes, want %d", len(atLimit), model.MaxConfigBytes)
 	}
@@ -165,5 +165,24 @@ func TestParseSizeAndDepth(t *testing.T) {
 	nested = "[" + nested
 	if got, err := Parse([]byte(`{"schemaVersion":1,"unused":` + nested + `}`)); err == nil || !reflect.DeepEqual(got, model.Config{}) || strings.Contains(err.Error(), "schemaVersion 1") {
 		t.Fatalf("accepted depth beyond limit: %#v %v", got, err)
+	}
+}
+
+func TestParseStructuredIssues(t *testing.T) {
+	var ve *model.ValidationError
+	_, err := Parse([]byte(strings.Replace(validConfig, `"runner":`, `"runner":`, 1)[:len(validConfig)-1] + `,"x\u001b[31m":1}`))
+	if !errors.As(err, &ve) || ve.Issue.Code != "JSON_UNKNOWN_FIELD" || ve.Issue.Path != `/x\u001b[31m` {
+		t.Fatalf("unknown field issue = %#v (%v)", ve, err)
+	}
+	if strings.Contains(err.Error(), "\x1b") {
+		t.Fatalf("raw escape leaked: %q", err)
+	}
+	_, err = Parse([]byte(strings.Replace(validConfig, `"run":"true"`, `"run":1`, 1)))
+	if !errors.As(err, &ve) || ve.Issue.Code != "JSON_TYPE" {
+		t.Fatalf("type issue = %#v (%v)", ve, err)
+	}
+	_, err = Parse([]byte(strings.Replace(validConfig, `"run":"true"`, `"name":"","run":"true"`, 1)))
+	if !errors.As(err, &ve) || ve.Issue.Code != "FIELD_INVALID" || ve.Issue.Path != "/checks/0/steps/0/name" {
+		t.Fatalf("empty name issue = %#v (%v)", ve, err)
 	}
 }

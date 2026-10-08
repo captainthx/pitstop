@@ -1,6 +1,12 @@
 package model
 
-import "testing"
+import (
+	"errors"
+	"strconv"
+	"strings"
+	"testing"
+	"unicode/utf8"
+)
 
 func TestDockerConfigValidation(t *testing.T) {
 	valid := func() Config {
@@ -20,5 +26,124 @@ func TestDockerConfigValidation(t *testing.T) {
 		if c.Validate() == nil {
 			t.Fatalf("accepted %#v", c)
 		}
+	}
+}
+
+func TestConfigLimitsAndNames(t *testing.T) {
+	base := func() Config {
+		return Config{SchemaVersion: 2, Jobs: []string{"verify"}, Runner: RunnerConfig{Image: "node:22-bookworm", Architecture: "linux/arm64"}, Checks: []Check{{ID: "verify", Steps: []CheckStep{{ID: "check", Run: "true"}}}}}
+	}
+	valid := base()
+	valid.Jobs = make([]string, MaxJobs)
+	valid.Checks = make([]Check, MaxChecks)
+	for i := range valid.Jobs {
+		valid.Jobs[i] = "job" + strings.Repeat("x", 1) + string(rune('A'+i%26))
+	}
+	for i := range valid.Checks {
+		valid.Checks[i] = Check{ID: "check" + string(rune('A'+i%26)) + strings.Repeat("x", i/26), Steps: []CheckStep{{ID: "step", Run: "true"}}}
+	}
+	valid.Jobs = make([]string, MaxChecks)
+	for i := range valid.Jobs {
+		valid.Jobs[i] = valid.Checks[i].ID
+	}
+	if err := valid.Validate(); err != nil {
+		t.Fatalf("max jobs/checks rejected: %v", err)
+	}
+	tooMany := base()
+	tooMany.Jobs = []string{"verify"}
+	for i := 1; i < MaxJobs+1; i++ {
+		tooMany.Jobs = append(tooMany.Jobs, "j"+strings.Repeat("x", i))
+	}
+	if err := tooMany.Validate(); err == nil {
+		t.Fatal("jobs over limit accepted")
+	}
+	tooMany = base()
+	for i := 1; i < MaxChecks+1; i++ {
+		tooMany.Checks = append(tooMany.Checks, Check{ID: "c" + strings.Repeat("x", i), Steps: []CheckStep{{ID: "s", Run: "true"}}})
+	}
+	if err := tooMany.Validate(); err == nil {
+		t.Fatal("checks over limit accepted")
+	}
+	steps := base()
+	steps.Checks[0].Steps = make([]CheckStep, MaxStepsPerCheck)
+	for i := range steps.Checks[0].Steps {
+		steps.Checks[0].Steps[i] = CheckStep{ID: "s" + strconv.Itoa(i), Run: "true"}
+	}
+	if err := steps.Validate(); err != nil {
+		t.Fatalf("max steps rejected: %v", err)
+	}
+	steps.Checks[0].Steps = append(steps.Checks[0].Steps, CheckStep{ID: "overflow", Run: "true"})
+	if err := steps.Validate(); err == nil {
+		t.Fatal("steps over limit accepted")
+	}
+	for _, run := range []string{"\x01", "\x0b", "\x1f", "\x7f", "echo \x00 secret"} {
+		c := base()
+		c.Checks[0].Steps[0].Run = run
+		if err := c.Validate(); err == nil {
+			t.Fatalf("control run accepted: %q", run)
+		}
+	}
+	for _, run := range []string{"echo\nnext", "echo\rnext", "echo\tnext"} {
+		c := base()
+		c.Checks[0].Steps[0].Run = run
+		if err := c.Validate(); err != nil {
+			t.Fatalf("legitimate shell syntax rejected: %q: %v", run, err)
+		}
+	}
+	for _, name := range []string{"สวัสดี"} {
+		c := base()
+		c.Checks[0].Steps[0].Name = name
+		if err := c.Validate(); err != nil {
+			t.Fatalf("Thai name rejected: %v", err)
+		}
+	}
+	for _, name := range []string{"x\x1b[31m", "x\u200e"} {
+		c := base()
+		c.Checks[0].Steps[0].Name = name
+		if err := c.Validate(); err == nil {
+			t.Fatalf("unsafe name accepted: %q", name)
+		}
+	}
+	longRun := base()
+	longRun.Checks[0].Steps[0].Run = strings.Repeat("a", MaxRunBytes)
+	if err := longRun.Validate(); err != nil {
+		t.Fatalf("max run rejected: %v", err)
+	}
+	longRun.Checks[0].Steps[0].Run += "a"
+	if err := longRun.Validate(); err == nil {
+		t.Fatal("run over limit accepted")
+	}
+	if !utf8.ValidString(longRun.Checks[0].Steps[0].Run) {
+		t.Fatal("test fixture invalid UTF-8")
+	}
+}
+
+func TestConfigImageBounds(t *testing.T) {
+	valid := func(image string) Config {
+		return Config{SchemaVersion: 2, Jobs: []string{"verify"}, Runner: RunnerConfig{Image: image, Architecture: "linux/amd64"}, Checks: []Check{{ID: "verify", Steps: []CheckStep{{ID: "check", Run: "true"}}}}}
+	}
+	for _, image := range []string{"localhost:5000/team/checks:dev", "node:22-bookworm", "registry.example/team/checks@sha256:" + strings.Repeat("a", 64), strings.Repeat("a", MaxImageBytes)} {
+		if err := valid(image).Validate(); err != nil {
+			t.Fatalf("valid image rejected: %q: %v", image, err)
+		}
+	}
+	for _, image := range []string{"--privileged", " image", "image ", "image\nother", "repo/$TAG", "repo/тест", strings.Repeat("a", MaxImageBytes+1)} {
+		if err := valid(image).Validate(); err == nil {
+			t.Fatalf("invalid image accepted: %q", image)
+		}
+	}
+}
+
+func TestValidationDiagnosticsNoContent(t *testing.T) {
+	secret := "TOPSECRET-echo-payload"
+	c := Config{SchemaVersion: 2, Jobs: []string{"verify"}, Runner: RunnerConfig{Image: "node:22-bookworm", Architecture: "linux/arm64"}, Checks: []Check{{ID: "verify", Steps: []CheckStep{{ID: "check", Run: secret}}}}}
+	c.Checks[0].Steps[0].Run = ""
+	var ve *ValidationError
+	err := c.Validate()
+	if !errors.As(err, &ve) || ve.Issue.Path != "/checks/0/steps/0/run" {
+		t.Fatalf("missing trusted validation issue: %#v", err)
+	}
+	if strings.Contains(err.Error(), secret) || strings.Contains(err.Error(), "\x1b") {
+		t.Fatalf("diagnostic leaked content: %q", err)
 	}
 }

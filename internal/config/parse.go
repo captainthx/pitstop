@@ -3,11 +3,13 @@ package config
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"strconv"
 	"strings"
 	"syscall"
+	"unicode"
 	"unicode/utf8"
 
 	"pitstop/internal/model"
@@ -16,51 +18,57 @@ import (
 // Parse strictly decodes one supported configuration document.
 func Parse(data []byte) (model.Config, error) {
 	if len(data) > model.MaxConfigBytes {
-		return model.Config{}, invalid("configuration exceeds the size limit")
+		return model.Config{}, issue("SIZE_LIMIT", "", "configuration exceeds the size limit")
 	}
 	if len(data) >= 3 && data[0] == 0xef && data[1] == 0xbb && data[2] == 0xbf {
-		return model.Config{}, invalid("configuration must not contain a BOM")
+		return model.Config{}, issue("JSON_INVALID", "", "configuration must not contain a BOM")
 	}
 	if !utf8.Valid(data) {
-		return model.Config{}, invalid("configuration must be valid UTF-8")
+		return model.Config{}, issue("JSON_INVALID", "", "configuration must be valid UTF-8")
 	}
 	if err := validateEscapedSurrogates(data); err != nil {
-		return model.Config{}, invalid("configuration contains invalid Unicode escapes")
+		return model.Config{}, issue("JSON_INVALID", "", "configuration contains invalid Unicode escapes")
 	}
 	if err := preflight(data); err != nil {
-		return model.Config{}, invalid("invalid configuration JSON")
+		if pe, ok := err.(parseIssue); ok {
+			return model.Config{}, issue(pe.code, pe.path, pe.message)
+		}
+		return model.Config{}, issue("JSON_INVALID", "", "invalid configuration JSON")
 	}
 
 	var root map[string]json.RawMessage
 	if err := json.Unmarshal(data, &root); err != nil {
-		return model.Config{}, invalid("invalid configuration JSON")
+		return model.Config{}, issue("JSON_INVALID", "", "invalid configuration JSON")
 	}
 	version, present, err := schemaVersion(root["schemaVersion"])
 	if err != nil {
-		return model.Config{}, invalid("schemaVersion must be an integer")
+		return model.Config{}, issue("JSON_TYPE", "/schemaVersion", "schemaVersion must be an integer")
 	}
 	if !present {
-		return model.Config{}, invalid("schemaVersion is required")
+		return model.Config{}, issue("FIELD_REQUIRED", "/schemaVersion", "schemaVersion is required")
 	}
 	if version == 1 {
 		return model.Config{}, model.Err("CONFIG_INVALID", "schemaVersion 1 act workflows are no longer supported; migrate to schemaVersion 2 Docker checks", nil)
 	}
 	if version != model.ConfigSchemaVersion {
-		return model.Config{}, invalid("unsupported config schemaVersion")
+		return model.Config{}, issue("SCHEMA_VERSION", "/schemaVersion", "unsupported config schemaVersion")
+	}
+	if err := validateV2ShapeOrdered(data); err != nil {
+		return model.Config{}, err
 	}
 	if err := validateV2Shape(root); err != nil {
-		return model.Config{}, invalid("invalid configuration shape")
+		return model.Config{}, issue("JSON_TYPE", "", "invalid configuration shape")
 	}
 
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
 	var c model.Config
 	if err := dec.Decode(&c); err != nil {
-		return model.Config{}, invalid("invalid configuration shape")
+		return model.Config{}, issue("JSON_TYPE", "", "invalid configuration shape")
 	}
 	var extra any
 	if err := dec.Decode(&extra); err != io.EOF {
-		return model.Config{}, invalid("configuration must contain one JSON document")
+		return model.Config{}, issue("JSON_INVALID", "", "configuration must contain one JSON document")
 	}
 	if err := c.Validate(); err != nil {
 		return model.Config{}, err
@@ -68,7 +76,13 @@ func Parse(data []byte) (model.Config, error) {
 	return c, nil
 }
 
-func invalid(message string) error { return model.Err("CONFIG_INVALID", message, nil) }
+func issue(code, path, message string) error {
+	return model.Err("CONFIG_INVALID", message, &model.ValidationError{Issue: model.ConfigIssue{Code: code, Path: path, Message: message}})
+}
+
+type parseIssue struct{ code, path, message string }
+
+func (e parseIssue) Error() string { return e.message }
 
 func readConfig(repo string) (data []byte, err error) {
 	root, err := os.OpenRoot(repo)
@@ -180,10 +194,10 @@ func walkObject(dec *json.Decoder, depth int) error {
 			return io.ErrUnexpectedEOF
 		}
 		if depth == 1 && strings.EqualFold(name, "schemaVersion") && name != "schemaVersion" {
-			return io.ErrUnexpectedEOF
+			return parseIssue{code: "JSON_UNKNOWN_FIELD", path: safePath("", name), message: "unknown configuration field"}
 		}
 		if _, exists := seen[name]; exists {
-			return io.ErrUnexpectedEOF
+			return parseIssue{code: "JSON_DUPLICATE_KEY", path: "", message: "configuration contains duplicate object keys"}
 		}
 		seen[name] = struct{}{}
 		if err := walkValue(dec, depth+1); err != nil {
@@ -276,6 +290,177 @@ func checkObjectFields(object map[string]json.RawMessage, allowed, required map[
 		}
 	}
 	return nil
+}
+
+func validateV2ShapeOrdered(data []byte) error {
+	dec := json.NewDecoder(bytes.NewReader(data))
+	tok, err := dec.Token()
+	if err != nil {
+		return issue("JSON_INVALID", "", "invalid configuration JSON")
+	}
+	return scanObject(dec, tok, "", map[string]struct{}{"schemaVersion": {}, "runner": {}, "jobs": {}, "checks": {}}, func(key string, value any, path string) (bool, error) {
+		switch key {
+		case "runner":
+			return true, scanObject(dec, value, path, map[string]struct{}{"image": {}, "architecture": {}}, nil)
+		case "checks":
+			return true, scanChecks(dec, value, path)
+		default:
+			return false, nil
+		}
+	})
+}
+
+func scanChecks(dec *json.Decoder, value any, path string) error {
+	open, ok := value.(json.Delim)
+	if !ok || open != '[' {
+		return nil
+	}
+	for i := 0; dec.More(); i++ {
+		tok, err := dec.Token()
+		if err != nil {
+			return err
+		}
+		checkPath := path + "/" + strconv.Itoa(i)
+		if err := scanObject(dec, tok, checkPath, map[string]struct{}{"id": {}, "steps": {}}, func(key string, value any, fieldPath string) (bool, error) {
+			if key != "steps" {
+				return false, nil
+			}
+			return true, scanSteps(dec, value, fieldPath)
+		}); err != nil {
+			return err
+		}
+	}
+	end, err := dec.Token()
+	if err != nil || end != json.Delim(']') {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+
+func scanSteps(dec *json.Decoder, value any, path string) error {
+	open, ok := value.(json.Delim)
+	if !ok || open != '[' {
+		return nil
+	}
+	for i := 0; dec.More(); i++ {
+		tok, err := dec.Token()
+		if err != nil {
+			return err
+		}
+		stepPath := path + "/" + strconv.Itoa(i)
+		if err := scanObject(dec, tok, stepPath, map[string]struct{}{"id": {}, "name": {}, "run": {}}, func(key string, value any, fieldPath string) (bool, error) {
+			if key == "name" {
+				if name, ok := value.(string); ok && name == "" {
+					return false, issue("FIELD_INVALID", fieldPath, "step.name is invalid")
+				}
+			}
+			return false, nil
+		}); err != nil {
+			return err
+		}
+	}
+	end, err := dec.Token()
+	if err != nil || end != json.Delim(']') {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+
+func scanObject(dec *json.Decoder, opening any, path string, allowed map[string]struct{}, nested func(string, any, string) (bool, error)) error {
+	open, ok := opening.(json.Delim)
+	if !ok || open != '{' {
+		return nil
+	}
+	for dec.More() {
+		tok, err := dec.Token()
+		if err != nil {
+			return err
+		}
+		key, ok := tok.(string)
+		if !ok {
+			return io.ErrUnexpectedEOF
+		}
+		fieldPath := safePath(path, key)
+		if _, ok := allowed[key]; !ok {
+			return issue("JSON_UNKNOWN_FIELD", fieldPath, "unknown configuration field")
+		}
+		value, err := dec.Token()
+		if err != nil {
+			return err
+		}
+		consumed := false
+		if nested != nil {
+			consumed, err = nested(key, value, fieldPath)
+			if err != nil {
+				return err
+			}
+		}
+		if !consumed {
+			if err := skipToken(dec, value); err != nil {
+				return err
+			}
+		}
+	}
+	end, err := dec.Token()
+	if err != nil || end != json.Delim('}') {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+
+func skipToken(dec *json.Decoder, tok any) error {
+	delim, ok := tok.(json.Delim)
+	if !ok {
+		return nil
+	}
+	if delim != '{' && delim != '[' {
+		return io.ErrUnexpectedEOF
+	}
+	for dec.More() {
+		if delim == '{' {
+			if _, err := dec.Token(); err != nil {
+				return err
+			}
+		}
+		value, err := dec.Token()
+		if err != nil {
+			return err
+		}
+		if err := skipToken(dec, value); err != nil {
+			return err
+		}
+	}
+	end, err := dec.Token()
+	if err != nil || (delim == '{' && end != json.Delim('}')) || (delim == '[' && end != json.Delim(']')) {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+
+func safePath(base, key string) string {
+	var b strings.Builder
+	b.WriteString(base)
+	b.WriteByte('/')
+	for _, r := range key {
+		switch {
+		case r == '~':
+			b.WriteString("~0")
+		case r == '/':
+			b.WriteString("~1")
+		case unicode.IsControl(r):
+			fmt.Fprintf(&b, "\\u%04x", r)
+		default:
+			b.WriteRune(r)
+		}
+	}
+	path := b.String()
+	if len(path) > model.MaxIssuePathBytes {
+		path = path[:model.MaxIssuePathBytes]
+		for !utf8.ValidString(path) {
+			path = path[:len(path)-1]
+		}
+	}
+	return path
 }
 
 func strictObject(raw json.RawMessage, allowed, required map[string]struct{}) (map[string]json.RawMessage, error) {

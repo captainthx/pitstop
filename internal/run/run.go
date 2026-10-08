@@ -78,22 +78,8 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 		return fail(err)
 	}
 	originalConfig, _ := json.Marshal(cfg)
-	if o.Architecture != "" {
-		cfg.Runner.Architecture = o.Architecture
-	}
-	if len(o.Jobs) > 0 {
-		selected := map[string]bool{}
-		for _, j := range cfg.Jobs {
-			selected[j] = true
-		}
-		for _, j := range o.Jobs {
-			if !selected[j] {
-				return fail(model.Err("CONFIG_INVALID", "job is not in configured selection: "+j, nil))
-			}
-		}
-		cfg.Jobs = append([]string(nil), o.Jobs...)
-	}
-	if err := cfg.Validate(); err != nil {
+	cfg, err = config.ApplyOverrides(cfg, o.Jobs, o.Architecture)
+	if err != nil {
 		return fail(err)
 	}
 	env, err := dockerchecks.Check(ctx)
