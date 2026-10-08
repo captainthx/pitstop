@@ -8,6 +8,8 @@ import (
 // SchemaVersion is the version of the JSON envelope, not the project config.
 const SchemaVersion = 1
 const ConfigSchemaVersion = 2
+const MaxConfigBytes = 1048576
+const MaxJSONDepth = 16
 
 type Error struct {
 	Code, Message string
