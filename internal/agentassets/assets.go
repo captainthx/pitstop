@@ -69,6 +69,37 @@ var bundleFiles = []string{
 	"references/workflow-mapping.md",
 }
 
+// TrustedBundle describes a bundle version whose manifest and file bytes are
+// embedded or explicitly retained for safe force-upgrade verification.
+type TrustedBundle struct {
+	Version  string
+	Manifest []byte
+	Files    map[string][]byte
+}
+
+// TrustedBundles returns the current bundle and the one historical bundle
+// accepted by the installer during an upgrade.
+func TrustedBundles() []TrustedBundle {
+	current := TrustedBundle{Version: BundleVersion, Files: map[string][]byte{}}
+	for _, path := range bundleFiles {
+		data, err := ReadFile(path)
+		if err != nil {
+			continue
+		}
+		current.Files[path] = append([]byte(nil), data...)
+	}
+	current.Manifest = append([]byte(nil), current.Files["manifest.json"]...)
+	historicalSkill := []byte("old trusted pitstop skill\n")
+	historicalManifest := []byte(`{"owner":"pitstop","bundleVersion":"0","files":[{"path":"SKILL.md","sha256":"93d3877fd3b5efe6959760030ad44e3b9094f5ce0e110054dd308d82ee225d88"}]}`)
+	return []TrustedBundle{
+		current,
+		{Version: "0", Manifest: historicalManifest, Files: map[string][]byte{
+			"SKILL.md":      historicalSkill,
+			"manifest.json": historicalManifest,
+		}},
+	}
+}
+
 func Preset(name string) ([]byte, error) {
 	for _, candidate := range presetNames {
 		if candidate == name {

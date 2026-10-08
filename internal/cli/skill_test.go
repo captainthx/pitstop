@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
 
 	"pitstop/internal/agentassets"
@@ -135,5 +136,28 @@ func TestSkillInstallBuiltCLIWorksOutsideSourceCheckout(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(repo, ".agents", "skills", "pitstop-config", "SKILL.md")); err != nil {
 		t.Fatalf("installed bundle missing outside checkout: %v", err)
+	}
+}
+
+func TestSkillInstallCLIInvalidArgsAndWriterFailure(t *testing.T) {
+	repo := cliInitRepo(t)
+	for _, args := range [][]string{
+		{"skill", "install", "unexpected", "--agent", "codex", "--scope", "project", "--repo", repo, "--json"},
+		{"skill", "install", "--agent", "codex", "--scope", "project", "--repo", repo, "--unknown", "--json"},
+		{"skill", "install", "--scope", "project", "--repo", repo, "--json"},
+		{"skill", "install", "--agent", "codex", "--repo", repo, "--json"},
+	} {
+		var out, errOut bytes.Buffer
+		if code := Execute(args, &out, &errOut); code != 2 {
+			t.Fatalf("args=%v code=%d stdout=%q stderr=%q", args, code, out.String(), errOut.String())
+		}
+		e := decodeSkillEnvelope(t, out.Bytes())
+		if e.Command != "skill install" || e.ExitCode != 2 || e.Error == nil {
+			t.Fatalf("args=%v envelope=%#v", args, e)
+		}
+	}
+	var errOut bytes.Buffer
+	if code := Execute([]string{"skill", "install", "--agent", "codex", "--scope", "project", "--repo", repo, "--dry-run", "--json"}, failingWriter{}, &errOut); code != 2 || !strings.Contains(errOut.String(), "stdout failed") {
+		t.Fatalf("writer failure code=%d stderr=%q", code, errOut.String())
 	}
 }

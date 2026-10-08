@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"pitstop/internal/model"
+	"strings"
 	"testing"
 )
 
@@ -21,6 +22,26 @@ func TestExitPrecedence(t *testing.T) {
 		if got := ExitCode(jobs, tc.c); got != tc.want {
 			t.Fatalf("got %d want %d", got, tc.want)
 		}
+	}
+}
+
+func TestHumanSkillInstallErrorShowsRecoveryWarning(t *testing.T) {
+	var b bytes.Buffer
+	e := model.Envelope{
+		SchemaVersion: model.SchemaVersion,
+		Command:       "skill install",
+		ExitCode:      2,
+		Result: model.SkillInstallResult{
+			Agent: "codex", Scope: "project", Action: "replace",
+			Warnings: []string{"retained backup for recovery: /tmp/backup"},
+		},
+		Error: &model.ErrorInfo{Code: "SKILL_INSTALL_FAILED", Message: "publish failed and rollback failed"},
+	}
+	if err := Human(&b, e); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(b.String(), "/tmp/backup") {
+		t.Fatalf("human output omitted recovery path: %q", b.String())
 	}
 }
 func TestEnvelopeIsOneDocument(t *testing.T) {

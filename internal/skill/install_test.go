@@ -1,6 +1,7 @@
 package skill
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -270,5 +271,179 @@ func TestInstallFixedTargetMappings(t *testing.T) {
 		if err != nil || result.TargetPath != tc.want {
 			t.Fatalf("project %s result=%#v err=%v", tc.agent, result, err)
 		}
+	}
+}
+
+func TestInstallForceUpgradesKnownHistoricalBundle(t *testing.T) {
+	repo := skillTestRepo(t)
+	resolvedRepo, _ := filepath.EvalSymlinks(repo)
+	target := filepath.Join(resolvedRepo, ".agents", "skills", "pitstop-config")
+	if err := os.MkdirAll(target, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(target, "SKILL.md"), []byte("old trusted pitstop skill\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	oldManifest := `{"owner":"pitstop","bundleVersion":"0","files":[{"path":"SKILL.md","sha256":"93d3877fd3b5efe6959760030ad44e3b9094f5ce0e110054dd308d82ee225d88"}]}`
+	if err := os.WriteFile(filepath.Join(target, "manifest.json"), []byte(oldManifest), 0600); err != nil {
+		t.Fatal(err)
+	}
+	result, err := Install(context.Background(), Options{Agent: "codex", Scope: "project", Repo: repo, Force: true})
+	if err != nil || !result.Installed {
+		t.Fatalf("historical upgrade result=%#v err=%v", result, err)
+	}
+}
+
+func TestInstallDryRunBlocksRetainedRecovery(t *testing.T) {
+	repo := skillTestRepo(t)
+	resolvedRepo, _ := filepath.EvalSymlinks(repo)
+	parent := filepath.Join(resolvedRepo, ".agents", "skills")
+	if err := os.MkdirAll(parent, 0700); err != nil {
+		t.Fatal(err)
+	}
+	backup := filepath.Join(parent, backupPrefix+"stale")
+	if err := os.Mkdir(backup, 0700); err != nil {
+		t.Fatal(err)
+	}
+	result, err := Install(context.Background(), Options{Agent: "codex", Scope: "project", Repo: repo, DryRun: true})
+	var installErr *model.Error
+	if err == nil || result.Action != "blocked" || !errors.As(err, &installErr) || installErr.Code != "SKILL_INSTALL_FAILED" {
+		t.Fatalf("retained recovery result=%#v err=%v", result, err)
+	}
+}
+
+func TestInstallStagingFailureLeavesNoDestination(t *testing.T) {
+	repo := skillTestRepo(t)
+	previous := installWrite
+	installWrite = func(*os.File, []byte) error { return errors.New("staging write fault") }
+	defer func() { installWrite = previous }()
+	result, err := Install(context.Background(), Options{Agent: "codex", Scope: "project", Repo: repo})
+	var installErr *model.Error
+	if err == nil || result.Installed || !errors.As(err, &installErr) || installErr.Code != "SKILL_INSTALL_FAILED" {
+		t.Fatalf("staging fault result=%#v err=%v", result, err)
+	}
+	resolvedRepo, _ := filepath.EvalSymlinks(repo)
+	if _, statErr := os.Stat(filepath.Join(resolvedRepo, ".agents", "skills", "pitstop-config")); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("destination survived staging failure: %v", statErr)
+	}
+}
+
+func TestInstallCancellationAfterBackupMoveRestoresOriginal(t *testing.T) {
+	repo := skillTestRepo(t)
+	if _, err := Install(context.Background(), Options{Agent: "codex", Scope: "project", Repo: repo}); err != nil {
+		t.Fatal(err)
+	}
+	resolvedRepo, _ := filepath.EvalSymlinks(repo)
+	target := filepath.Join(resolvedRepo, ".agents", "skills", "pitstop-config")
+	original, err := os.ReadFile(filepath.Join(target, "SKILL.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	previous := installAfterBackupMove
+	installAfterBackupMove = cancel
+	defer func() { installAfterBackupMove = previous }()
+	result, err := Install(ctx, Options{Agent: "codex", Scope: "project", Repo: repo, Force: true})
+	var installErr *model.Error
+	if err == nil || result.Installed || !errors.As(err, &installErr) || installErr.Code != "CANCELLED" {
+		t.Fatalf("cancellation result=%#v err=%v", result, err)
+	}
+	got, readErr := os.ReadFile(filepath.Join(target, "SKILL.md"))
+	if readErr != nil || string(got) != string(original) {
+		t.Fatalf("original not restored after cancellation: err=%v", readErr)
+	}
+}
+
+func TestInstallForceRejectsMissingManifestAndInsideSymlink(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		edit func(string) error
+	}{
+		{"missing manifest", func(target string) error { return os.Remove(filepath.Join(target, "manifest.json")) }},
+		{"inside symlink", func(target string) error {
+			path := filepath.Join(target, "assets", "examples", "base.json")
+			if err := os.Remove(path); err != nil {
+				return err
+			}
+			return os.Symlink(filepath.Join(os.TempDir(), "outside-bundle"), path)
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := skillTestRepo(t)
+			if _, err := Install(context.Background(), Options{Agent: "codex", Scope: "project", Repo: repo}); err != nil {
+				t.Fatal(err)
+			}
+			resolvedRepo, _ := filepath.EvalSymlinks(repo)
+			target := filepath.Join(resolvedRepo, ".agents", "skills", "pitstop-config")
+			if err := tc.edit(target); err != nil {
+				t.Fatal(err)
+			}
+			result, err := Install(context.Background(), Options{Agent: "codex", Scope: "project", Repo: repo, Force: true})
+			if err == nil || result.Installed {
+				t.Fatalf("unsafe bundle accepted: result=%#v err=%v", result, err)
+			}
+		})
+	}
+}
+
+func TestInstallForceRejectsForgedManifest(t *testing.T) {
+	repo := skillTestRepo(t)
+	if _, err := Install(context.Background(), Options{Agent: "codex", Scope: "project", Repo: repo}); err != nil {
+		t.Fatal(err)
+	}
+	resolvedRepo, _ := filepath.EvalSymlinks(repo)
+	target := filepath.Join(resolvedRepo, ".agents", "skills", "pitstop-config")
+	manifestPath := filepath.Join(target, "manifest.json")
+	manifest, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	manifest = bytes.Replace(manifest, []byte(`"owner": "pitstop"`), []byte(`"owner": "forged"`), 1)
+	if err := os.WriteFile(manifestPath, manifest, 0600); err != nil {
+		t.Fatal(err)
+	}
+	result, err := Install(context.Background(), Options{Agent: "codex", Scope: "project", Repo: repo, Force: true})
+	if err == nil || result.Installed {
+		t.Fatalf("forged manifest accepted: result=%#v err=%v", result, err)
+	}
+}
+
+func TestInstallPermissionFailureDoesNotPublish(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root can bypass permission checks")
+	}
+	repo := skillTestRepo(t)
+	resolvedRepo, _ := filepath.EvalSymlinks(repo)
+	parent := filepath.Join(resolvedRepo, ".agents", "skills")
+	if err := os.MkdirAll(parent, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(parent, 0500); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chmod(parent, 0700)
+	result, err := Install(context.Background(), Options{Agent: "codex", Scope: "project", Repo: repo})
+	if err == nil || result.Installed {
+		t.Fatalf("permission failure result=%#v err=%v", result, err)
+	}
+}
+
+func TestInstallDryRunReportsRecoveryScanFailure(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root can bypass permission checks")
+	}
+	repo := skillTestRepo(t)
+	resolvedRepo, _ := filepath.EvalSymlinks(repo)
+	parent := filepath.Join(resolvedRepo, ".agents", "skills")
+	if err := os.MkdirAll(parent, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(parent, 0000); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chmod(parent, 0700)
+	result, err := Install(context.Background(), Options{Agent: "codex", Scope: "project", Repo: repo, DryRun: true})
+	if err == nil || result.Action != "blocked" {
+		t.Fatalf("recovery scan failure result=%#v err=%v", result, err)
 	}
 }

@@ -34,13 +34,13 @@ func WriteEnvelope(w io.Writer, e model.Envelope) error {
 func Human(w io.Writer, e model.Envelope) error {
 	if e.Error != nil {
 		_, err := fmt.Fprintf(w, "pitstop: %s (%s)\n", e.Error.Message, e.Error.Code)
-		if _, ok := e.Result.(model.RunReport); !ok {
-			if _, validate := e.Result.(model.ValidateResult); !validate || err != nil {
-				return err
-			}
-		}
 		if err != nil {
 			return err
+		}
+		switch e.Result.(type) {
+		case model.RunReport, model.ValidateResult, model.SkillInstallResult:
+		default:
+			return nil
 		}
 	}
 	if r, ok := e.Result.(model.RunReport); ok {

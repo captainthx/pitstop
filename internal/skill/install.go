@@ -59,10 +59,12 @@ type bundle struct {
 
 // These narrow hooks keep transaction boundary failures testable without introducing a filesystem abstraction.
 var installRename = func(root *os.Root, oldPath, newPath string) error { return root.Rename(oldPath, newPath) }
+var installWrite = writeAll
 var installAfterPublish func()
+var installAfterBackupMove func()
 
-func Install(ctx context.Context, opts Options) (model.SkillInstallResult, error) {
-	result := model.SkillInstallResult{
+func Install(ctx context.Context, opts Options) (result model.SkillInstallResult, retErr error) {
+	result = model.SkillInstallResult{
 		Agent:    opts.Agent,
 		Scope:    opts.Scope,
 		DryRun:   opts.DryRun,
@@ -112,6 +114,14 @@ func Install(ctx context.Context, opts Options) (model.SkillInstallResult, error
 		result.Action = "blocked"
 		return result, installError("SKILL_INSTALL_FAILED", "unsafe skill destination", err)
 	}
+	parentRel := filepath.Dir(targetRel)
+	if recovery, scanErr := retainedBackups(root, parentRel); scanErr != nil {
+		result.Action = "blocked"
+		return result, installError("SKILL_INSTALL_FAILED", "could not inspect skill recovery state", scanErr)
+	} else if recovery != "" {
+		result.Action = "blocked"
+		return result, installError("SKILL_INSTALL_FAILED", "retained backup requires recovery: "+recovery, nil)
+	}
 	if exists {
 		if opts.Force {
 			result.Action = "replace"
@@ -123,7 +133,7 @@ func Install(ctx context.Context, opts Options) (model.SkillInstallResult, error
 			}
 			return result, installError("SKILL_EXISTS", "Pitstop skill is already installed", nil)
 		}
-		if err := verifyBundle(root, targetRel, b); err != nil {
+		if err := verifyOwnedBundle(root, targetRel); err != nil {
 			result.Action = "blocked"
 			return result, installError("SKILL_INSTALL_FAILED", "existing skill is not an owned complete bundle", err)
 		}
@@ -132,14 +142,15 @@ func Install(ctx context.Context, opts Options) (model.SkillInstallResult, error
 		return result, nil
 	}
 
-	parentRel := filepath.Dir(targetRel)
 	if err := mkdirAll(root, parentRel, 0700); err != nil {
 		return result, installError("SKILL_INSTALL_FAILED", "could not create skill parent", err)
 	}
 	if err := ensureAncestors(root, targetRel); err != nil {
 		return result, installError("SKILL_INSTALL_FAILED", "unsafe skill destination", err)
 	}
-	if recovery := retainedBackups(root, parentRel); recovery != "" {
+	if recovery, scanErr := retainedBackups(root, parentRel); scanErr != nil {
+		return result, installError("SKILL_INSTALL_FAILED", "could not inspect skill recovery state", scanErr)
+	} else if recovery != "" {
 		return result, installError("SKILL_INSTALL_FAILED", "retained backup requires recovery: "+recovery, nil)
 	}
 
@@ -149,10 +160,16 @@ func Install(ctx context.Context, opts Options) (model.SkillInstallResult, error
 		return result, installError("SKILL_INSTALL_FAILED", "could not acquire skill install lock", err)
 	}
 	if err := lock.Close(); err != nil {
-		_ = root.Remove(lockRel)
+		if cleanupErr := root.Remove(lockRel); cleanupErr != nil {
+			result.Warnings = append(result.Warnings, "could not remove installer lock; recovery path: "+filepath.Join(rootPath, filepath.FromSlash(lockRel)))
+		}
 		return result, installError("SKILL_INSTALL_FAILED", "could not close skill install lock", err)
 	}
-	defer root.Remove(lockRel)
+	defer func() {
+		if cleanupErr := root.Remove(lockRel); cleanupErr != nil {
+			result.Warnings = append(result.Warnings, "could not remove installer lock; recovery path: "+filepath.Join(rootPath, filepath.FromSlash(lockRel)))
+		}
+	}()
 
 	// The target is checked again after taking the sibling lock.
 	exists, err = targetState(root, targetRel)
@@ -167,7 +184,7 @@ func Install(ctx context.Context, opts Options) (model.SkillInstallResult, error
 			result.Action = "blocked"
 			return result, installError("SKILL_EXISTS", "Pitstop skill is already installed", nil)
 		}
-		if err := verifyBundle(root, targetRel, b); err != nil {
+		if err := verifyOwnedBundle(root, targetRel); err != nil {
 			result.Action = "blocked"
 			return result, installError("SKILL_INSTALL_FAILED", "existing skill is not an owned complete bundle", err)
 		}
@@ -185,39 +202,43 @@ func Install(ctx context.Context, opts Options) (model.SkillInstallResult, error
 		return result, installError("SKILL_INSTALL_FAILED", "could not create staging directory", err)
 	}
 	if err := writeBundle(root, stageRel, b); err != nil {
-		_ = root.RemoveAll(stageRel)
+		cleanupOwned(root, stageRel, rootPath, &result)
 		return result, installError("SKILL_INSTALL_FAILED", "could not stage skill bundle", err)
 	}
 	if err := verifyBundle(root, stageRel, b); err != nil {
-		_ = root.RemoveAll(stageRel)
+		cleanupOwned(root, stageRel, rootPath, &result)
 		return result, installError("SKILL_INSTALL_FAILED", "staged skill bundle failed verification", err)
 	}
 	if err := contextError(ctx); err != nil {
-		_ = root.RemoveAll(stageRel)
+		cleanupOwned(root, stageRel, rootPath, &result)
 		return result, err
 	}
 
 	backupRel := ""
 	if exists {
+		// Backup and publish are separate renames; a crash between them can leave a retained backup for recovery.
 		backupRel = filepath.Join(parentRel, backupPrefix+suffix)
 		if err := installRename(root, targetRel, backupRel); err != nil {
-			_ = root.RemoveAll(stageRel)
+			cleanupOwned(root, stageRel, rootPath, &result)
 			return result, installError("SKILL_INSTALL_FAILED", "could not retain existing skill bundle", err)
+		}
+		if installAfterBackupMove != nil {
+			installAfterBackupMove()
 		}
 		if err := contextError(ctx); err != nil {
 			if rollbackErr := installRename(root, backupRel, targetRel); rollbackErr != nil {
-				_ = root.RemoveAll(stageRel)
+				cleanupOwned(root, stageRel, rootPath, &result)
 				return rollbackFailure(result, root.Name(), backupRel, rollbackErr)
 			}
-			_ = root.RemoveAll(stageRel)
+			cleanupOwned(root, stageRel, rootPath, &result)
 			return result, err
 		}
 	}
 	if err := installRename(root, stageRel, targetRel); err != nil {
-		_ = root.RemoveAll(stageRel)
+		cleanupOwned(root, stageRel, rootPath, &result)
 		if backupRel != "" {
 			if rollbackErr := installRename(root, backupRel, targetRel); rollbackErr != nil {
-				_ = root.RemoveAll(stageRel)
+				cleanupOwned(root, stageRel, rootPath, &result)
 				return rollbackFailure(result, root.Name(), backupRel, rollbackErr)
 			}
 		}
@@ -298,6 +319,35 @@ func loadBundle() (bundle, error) {
 	return bundle{files: files, data: data}, nil
 }
 
+func verifyOwnedBundle(root *os.Root, target string) error {
+	manifestPath := filepath.ToSlash(filepath.Join(target, "manifest.json"))
+	trustedBundles := agentassets.TrustedBundles()
+	maxManifestSize := 0
+	for _, trusted := range trustedBundles {
+		if len(trusted.Manifest) > maxManifestSize {
+			maxManifestSize = len(trusted.Manifest)
+		}
+	}
+	manifestBytes, err := readRegular(root, manifestPath, maxManifestSize)
+	if err != nil {
+		return err
+	}
+	for _, trusted := range trustedBundles {
+		if !bytes.Equal(manifestBytes, trusted.Manifest) {
+			continue
+		}
+		files := make([]string, 0, len(trusted.Files))
+		data := make(map[string][]byte, len(trusted.Files))
+		for path, contents := range trusted.Files {
+			files = append(files, path)
+			data[path] = append([]byte(nil), contents...)
+		}
+		sort.Strings(files)
+		return verifyBundle(root, target, bundle{files: files, data: data})
+	}
+	return errors.New("destination manifest is not a trusted Pitstop manifest")
+}
+
 func writeBundle(root *os.Root, stage string, b bundle) error {
 	for _, path := range b.files {
 		rel := filepath.Join(stage, filepath.FromSlash(path))
@@ -308,7 +358,7 @@ func writeBundle(root *os.Root, stage string, b bundle) error {
 		if err != nil {
 			return err
 		}
-		if err := writeAll(f, b.data[path]); err != nil {
+		if err := installWrite(f, b.data[path]); err != nil {
 			_ = f.Close()
 			return err
 		}
@@ -463,22 +513,25 @@ func mkdirAll(root *os.Root, path string, mode os.FileMode) error {
 	return nil
 }
 
-func retainedBackups(root *os.Root, parent string) string {
+func retainedBackups(root *os.Root, parent string) (string, error) {
 	dir, err := root.Open(parent)
+	if errors.Is(err, os.ErrNotExist) {
+		return "", nil
+	}
 	if err != nil {
-		return ""
+		return "", err
 	}
 	defer dir.Close()
 	entries, err := dir.ReadDir(-1)
 	if err != nil {
-		return ""
+		return "", err
 	}
 	for _, entry := range entries {
 		if strings.HasPrefix(entry.Name(), backupPrefix) {
-			return filepath.Join(root.Name(), filepath.FromSlash(parent), entry.Name())
+			return filepath.Join(root.Name(), filepath.FromSlash(parent), entry.Name()), nil
 		}
 	}
-	return ""
+	return "", nil
 }
 
 func uniqueSuffix() (string, error) {
@@ -492,6 +545,12 @@ func uniqueSuffix() (string, error) {
 func rollbackFailure(result model.SkillInstallResult, root, backup string, err error) (model.SkillInstallResult, error) {
 	result.Warnings = append(result.Warnings, "retained backup for recovery: "+filepath.Join(root, filepath.FromSlash(backup)))
 	return result, installError("SKILL_INSTALL_FAILED", "publish failed and rollback failed; recover from retained backup", err)
+}
+
+func cleanupOwned(root *os.Root, rel, rootPath string, result *model.SkillInstallResult) {
+	if err := root.RemoveAll(rel); err != nil {
+		result.Warnings = append(result.Warnings, "could not clean temporary installer state; recovery path: "+filepath.Join(rootPath, filepath.FromSlash(rel)))
+	}
 }
 
 func contextError(ctx context.Context) error {
