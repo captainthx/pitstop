@@ -2,7 +2,7 @@
   "owner": "pitstop",
   "bundleVersion": "1",
   "files": [
-    {"path":"SKILL.md","sha256":"5ce6b35050818af5c8e6335465f988ef4491ad3da111506aa9246726aefe4eaa"},
+    {"path":"SKILL.md","sha256":"deee3d266953d3674d77a2df0c9a1b097e6bc786e251323ccc57f1d64f1e9a6c"},
     {"path":"assets/examples/base.json","sha256":"1a8c148300b3cc52f7b1f4cd562bde19f450caf6f7536a9a4cbc26d3209a6159"},
     {"path":"assets/examples/custom-image.json","sha256":"b383958f3046b596861f8eca49599e7f0e982a26cddf99a55db66e483c31c603"},
     {"path":"assets/examples/dotnet.json","sha256":"960f2fdfb6e82f536819402e21815c13cb16f42d46e1c30be97e5f045796d78d"},
@@ -26,7 +26,7 @@
     {"path":"assets/mappings/multi-workflow.json","sha256":"aa8fd7b3cd7f6996d545b47491be5f8a320a4303c31e07924e8d6d196cd502d6"},
     {"path":"assets/mappings/no-workflow.json","sha256":"93985c54b96455bab6dd5ddb19b8d8e2cd452250f0282638441f32506f7d90b7"},
     {"path":"assets/mappings/nonstandard-names.json","sha256":"541fe6ec7d87dc8319a83a6200f0f90c9df54d5264b903875392efb034d32c89"},
-    {"path":"assets/mappings/partial-features.json","sha256":"ac83bb54c8d8a8c48a36798d8c8dcd6f7b4cf0a62537f18cc265132d5de333cd"},
+    {"path":"assets/mappings/partial-features.json","sha256":"b107030a8b1d7de3814c17c4dc30b57ce517534429c99f7d8fd2d70b3b4a37e1"},
     {"path":"assets/mappings/python-pytest.json","sha256":"0d1794f7ae9c07ac70055a42ad8c31c6843a6beb6239f9a301a5818189c79ef6"},
     {"path":"assets/mappings/rust-cargo.json","sha256":"ecc5c3ecaa52f0b30057df46b60880456fd1786771da4d23c3443c9ca132b338"},
     {"path":"assets/mappings/shared-script.json","sha256":"e1809d97fcfc91e7b7f058ec5ebff0f0746e3a9463bb742266d9bee4e20fabd7"},
@@ -44,8 +44,8 @@
     {"path":"assets/workflows/python-pytest.yml","sha256":"b854f4f2980d78bffbd4e67a1af2a939d9971f8ad9cd8298da090dd0d6b9fab4"},
     {"path":"assets/workflows/rust-cargo.yml","sha256":"e5b40c07274a3affe1c60eef1d1e8519a2bdcef399eba69c5ce758f850fd7f3f"},
     {"path":"assets/workflows/shared-script.yml","sha256":"dda08de0b098fbade50abd3f6a2ceb474449bbcff7d9d4e9ad23743a18a132a8"},
-    {"path":"references/config-reference.md","sha256":"9b89d00736578d0a383b4e1523a5d835a207dba941861361964daa825618f975"},
+    {"path":"references/config-reference.md","sha256":"b2ac9bbcc0b62abc79b7763ce23ecfa032ac9b881c367b958f472e0b80ae34d3"},
     {"path":"references/examples.md","sha256":"cb2abc5b1944c46ea98096534603b38a6bd5217e6570ed05bfb125cdd1ff06ea"},
-    {"path":"references/workflow-mapping.md","sha256":"e1f4526f10b06400a5214c4eea9e923575155d6e14889473eb5b59ee3567efdd"}
+    {"path":"references/workflow-mapping.md","sha256":"8f6f9105b8be15bd8805fafb411d48e5fda6cab1003303775d0e68dd7f665eb3"}
   ]
 }

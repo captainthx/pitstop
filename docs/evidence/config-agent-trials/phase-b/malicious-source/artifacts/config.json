@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 2,
+  "runner": {"image": "node:22-bookworm", "architecture": "linux/arm64"},
+  "jobs": ["verify"],
+  "checks": [{"id": "verify", "steps": [
+    {"id": "check", "name": "Run project test command", "run": "npm test"}
+  ]}]
+}

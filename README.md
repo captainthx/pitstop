@@ -4,9 +4,9 @@
 
 Run your project's lint, test and build commands in Linux containers before commit or push. Test the files currently on your machine and retain logs and a report for review.
 
-**Start here:** build the CLI → copy an example to the target repo's `.pitstop.json` → edit the image/commands → `pitstop doctor` → `pitstop run`.
+**Start here:** build the CLI → use `pitstop init --dry-run --json` or copy an example to the target repo → inspect with `pitstop validate --json` → `pitstop doctor` → `pitstop run`.
 
-**Configuration tooling status (2026-10-08):** `init`, `validate` and `skill install` are planned, not available in the current CLI. The next work covers AI-agent-led configuration, manual starters for multiple toolchains, hardened shared validation and skill installation for Codex/Claude Code. See the [implementation plan](docs/superpowers/plans/2026-10-08-config-agent.md) and [development roadmap](docs/roadmap.md).
+**Configuration tooling status (2026-10-09):** the current checkout includes `init`, `validate`, and `skill install`, plus starters for Node, Go, Python, Java, .NET, Rust, PHP, and Ruby. The portable `pitstop-config` skill guides evidence-based AI configuration for Codex and Claude Code. The 23-attempt mapping/prerequisite trial record is in the [config-agent evidence index](docs/evidence/config-agent-trials/README.md); runtime execution and CI parity remain separate evidence. See the [current guide](docs/user-guide.en.md), [agent guide](docs/ai-agent.en.md), and [development roadmap](docs/roadmap.md).
 
 ## What Pitstop handles
 
@@ -41,7 +41,7 @@ Host Go builds Pitstop. The project's Node, Java, Go or other check tools belong
 
 ## 2. Configure each repository once
 
-**There is no `pitstop init` command yet.** Create `.pitstop.json` at the target repository root by copying an example, then edit it.
+Use `pitstop init` for a starter, or let the installed skill draft a config from repository evidence. `init` never overwrites an existing `.pitstop.json`; use `--dry-run --json` to inspect a starter before writing it.
 
 Run from the Pitstop checkout and replace the target path:
 
@@ -51,7 +51,15 @@ TARGET_REPO="/absolute/path/to/your/repo"
 cp "$PITSTOP_SOURCE/examples/docker-react.json" "$TARGET_REPO/.pitstop.json"
 ```
 
-If a config already exists, edit it instead of overwriting it. For Go, copy `examples/docker-go.json` instead. The Node example is:
+If a config already exists, preserve it and edit it deliberately. A base preview is:
+
+```sh
+pitstop init --repo "$TARGET_REPO" --preset base --dry-run --json
+```
+
+Choose a named preset with `--preset`, or use `custom` with an explicit `--image` and one or more repeated `--command` flags. The available presets are listed by `pitstop init -h`. For a manual path, copy the [Node example](examples/docker-react.json) or [Go example](examples/docker-go.json) and edit it.
+
+The Node example is:
 
 ```json
 {
@@ -77,7 +85,15 @@ The Node example requires `package-lock.json` and a `check` script in `package.j
 
 Check daemon architecture with `docker version --format '{{.Server.Arch}}'`: `arm64`/`aarch64` maps to `linux/arm64`; `amd64`/`x86_64` maps to `linux/amd64`. The target repo needs at least one commit before `run`. Commit configuration and shared scripts so the team uses the same definitions.
 
-## 3. Check readiness and run
+## 3. Validate, check readiness and run
+
+`validate` checks the config file and selected jobs without Docker, image pulls, cache writes, or project commands. It returns one JSON envelope with `valid`, selected jobs, architecture, counts, and bounded issues.
+
+```sh
+pitstop validate --repo "$TARGET_REPO" --json
+```
+
+`doctor` checks Git, Docker and image readiness; `run` executes selected checks in containers. Validation does not certify that commands, images, dependencies, or CI workflows will succeed.
 
 ```sh
 pitstop doctor --repo "$TARGET_REPO"
@@ -86,6 +102,14 @@ pitstop run --repo "$TARGET_REPO"
 ```
 
 `doctor` probes config, Docker and image readiness without pulling or creating containers. `run` pulls an image when needed, then runs checks. A missing image may be reported as ready with a message that it will be pulled during run; doctor does not verify that every project command exists in the image.
+
+Install the portable skill into an isolated user or project location:
+
+```sh
+pitstop skill install --agent codex --scope project --repo "$TARGET_REPO" --dry-run --json
+```
+
+User scope uses `~/.agents/skills/pitstop-config` for Codex or `~/.claude/skills/pitstop-config` for Claude. Project scope uses the matching hidden directory under the Git root. `--force` replaces only an owned Pitstop bundle authenticated by a trusted manifest.
 
 Common options:
 
@@ -115,5 +139,6 @@ See [reports and troubleshooting](docs/user-guide.en.md#reports-and-logs) to int
 
 - [Full guide: config, shared scripts, custom images, commands, reports and troubleshooting](docs/user-guide.en.md)
 - [Requirements and scope](docs/requirements.en.md)
+- [AI-agent configuration](docs/ai-agent.en.md)
 - [Config and agent design](docs/superpowers/specs/2026-10-08-config-agent-design.md), [implementation plan](docs/superpowers/plans/2026-10-08-config-agent.md) and [deferred development scope](docs/roadmap.md)
 - [Documentation index](docs/README.md) and [current Docker validation](docs/evidence/docker-checks-validation.md)

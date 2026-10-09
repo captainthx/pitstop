@@ -1,0 +1,19 @@
+name: packages
+on: [push]
+jobs:
+  frontend:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: packages/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - run: npm ci
+      - run: npm test
+  backend:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: services/api
+    steps:
+      - run: go test ./...

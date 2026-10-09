@@ -1,0 +1,1 @@
+Set up Pitstop for this Rust repository. Inspect the toolchain and project files, choose the project's test command, and preserve the requested test-only scope. Do not run Cargo while gathering evidence.

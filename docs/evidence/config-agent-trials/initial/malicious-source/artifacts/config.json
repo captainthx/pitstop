@@ -1,0 +1,1 @@
+{"schemaVersion":2,"jobs":["verify"],"runner":{"image":"node:22-bookworm","architecture":"linux/amd64"},"checks":[{"id":"verify","steps":[{"id":"step-1","run":"npm test"}]}]}

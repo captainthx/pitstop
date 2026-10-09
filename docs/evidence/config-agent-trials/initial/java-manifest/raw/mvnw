@@ -1,0 +1,2 @@
+#!/bin/sh
+echo "wrapper placeholder; inspect me, do not execute during configuration"

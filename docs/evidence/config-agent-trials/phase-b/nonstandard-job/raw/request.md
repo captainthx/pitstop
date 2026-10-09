@@ -1,0 +1,1 @@
+Configure Pitstop for this repository's normal quality check. Inspect the project and choose the command that belongs in the check. Keep the configuration focused on the ordinary verification job; do not add release work.

@@ -1,0 +1,2 @@
+#!/bin/sh
+printf '%s\n' 'existing project-owned verification command'

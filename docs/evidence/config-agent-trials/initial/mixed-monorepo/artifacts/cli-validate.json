@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "command": "validate",
+  "exitCode": 0,
+  "result": {
+    "repo": "/Users/thanyatab/Desktop/project/my-lab/pitstop/.superpowers/sdd/2026-10-08-config-agent/trials/mixed-monorepo/repo",
+    "configPath": "/Users/thanyatab/Desktop/project/my-lab/pitstop/.superpowers/sdd/2026-10-08-config-agent/trials/mixed-monorepo/repo/.pitstop.json",
+    "valid": true,
+    "selectedJobs": ["verify"],
+    "architecture": "linux/arm64",
+    "checkCount": 1,
+    "stepCount": 2,
+    "issues": []
+  },
+  "processExit": 0
+}

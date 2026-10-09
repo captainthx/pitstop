@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 2,
+  "runner": {
+    "image": "node:22-bookworm",
+    "architecture": "linux/arm64"
+  },
+  "jobs": [
+    "test"
+  ],
+  "checks": [
+    {
+      "id": "test",
+      "steps": [
+        {
+          "id": "test",
+          "name": "Run test workflow",
+          "run": "npm test"
+        }
+      ]
+    }
+  ]
+}

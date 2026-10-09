@@ -1,0 +1,1 @@
+Map the repository's normal verification into Pitstop. Inspect the workflow and tell me which parts can be represented by one schema-v2 check, which parts must be omitted, and what assumptions you would need. Keep credentials and services out of the generated config.

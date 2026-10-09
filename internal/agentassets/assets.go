@@ -69,16 +69,18 @@ var bundleFiles = []string{
 	"references/workflow-mapping.md",
 }
 
-// TrustedManifests returns exact embedded manifest bytes accepted for force upgrades.
-// The second entry is the unreleased draft bundle from ff87a16; it is retained
-// only as a compatibility proof until the portable bundle history is finalized.
-func TrustedManifests() [][]byte {
+// TrustedBundles returns exact manifest bytes accepted for force upgrades.
+// Historical entries are trusted constants and are never copied into installs.
+func TrustedBundles() [][]byte {
 	current, err := ReadFile("manifest.json")
 	if err != nil {
-		return [][]byte{append([]byte(nil), historicalDraftManifestFF87a16...)}
+		return [][]byte{append([]byte(nil), historicalManifest21cd1c2...), append([]byte(nil), historicalDraftManifestFF87a16...)}
 	}
-	return [][]byte{append([]byte(nil), current...), append([]byte(nil), historicalDraftManifestFF87a16...)}
+	return [][]byte{append([]byte(nil), current...), append([]byte(nil), historicalManifest21cd1c2...), append([]byte(nil), historicalDraftManifestFF87a16...)}
 }
+
+// TrustedManifests is retained for callers compiled against the Task 6 API.
+func TrustedManifests() [][]byte { return TrustedBundles() }
 
 func Preset(name string) ([]byte, error) {
 	for _, candidate := range presetNames {

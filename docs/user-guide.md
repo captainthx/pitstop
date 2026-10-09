@@ -4,7 +4,7 @@
 
 คู่มือนี้อธิบาย CLI ที่รัน Docker checks ด้วย `.pitstop.json` schema version 2
 
-สถานะ 2026-10-08: CLI ปัจจุบันมี `doctor`, `list`, `run`, `version` ส่วน `init`, `validate`, `skill install`, ตัวอย่าง toolchains เพิ่มเติม และคู่มือ AI agent อยู่ใน [แผนงานถัดไป](superpowers/plans/2026-10-08-config-agent.md) ดู [roadmap](roadmap.md) สำหรับขอบเขตที่ยังไม่รวม
+สถานะ 2026-10-09: checkout ปัจจุบันมี `init`, `validate` และ `skill install` พร้อม `doctor`, `list`, `run` และ `version` ดูขั้นตอน portable skill ใน [คู่มือ AI agent](ai-agent.md) และ [หลักฐาน trial ของ config-agent](evidence/config-agent-trials/README.md) ซึ่งบันทึก mapping กับ prerequisite จาก evaluator 23 ครั้ง หลักฐานนี้ยังไม่ยืนยัน runtime หรือ CI parity ดูขอบเขตที่ยังไม่รวมใน [roadmap](roadmap.md)
 
 ## สิ่งที่ต้องเตรียม
 
@@ -12,7 +12,7 @@
 | --- | --- |
 | เครื่องที่เรียก Pitstop | Git, Docker CLI และ daemon ที่เชื่อมต่อได้ |
 | Build CLI จาก source | Go 1.26.5 ตาม `go.mod` |
-| Repo เป้าหมาย | Git repo ที่มี commit อย่างน้อยหนึ่งรายการ และ `.pitstop.json` ที่ root |
+| Repo เป้าหมาย | Git repo; `run` ต้องมี commit อย่างน้อยหนึ่งรายการและ `.pitstop.json` ที่ root ส่วน `init` และ `validate` ใช้ได้ก่อน commit แรก |
 | Docker image | Linux image ที่มี `/bin/sh` และเครื่องมือที่ steps ใช้ |
 | การเชื่อมต่อ | เข้าถึง registry เมื่อยังไม่มี image และเข้าถึง package registry ถ้าคำสั่งติดตั้ง dependencies ต้องใช้ |
 
@@ -38,7 +38,13 @@ docker version --format '{{.Server.Arch}}'
 
 ## ตั้งค่า repo ครั้งแรก
 
-ยังไม่มีคำสั่ง `init` หรือการอ่านโปรเจกต์เพื่อสร้าง config อัตโนมัติ คัดลอก [ตัวอย่าง Node](../examples/docker-react.json) หรือ [ตัวอย่าง Go](../examples/docker-go.json) มาเป็น `.pitstop.json` แล้วแก้ให้ตรงกับโปรเจกต์
+`pitstop init` สร้าง starter ที่ระบุชื่อโดยไม่ตรวจหา manifest อัตโนมัติ preview ก่อนเขียนได้ด้วย:
+
+```sh
+pitstop init --repo /absolute/path/to/your/repo --preset base --dry-run --json
+```
+
+ชื่อ preset ทั้งหมดดูได้จาก `pitstop init -h`; `custom` ต้องมี `--image` และ `--command` อย่างน้อยหนึ่งครั้ง หากมี `.pitstop.json` อยู่แล้ว init จะไม่เขียนทับ สำหรับเส้นทาง manual ให้คัดลอก [ตัวอย่าง Node](../examples/docker-react.json) หรือ [ตัวอย่าง Go](../examples/docker-go.json) แล้วปรับให้ตรงกับโปรเจกต์
 
 ตัวอย่างนี้ใช้ script ของโปรเจกต์เอง:
 
@@ -87,6 +93,23 @@ your-project/
 
 ไม่ต้อง commit การแก้โค้ดทุกครั้งก่อน run: Pitstop ตรวจ working tree ปัจจุบัน แต่ repo ต้องมี HEAD อยู่แล้ว
 
+## Validate และติดตั้ง agent skill
+
+ให้รัน validation ก่อน `doctor` หรือ `run` คำสั่งนี้อ่าน `.pitstop.json` โดยไม่ใช้ Docker, pull image, เขียน cache, รัน project commands หรือประเมิน shell ถ้าถูกต้องจะได้ `valid: true`, jobs, architecture, จำนวน definitions และ `issues: []`; config ที่ไม่ถูกต้องคืน exit `2`, issue ที่จำกัดขนาดหนึ่งรายการ และ error code `CONFIG_INVALID`
+
+```sh
+pitstop validate --repo "$TARGET_REPO" --json
+```
+
+ติดตั้ง portable skill โดยระบุ agent และ scope ชัดเจน project scope หา Git root ส่วน user scope ใช้ home ของผู้ใช้และรับ `--repo` ไม่ได้ ใช้ `--dry-run` ใน target ที่แยกไว้เพื่อดูรายการไฟล์ `--force` เปลี่ยนได้เฉพาะ Pitstop bundle ที่ manifest ปัจจุบันหรือ historical manifest ที่เชื่อถือได้ยืนยันความเป็นเจ้าของ
+
+```sh
+pitstop skill install --agent codex --scope project --repo "$TARGET_REPO" --dry-run --json
+pitstop skill install --agent claude --scope user --dry-run --json
+```
+
+user install ของ Codex อยู่ที่ `~/.agents/skills/pitstop-config` และของ Claude อยู่ที่ `~/.claude/skills/pitstop-config` ส่วน project install อยู่ใน directory ซ่อนของ agent ใต้ Git root การติดตั้งไม่แก้ `AGENTS.md`, `CLAUDE.md`, workflow หรือ project scripts ดูขั้นตอนและ prompt fallback ใน [คู่มือ AI agent](ai-agent.md)
+
 ## Config reference
 
 ทุก field ด้านล่างจำเป็น ยกเว้น `name` ไม่มีค่า image/architecture/jobs เริ่มต้นให้
@@ -108,7 +131,7 @@ IDs ยาว 1–64 ตัวอักษร เริ่มด้วยตั�
 
 Config ต้องเป็น JSON document เดียว ไม่มี comments และไม่รับ fields ที่ไม่รู้จัก เช่น `env`, `uses` หรือ `engine` ถ้าต้องกำหนด environment variable ให้กำหนดใน shell command/script ของ step ส่วนค่าใน shell ของ host ไม่ถูกส่งเข้า container อัตโนมัติ
 
-คำสั่งใน `run` เป็น shell code ที่ตั้งใจ execute ใน container การตรวจ config ปัจจุบันไม่ได้รับรองว่าคำสั่งหรือ image ปลอดภัย และไม่รับรองความครบของ GitHub CI แผน validator ใหม่จะเพิ่มการปฏิเสธ duplicate/case-variant keys, malformed Unicode, unsafe file types และข้อมูลเกิน limits ตาม [validation design](superpowers/specs/2026-10-08-config-agent-design.md) กฎเพิ่มเติมเหล่านี้ยังไม่ได้ implement
+คำสั่งใน `run` เป็น shell code ที่ตั้งใจ execute ใน container `pitstop validate` ใช้ strict parser และ bounded checks ร่วมกัน ตรวจ duplicate/unknown fields, malformed Unicode, unsafe file types, schema version ที่ไม่รองรับ และค่าที่เกิน limits การผ่าน validation ไม่ได้รับรองความปลอดภัยของ command/image, dependencies, runtime หรือความครบของ GitHub CI ดู [validation design](superpowers/specs/2026-10-08-config-agent-design.md)
 
 **`jobs` คือ selection ไม่ใช่รายการ steps** คุณอาจนิยาม checks หลายกลุ่ม แต่เลือกรันเพียงบางกลุ่ม:
 
@@ -349,6 +372,6 @@ docker ps -a --filter "label=com.pitstop.run=RUN_ID"
 
 ## ขอบเขตที่รองรับ
 
-รองรับ Docker image ที่เตรียมไว้, shell/shared scripts, ordered steps, selection, snapshot, timeout/cancellation และ reports ไม่มี workflow YAML executor, การแปล `uses:`/expressions, matrix, dependencies ระหว่าง jobs (`needs`), service containers, secret injection, cache volumes, auto-build image, artifact export, self-hosted runner registration หรือ config generator
+รองรับ Docker image ที่เตรียมไว้, shell/shared scripts, ordered steps, selection, snapshot, timeout/cancellation และ reports ไม่มี workflow YAML executor, การแปล `uses:`/expressions, matrix, dependencies ระหว่าง jobs (`needs`), service containers, secret injection, cache volumes, auto-build image, artifact export, self-hosted runner registration, automatic workflow conversion หรือ automatic manifest detection
 
 ดู [ข้อกำหนด](requirements.md) และ [หลักฐานทดสอบ](evidence/docker-checks-validation.md) เอกสารออกแบบ/หลักฐานก่อนหน้าอยู่ในหมวดประวัติของ [สารบัญ](README.md)

@@ -1,0 +1,1 @@
+Configure Pitstop for the frontend and backend checks requested for this mixed-language monorepo. Inspect package manifests, lockfiles, and workflow working directories. Choose a workable single runner image, state which packages you selected, and list omitted sibling work.

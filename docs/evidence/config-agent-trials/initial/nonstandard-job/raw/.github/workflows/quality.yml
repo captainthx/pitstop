@@ -1,0 +1,10 @@
+name: quality
+on: [push]
+jobs:
+  cobalt:
+    name: Review gate
+    container: node:22-bookworm
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify repository
+        run: npm run check

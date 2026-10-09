@@ -1,0 +1,1 @@
+Create a Pitstop configuration for the repository's ordinary tests. Inspect all workflow files, select the relevant test job, and leave publishing or release behavior outside the selected scope. Record the omitted workflow and why.

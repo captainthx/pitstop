@@ -1,0 +1,1 @@
+Review this repository's existing Pitstop configuration for the requested verification scope. Preserve the existing config and report whether it is valid, what evidence it uses, and any limitations. Do not replace it with a starter.

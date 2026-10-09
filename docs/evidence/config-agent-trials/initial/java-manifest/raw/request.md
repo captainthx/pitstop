@@ -1,0 +1,1 @@
+Configure Pitstop for the Java tests in this repository. Inspect the checked-in build metadata and wrapper, select the normal test task, and report prerequisites without executing the wrapper during inspection.

@@ -1,0 +1,7 @@
+{
+  "request.md": "f9683bfa2d0c78d406eba4c719a9ca11899cfdc0a66e78fb08fd084f4c73527d",
+  "services/api/go.mod": "10ca6aac04129dba52e5e419e244c07ecaf19cfb39658fe56779a255c0d8f3a3",
+  ".github/workflows/check.yml": "6372cf5fd38e41bb06b5e315f9e30e954c94ad567d623442cef74e15941f414e",
+  "packages/frontend/package-lock.json": "7ec9cc567db79e161967705f99107174f228716d9b108b68d91ce0ce60fdb576",
+  "packages/frontend/package.json": "9f56bc1d2895b7715391b50f4a73cc4fa32ee70c705044464dd4792eecf9e2d4"
+}

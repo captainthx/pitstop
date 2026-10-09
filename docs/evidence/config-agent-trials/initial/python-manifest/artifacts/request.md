@@ -1,0 +1,1 @@
+Create a Pitstop config for the Python tests in this repo. Use the declared project dependencies and keep the selected scope to the test check. Explain any dependency installation assumptions and validate the result if the CLI supports it.

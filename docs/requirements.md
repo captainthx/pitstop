@@ -2,13 +2,13 @@
 
 [English](requirements.en.md) | [คู่มือใช้งาน](user-guide.md) | [สารบัญ](README.md)
 
-เอกสารนี้ระบุความสามารถปัจจุบันของ Docker checks ส่วนวิธีติดตั้งและตัวอย่างคำสั่งอยู่ในคู่มือ
+เอกสารนี้ระบุความสามารถปัจจุบันของ Docker checks ส่วนวิธีติดตั้งและตัวอย่างคำสั่งอยู่ในคู่มือ หลักฐาน trial ด้าน mapping/prerequisite ของ config-agent อยู่ใน [ดัชนีหลักฐาน](evidence/config-agent-trials/README.md)
 
 ## ข้อกำหนด
 
 - Host มี Git, Docker CLI และ daemon ที่เชื่อมต่อได้; build CLI ด้วย Go 1.26.5 ตาม `go.mod`
-- Repo เป้าหมายมี Git HEAD อย่างน้อยหนึ่ง commit และ `.pitstop.json` schema version 2 ที่ Git root
-- ผู้ใช้คัดลอก/เขียน config ครั้งเดียวต่อ repo: ระบุ image, architecture, check definitions และ selection ไม่มี config generator
+- Repo เป้าหมายอยู่ใน Git; `run` ต้องมี HEAD และ `.pitstop.json` schema version 2 ที่ Git root ส่วน `init` และ `validate` ไม่ต้องมี HEAD
+- สร้าง config ได้ด้วย manual example, `pitstop init` หรือ portable agent skill โดย `init` ใช้ preset ที่ระบุชัดและไม่ตรวจหา manifest อัตโนมัติ
 - Image เป็น Linux `arm64` หรือ `amd64` มี `/bin/sh` และ tools ที่ commands ใช้
 - ใช้ registry/network ตามที่การ pull image และ project commands ต้องการ
 - การรันจริงที่ยืนยัน local คือ macOS ARM64 / Docker Linux ARM64; native Windows และ cross-architecture execution ยังไม่ยืนยัน
@@ -18,7 +18,7 @@
 | ส่วน | ข้อตกลง |
 | --- | --- |
 | Config | JSON document เดียว, version 2, strict fields/IDs; schema เดิมต้องย้ายเอง |
-| Commands | `doctor`, `list`, `run`, `version`; help `-h`/`--help` และ JSON output |
+| Commands | `doctor`, `list`, `run`, `version`, `init`, `validate`, `skill install`; help `-h`/`--help` และ JSON output |
 | Selection | `jobs` กำหนด default selection/order; `--job` เลือก subset จากรายการนี้ |
 | Environment | ใช้ image ใน daemon หรือ pull เมื่อจำเป็น; เตรียมสูงสุด 2 นาที; ไม่ build image ให้ |
 | Snapshot | ตรวจ working tree รวม tracked edits/deletions และ new non-ignored files; ไม่ mount repo ต้นฉบับ |
@@ -45,7 +45,7 @@ Step durations เป็น `null` ส่วน check/run มี duration จร
 - การอ่านและ execute `.github/workflows/*.yml`, แปล `uses:` หรือ expressions
 - Matrix, job dependencies (`needs`) และ service containers
 - Secret/environment injection ผ่าน config, host environment forwarding หรือ cache volumes
-- Automatic image build, automatic workflow/config conversion และ `pitstop init`
+- Automatic image build, automatic workflow/config conversion และ automatic manifest/preset detection
 - Self-hosted runner registration หรือส่ง source ไป GitHub
 - Installer link/release installation ที่จัดทำไว้
 
@@ -53,9 +53,9 @@ Snapshot ไม่รองรับ submodules, unresolved merges, absolute/bro
 
 การใช้ shared script ร่วมกับ CI ทำได้ แต่ความเหมือนของผลขึ้นกับ image/toolchain/OS/network ที่ตั้งไว้ ไม่มีการรับประกัน workflow parity
 
-## แผน config และ AI agent (2026-10-08)
+## เครื่องมือ config และ AI agent (2026-10-09)
 
-มี [design](superpowers/specs/2026-10-08-config-agent-design.md) และ [implementation plan](superpowers/plans/2026-10-08-config-agent.md) สำหรับ base/starter configs หลายภาษา/build tools, `init`, `validate` และ `skill install` ใช้ AI agent ของผู้ใช้ช่วยอ่าน manifests/scripts/workflows แล้วสร้าง config ไม่ฝัง AI provider ใน Pitstop และไม่ execute workflow YAML โดยตรง งานเหล่านี้ยังไม่ได้ implement
+มี [design](superpowers/specs/2026-10-08-config-agent-design.md) และ [implementation plan](superpowers/plans/2026-10-08-config-agent.md) สำหรับ base/starter configs หลายภาษา/build tools, `init`, `validate` และ `skill install` ที่ implement ใน checkout ปัจจุบัน ผู้ใช้ใช้ AI agent อ่าน manifests/scripts/workflows แล้วสร้าง config โดย Pitstop ไม่ฝัง AI provider และไม่ execute workflow YAML โดยตรง [หลักฐาน trial ของ config-agent](evidence/config-agent-trials/README.md) บันทึก evaluator 23 ครั้งด้าน mapping และ prerequisite; การตรวจ toolchain จริงเป็นหลักฐานแยกกัน
 
 Validation จะใช้ acceptance pipeline เดียวกับ run/doctor/list รวม strict JSON, bounded input, safe file access, semantic limits และ tests/fuzz ตามแผน การผ่าน validation หมายถึง config ถูกต้องตามกฎ ไม่ได้รับรองว่า shell/image ปลอดภัยหรือ checks ครอบคลุม CI ทั้งหมด ดู [roadmap](roadmap.md) สำหรับขอบเขตที่ยังไม่รวมและเกณฑ์พัฒนาต่อ
 

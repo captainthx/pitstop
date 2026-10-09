@@ -1,0 +1,4 @@
+[project]
+name = "unsupported-ci-case"
+version = "0.1.0"
+dependencies = ["pytest>=8,<9"]

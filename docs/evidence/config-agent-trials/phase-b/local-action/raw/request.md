@@ -1,0 +1,1 @@
+Configure Pitstop for the verification implemented by this repository's local composite action. Inspect the action and the workflow without executing either. Keep the selected scope to verification and document any action metadata that cannot map to schema-v2.

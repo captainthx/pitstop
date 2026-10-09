@@ -1,8 +1,8 @@
 # Config initialization, validation and agent skill: design
 
-**Status:** Planned; product implementation has not started. Updated 2026-10-08 (Asia/Bangkok).
+**Status:** Implemented in the current checkout; mapping/prerequisite behavior is covered by the 23-attempt [config-agent trial record](../../evidence/config-agent-trials/README.md), while runtime/toolchain and CI parity remain separate. Updated 2026-10-09 (Asia/Bangkok).
 
-เอกสารนี้บันทึกขอบเขตที่ผู้ใช้ตกลงและรายละเอียดสำหรับ [implementation plan](../plans/2026-10-08-config-agent.md) ยังไม่ใช่คู่มือคำสั่งที่มีใน CLI ปัจจุบัน รายการพัฒนาภายหลังอยู่ใน [roadmap](../../roadmap.md)
+เอกสารนี้บันทึกขอบเขตที่ผู้ใช้ตกลงและรายละเอียดสำหรับ [implementation plan](../plans/2026-10-08-config-agent.md) คำสั่งในส่วน config/agent มีใน CLI ปัจจุบัน แต่คู่มือการใช้งานอยู่ใน [current guides](../../README.md) และหลักฐาน runtime/agent trial ต้องดูแยกต่างหาก รายการพัฒนาภายหลังอยู่ใน [roadmap](../../roadmap.md)
 
 ## Goal and existing behavior
 
@@ -92,7 +92,7 @@ All new commands reject unexpected positional arguments and unknown flags. JSON 
 - Default architecture maps runtime.GOARCH arm64/amd64 to Linux platforms; unsupported host arch requires --arch. Explain this is a starter default, not remote daemon detection.
 - Resolve Git root without requiring HEAD. Build and Parse the complete config before any write. Init does not create workflow or project scripts.
 - Dry-run previews config without writes, including when target exists; result reports destinationExists. Actual init always refuses any existing destination, including symlink/broken symlink. No init --force.
-- Exclusive-create with O_EXCL, mode 0600, under opened repo root. Never check-then-truncate. On failed write/sync/close, report failure, remove only the file this invocation created and never claim written=true. Document that interrupted creation may leave a partial file for manual inspection; preserve it on the next init.
+- Exclusive-create with O_EXCL, mode 0600, under opened repo root. Never check-then-truncate. On failed write/sync/close or cancellation after creation, report failure, preserve the destination for manual inspection and recovery, and never claim `written=true`. A retry refuses the retained destination with `CONFIG_EXISTS`; do not unlink a file after exclusive creation based on a later identity check.
 - Result: `{repo,configPath,preset,architecture,config,dryRun,written,destinationExists,warnings}`. warnings mention starter prerequisites, explicit base placeholder and host-architecture default when used. Error CONFIG_EXISTS for collisions; WRITE_FAILED for persistence errors.
 
 ### skill install
@@ -105,9 +105,9 @@ All new commands reject unexpected positional arguments and unknown flags. JSON 
 - Use a fixed embedded asset allowlist and io/fs.ValidPath. Reject destination symlinks and non-directories; confine operations with os.Root under the chosen user home/Git root, then the skills parent. Reject symlink components within that selected root. Never use unrestricted joins, global RemoveAll or shell copy.
 - Dry-run validates flags/target and returns planned files/action; creates no directories, lock or temp files. With an existing install and no force, preview action is blocked and actual install returns SKILL_EXISTS.
 - Normal install refuses an existing folder. Force replaces only an identified Pitstop bundle (ownership manifest), refuses unknown extra files/symlinks and preserves the original until staging is complete. Never delete a user-authored skill just because its folder name matches.
-- Build a sibling staging directory (0700), write regular files (0600), verify list/content hashes. Exclusive installer lock prevents two Pitstop installs in one parent racing. Move old owned bundle to a uniquely named backup, publish staged bundle, rollback on failure; retain/report backup if rollback fails. Never delete old files before successful staging. Handle/report interruption recovery; next invocation must not silently discard a retained backup. Failure cannot report installed=true.
+- Build a sibling staging directory (0700), write regular files (0600), verify list/content hashes. Exclusive installer lock prevents two Pitstop installs in one parent racing. Move old owned bundle to a uniquely named backup, publish staged bundle, rollback on failure; retain/report backup if rollback fails. Never delete old files before successful staging. Cancellation before publish preserves the old bundle and reports `installed:false`; cancellation observed after publish reports `installed:true` with a cleanup warning when needed. Publish is the commit point. Handle/report interruption recovery; next invocation must not silently discard a retained backup. Failure cannot report installed=true.
 - Result: `{agent,scope,targetPath,bundleVersion,files,dryRun,action,installed,warnings}`; files are bundle-relative, sorted. action is install/replace/blocked. Error SKILL_EXISTS for existing without force; SKILL_INSTALL_FAILED for unsafe destination/write/lock/recovery errors. Messages explain recovery without exposing config contents.
-- No uninstall, --all, arbitrary --dest, remote installer or automatic AGENTS.md/CLAUDE.md editing in this release.
+- No uninstall, --all, arbitrary --dest, remote installer or automatic AGENTS.md/CLAUDE.md editing in this release. Force replacement authenticates only the current embedded manifest and explicitly trusted historical manifests; unknown historical content requires manual migration and cannot authorize replacement.
 
 ## Examples and portable bundle
 
@@ -136,6 +136,8 @@ Use portable name/description frontmatter; no Claude-specific dynamic context in
 - Keep [roadmap](../../roadmap.md) current; future features are not installed CLI capabilities or release commitments.
 
 ## Primary references checked 2026-10-08
+
+The primary source and metadata checks below were performed on 2026-10-08. Current documentation and trial status were updated on 2026-10-09; see the [trial evidence index](../../evidence/config-agent-trials/README.md). The accepted trial record does not claim native Claude behavior, automatic skill discovery, runtime/toolchain execution, or remote CI parity.
 
 - [Go JSON decoder and Unicode behavior](https://pkg.go.dev/encoding/json@go1.26.5#Unmarshal): permissive defaults motivate explicit strict preflight.
 - [JSON v2 availability at the Go floor](https://pkg.go.dev/encoding/json/v2@go1.26.5): experimental; do not require it for this release.

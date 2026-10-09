@@ -1,0 +1,1 @@
+Create a Pitstop check for this pnpm project. Respect the package manager version declared by the repository, use a deterministic dependency install, and configure the project's existing quality script. Report what you selected and what you could not verify.

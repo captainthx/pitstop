@@ -1,16 +1,16 @@
 # แนวทางพัฒนา Pitstop / Development roadmap
 
-**Updated:** 2026-10-08 (Asia/Bangkok). This is planning guidance, not a release promise or a list of installed CLI features.
+**Updated:** 2026-10-09 (Asia/Bangkok). This is planning guidance, not a release promise or a list of installed CLI features.
 
 [Current docs / เอกสารปัจจุบัน](README.md) · [Requirements / ข้อกำหนด](requirements.md) · [English requirements](requirements.en.md)
 
-## งานที่วางแผนอยู่ / Planned work
+## งานที่เสร็จใน checkout ปัจจุบัน / Current implemented work
 
-AI-agent-led configuration, manual starters, strict shared validation and CLI installation of a portable skill are covered by the [design](superpowers/specs/2026-10-08-config-agent-design.md) and [implementation plan](superpowers/plans/2026-10-08-config-agent.md).
+AI-agent-led configuration, manual starters, strict shared validation and CLI installation of a portable skill are implemented in the current checkout and documented by the [design](superpowers/specs/2026-10-08-config-agent-design.md) and [implementation plan](superpowers/plans/2026-10-08-config-agent.md).
 
-งานนี้ยังไม่ได้ implement: `pitstop init`, `pitstop validate` และ `pitstop skill install` ยังไม่มีใน CLI ปัจจุบัน ตัวอย่างปัจจุบันมี Node และ Go ส่วนตัวอย่างภาษา/build tools อื่นและชุด skill อยู่ในแผน เมื่อส่ง implementation ต้องอัปเดต README, guides, requirements และสารบัญทั้งสองภาษาให้ตรงกับผลตรวจจริง
+`pitstop init`, `pitstop validate` และ `pitstop skill install` มีใน CLI ปัจจุบัน พร้อม starter และ portable skill หลายภาษา หลักฐาน agent trial ด้าน mapping/prerequisite 23 ครั้งอยู่ใน [ดัชนีหลักฐาน](evidence/config-agent-trials/README.md) ส่วน runtime/toolchain verification และ release publication ต้องมีหลักฐานแยกก่อนสรุปความสำเร็จ
 
-This work is not implemented yet. Current examples cover Node and Go; other starters and the portable skill are planned. Update both README languages, guides, requirements and index as implementation and actual verification land.
+The commands and portable bundle are present in the current checkout. Agent mapping/prerequisite trials are recorded in the [trial evidence index](evidence/config-agent-trials/README.md). Runtime/toolchain verification and release publication remain separate evidence or release work and must not be inferred from parser checks.
 
 ## งานที่ยังไม่รวมในรอบนี้ / Deferred scope
 
@@ -30,6 +30,7 @@ This work is not implemented yet. Current examples cover Node and Go; other star
 | Artifact export / report retention | เมื่อจำเป็นต้องนำ build artifacts กลับหรือจัดการ cache growth ต้องกำหนด safe paths, quotas, symlink behavior และ retention rules. |
 | Hostile-code sandbox / resource policy | เมื่อรองรับ code/images ที่ไม่ไว้ใจ ต้องมี separate threat model, network/CPU/memory policy และ daemon/kernel isolation. Strict config validation alone cannot supply this guarantee. |
 | Skill uninstall / remote distribution / plugin package | เมื่อ local bundle install ไม่พอ ต้องมี ownership/version/update/recovery policy; no arbitrary destination or user-file deletion. |
+| Trusted historical bundle registry maintenance | เมื่อมี release ใหม่ ต้องเพิ่ม manifest ที่เชื่อถือได้และทดสอบ force-upgrade ของทุกประวัติที่ยังรองรับ; unknown historical content remains manual migration. |
 | JSON Schema artifact / editor integration | เมื่อ editors ต้องใช้ autocomplete/schema ให้ derive/check against canonical model/parser and rejection tests; no independent validator that drifts. |
 | Self-hosted runner registration / upload source | เมื่อมีความต้องการใช้ GitHub runner จริง ต้องกำหนด authentication, source handling และ execution trust separately. |
 | Native Windows / broader platforms | เมื่อมี demand ให้แก้ Unix locking/file safety and verify on target OS; do not advertise unsupported portability. |

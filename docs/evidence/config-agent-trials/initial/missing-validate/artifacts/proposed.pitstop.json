@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 2,
+  "runner": {
+    "image": "node:22-bookworm",
+    "architecture": "linux/arm64"
+  },
+  "jobs": ["verify"],
+  "checks": [
+    {
+      "id": "verify",
+      "steps": [
+        {
+          "id": "install",
+          "name": "Install dependencies",
+          "run": "npm install"
+        },
+        {
+          "id": "check",
+          "name": "Run project checks",
+          "run": "npm run check"
+        }
+      ]
+    }
+  ]
+}

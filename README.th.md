@@ -4,9 +4,9 @@
 
 รัน lint, test และ build ของโปรเจกต์ใน Linux container ก่อน commit หรือ push โดยใช้ไฟล์ที่กำลังแก้บนเครื่อง แล้วเก็บ log กับรายงานผลไว้ให้ตรวจย้อนหลัง
 
-**เริ่มต้น:** build CLI → คัดลอกตัวอย่างเป็น `.pitstop.json` ใน repo เป้าหมาย → แก้ image/คำสั่ง → `pitstop doctor` → `pitstop run`
+**เริ่มต้น:** build CLI → ใช้ `pitstop init --dry-run --json` หรือคัดลอกตัวอย่างไปยัง repo เป้าหมาย → ตรวจด้วย `pitstop validate --json` → `pitstop doctor` → `pitstop run`
 
-**สถานะเครื่องมือ config (2026-10-08):** `init`, `validate` และ `skill install` ยังอยู่ในแผน ไม่มีใน CLI ปัจจุบัน งานถัดไปครอบคลุม AI agent สร้าง config, starters หลายภาษา/build tools, shared validator ที่เข้มงวดขึ้น และติดตั้ง skill สำหรับ Codex/Claude Code ดู [implementation plan](docs/superpowers/plans/2026-10-08-config-agent.md) และ [แนวทางพัฒนาต่อ](docs/roadmap.md)
+**สถานะเครื่องมือ config (2026-10-09):** checkout ปัจจุบันมี `init`, `validate` และ `skill install` พร้อม starter สำหรับ Node, Go, Python, Java, .NET, Rust, PHP และ Ruby รวมถึง portable `pitstop-config` skill สำหรับ Codex และ Claude Code มีบันทึก trial ด้าน mapping/prerequisite 23 ครั้งใน [ดัชนีหลักฐาน config-agent](docs/evidence/config-agent-trials/README.md); หลักฐาน runtime และ CI parity ยังแยกต่างหาก ดู [คู่มือปัจจุบัน](docs/user-guide.md), [คู่มือ AI agent](docs/ai-agent.md) และ [แนวทางพัฒนาต่อ](docs/roadmap.md)
 
 ## Pitstop ทำอะไรให้
 
@@ -41,7 +41,7 @@ Go บน host ใช้ build ตัว Pitstop เท่านั้น เค
 
 ## 2. สร้าง config ครั้งเดียวต่อ repo
 
-**ตอนนี้ยังไม่มี `pitstop init`** ต้องสร้าง `.pitstop.json` ที่ root ของ repo แต่เริ่มจากตัวอย่างได้ ไม่ต้องเขียนใหม่ทั้งหมด
+ใช้ `pitstop init` เพื่อสร้าง starter หรือให้ skill อ่านหลักฐานของ repo แล้วร่าง config `init` จะไม่เขียนทับ `.pitstop.json` ที่มีอยู่ ใช้ `--dry-run --json` เพื่อตรวจ starter ก่อนเขียน
 
 รันจาก checkout ของ Pitstop โดยเปลี่ยน path เป็น repo ที่ต้องการตรวจ:
 
@@ -51,7 +51,15 @@ TARGET_REPO="/absolute/path/to/your/repo"
 cp "$PITSTOP_SOURCE/examples/docker-react.json" "$TARGET_REPO/.pitstop.json"
 ```
 
-ถ้ามี config อยู่แล้ว ให้แก้ไฟล์เดิมแทนการคัดลอกทับ สำหรับ Go เปลี่ยนชื่อไฟล์เป็น `examples/docker-go.json` จากนั้นแก้ `.pitstop.json`:
+ถ้ามี config อยู่แล้ว ให้เก็บไฟล์เดิมและแก้โดยตั้งใจ เลือก preset ด้วย `--preset` หรือใช้ `custom` พร้อม `--image` และ `--command` อย่างน้อยหนึ่งครั้ง ชื่อ preset ทั้งหมดดูได้จาก `pitstop init -h` หากต้องการเส้นทาง manual ให้คัดลอก [ตัวอย่าง Node](examples/docker-react.json) หรือ [ตัวอย่าง Go](examples/docker-go.json) แล้วแก้ให้ตรงกับโปรเจกต์
+
+preview ของ base:
+
+```sh
+pitstop init --repo "$TARGET_REPO" --preset base --dry-run --json
+```
+
+ตัวอย่าง Node คือ:
 
 ```json
 {
@@ -77,7 +85,15 @@ cp "$PITSTOP_SOURCE/examples/docker-react.json" "$TARGET_REPO/.pitstop.json"
 
 ตรวจ architecture ของ Docker daemon ด้วย `docker version --format '{{.Server.Arch}}'`: `arm64`/`aarch64` ใช้ `linux/arm64`; `amd64`/`x86_64` ใช้ `linux/amd64` repo ต้องมี commit อย่างน้อยหนึ่งรายการก่อน `run` แนะนำ commit config และ shared scripts เพื่อให้ทีมใช้เหมือนกัน
 
-## 3. ตรวจความพร้อม แล้วรัน
+## 3. Validate ตรวจความพร้อม แล้วรัน
+
+`validate` ตรวจ config และ jobs ที่เลือกโดยไม่ใช้ Docker, pull image, เขียน cache หรือรันคำสั่งของโปรเจกต์ ผล JSON มี envelope เดียวพร้อม `valid`, jobs, architecture, จำนวน checks/steps และ issue ที่จำกัดขนาด
+
+```sh
+pitstop validate --repo "$TARGET_REPO" --json
+```
+
+`doctor` ตรวจ Git, Docker และความพร้อมของ image ส่วน `run` รัน checks ใน container การผ่าน validation ไม่ได้ยืนยันว่า command, image, dependencies หรือ workflow CI จะทำงานสำเร็จ
 
 ```sh
 pitstop doctor --repo "$TARGET_REPO"
@@ -86,6 +102,14 @@ pitstop run --repo "$TARGET_REPO"
 ```
 
 `doctor` ตรวจ config, Docker และ image โดยไม่ pull หรือเปิด container ส่วน `run` จะ pull image เมื่อจำเป็น แล้วรัน checks หาก image ยังไม่มี `doctor` อาจรายงานพร้อมพร้อมข้อความว่าจะ pull ตอน run; ไม่ได้ยืนยันว่า image มีคำสั่งของโปรเจกต์ครบ
+
+ติดตั้ง portable skill ในตำแหน่ง user หรือ project ที่แยกไว้:
+
+```sh
+pitstop skill install --agent codex --scope project --repo "$TARGET_REPO" --dry-run --json
+```
+
+user scope ใช้ `~/.agents/skills/pitstop-config` สำหรับ Codex หรือ `~/.claude/skills/pitstop-config` สำหรับ Claude ส่วน project scope ใช้ directory ซ่อนที่ตรงกับ agent ใต้ Git root `--force` จะเปลี่ยนได้เฉพาะ bundle ของ Pitstop ที่ manifest ที่เชื่อถือได้ยืนยันความเป็นเจ้าของ
 
 ตัวเลือกที่ใช้บ่อย:
 
@@ -115,5 +139,6 @@ pitstop run -h
 
 - [คู่มือครบ: config, shared scripts, custom image, commands, reports และ troubleshooting](docs/user-guide.md)
 - [ขอบเขตและข้อกำหนด](docs/requirements.md)
+- [การตั้งค่าโดย AI agent](docs/ai-agent.md)
 - [Design งาน config/agent](docs/superpowers/specs/2026-10-08-config-agent-design.md), [implementation plan](docs/superpowers/plans/2026-10-08-config-agent.md) และ [ขอบเขตที่เก็บไว้พัฒนาต่อ](docs/roadmap.md)
 - [สารบัญเอกสาร](docs/README.md) และ [หลักฐานทดสอบ Docker ปัจจุบัน](docs/evidence/docker-checks-validation.md)

@@ -1,0 +1,10 @@
+name: project-check
+description: Reviewed local composite check
+inputs:
+  mode:
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: npm run check

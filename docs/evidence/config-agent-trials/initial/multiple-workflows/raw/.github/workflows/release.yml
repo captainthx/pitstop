@@ -1,0 +1,9 @@
+name: release
+on:
+  push:
+    tags: ['v*']
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    steps:
+      - run: npm publish

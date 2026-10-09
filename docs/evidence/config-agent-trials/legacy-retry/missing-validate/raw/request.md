@@ -1,0 +1,1 @@
+Configure this repository with the Pitstop CLI available on PATH. If that CLI does not provide `validate`, report the version mismatch and give me the manual next step instead of claiming validation succeeded. Do not execute project commands while inspecting.

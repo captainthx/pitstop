@@ -296,19 +296,37 @@ func TestInstallForceUpgradesKnownHistoricalBundle(t *testing.T) {
 	}
 }
 
+func TestInstallForceUpgradesTask6Bundle(t *testing.T) {
+	repo := skillTestRepo(t)
+	resolvedRepo, _ := filepath.EvalSymlinks(repo)
+	target := filepath.Join(resolvedRepo, ".agents", "skills", "pitstop-config")
+	if err := os.MkdirAll(target, 0700); err != nil {
+		t.Fatal(err)
+	}
+	writeTrustedManifest(t, target, 1)
+	result, err := Install(context.Background(), Options{Agent: "codex", Scope: "project", Repo: repo, Force: true})
+	if err != nil || !result.Installed {
+		t.Fatalf("Task 6 upgrade result=%#v err=%v", result, err)
+	}
+}
+
 func writeHistoricalDraft(t *testing.T, target string) {
 	t.Helper()
 	manifests := agentassets.TrustedManifests()
-	if len(manifests) < 2 {
+	if len(manifests) < 3 {
 		t.Fatal("historical manifest missing")
 	}
-	m, err := parseManifest(manifests[1])
+	m, err := parseManifest(manifests[2])
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, entry := range m.Files {
 		fixture := filepath.Join("..", "agentassets", "testdata", "ff87a16", filepath.FromSlash(entry.Path))
 		data, readErr := os.ReadFile(fixture)
+		if errors.Is(readErr, os.ErrNotExist) {
+			fixture = filepath.Join("..", "agentassets", "testdata", "21cd1c2", filepath.FromSlash(entry.Path))
+			data, readErr = os.ReadFile(fixture)
+		}
 		if errors.Is(readErr, os.ErrNotExist) {
 			data, readErr = agentassets.ReadFile(entry.Path)
 		}
@@ -323,7 +341,39 @@ func writeHistoricalDraft(t *testing.T, target string) {
 			t.Fatal(err)
 		}
 	}
-	if err := os.WriteFile(filepath.Join(target, "manifest.json"), manifests[1], 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(target, "manifest.json"), manifests[2], 0600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func writeTrustedManifest(t *testing.T, target string, index int) {
+	t.Helper()
+	manifests := agentassets.TrustedBundles()
+	if index < 0 || index >= len(manifests) {
+		t.Fatal("trusted manifest index missing")
+	}
+	m, err := parseManifest(manifests[index])
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range m.Files {
+		fixture := filepath.Join("..", "agentassets", "testdata", "21cd1c2", filepath.FromSlash(entry.Path))
+		data, readErr := os.ReadFile(fixture)
+		if errors.Is(readErr, os.ErrNotExist) {
+			data, readErr = agentassets.ReadFile(entry.Path)
+		}
+		if readErr != nil {
+			t.Fatalf("trusted fixture %s: %v", entry.Path, readErr)
+		}
+		path := filepath.Join(target, filepath.FromSlash(entry.Path))
+		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, data, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(target, "manifest.json"), manifests[index], 0600); err != nil {
 		t.Fatal(err)
 	}
 }

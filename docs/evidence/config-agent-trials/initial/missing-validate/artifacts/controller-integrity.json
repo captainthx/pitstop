@@ -1,0 +1,6 @@
+{
+  "originalFilesUnchanged": true,
+  "configCreated": false,
+  "protocolPass": false,
+  "reason": "Evaluator incorrectly sought global skill then read forbidden source-testdata instead of supplied installed local skill"
+}

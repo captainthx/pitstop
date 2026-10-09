@@ -4,7 +4,7 @@
 
 This guide describes Docker checks configured with `.pitstop.json` schema version 2.
 
-Status 2026-10-08: current commands are `doctor`, `list`, `run` and `version`. `init`, `validate`, `skill install`, additional toolchain examples and agent guidance are in the [next implementation plan](superpowers/plans/2026-10-08-config-agent.md). See the [roadmap](roadmap.md) for deferred scope.
+Status 2026-10-09: the current checkout provides `init`, `validate`, and `skill install` alongside `doctor`, `list`, `run`, and `version`. The [AI-agent guide](ai-agent.en.md) covers the portable skill. The [config-agent trial evidence](evidence/config-agent-trials/README.md) records mapping and prerequisite behavior from 23 evaluator attempts; it does not establish runtime or CI parity. See the [roadmap](roadmap.md) for deferred scope and the limits of the current evidence.
 
 ## Prerequisites
 
@@ -12,7 +12,7 @@ Status 2026-10-08: current commands are `doctor`, `list`, `run` and `version`. `
 | --- | --- |
 | Host running Pitstop | Git, Docker CLI and a reachable daemon |
 | Building the CLI | Go 1.26.5, as specified in `go.mod` |
-| Target repository | A Git repository with at least one commit and `.pitstop.json` at its root |
+| Target repository | A Git repository; `run` requires at least one commit and `.pitstop.json` at its root, while `init` and `validate` can work before the first commit |
 | Docker image | A Linux image containing `/bin/sh` and every tool used by its steps |
 | Connectivity | Registry access for missing images; package registry access when a step installs dependencies |
 
@@ -38,7 +38,13 @@ docker version --format '{{.Server.Arch}}'
 
 ## First repository setup
 
-There is no `init` command or automatic project detection/config generation. Copy the [Node example](../examples/docker-react.json) or [Go example](../examples/docker-go.json) to `.pitstop.json`, then adapt it to the project.
+`pitstop init` creates a named starter without automatic manifest detection. Preview it before writing:
+
+```sh
+pitstop init --repo /absolute/path/to/your/repo --preset base --dry-run --json
+```
+
+Available presets are listed by `pitstop init -h`; `custom` requires `--image` and at least one repeated `--command`. Existing `.pitstop.json` files are preserved because init never overwrites them. For a manual path, copy the [Node example](../examples/docker-react.json) or [Go example](../examples/docker-go.json), then adapt it.
 
 This complete configuration calls a project-owned script:
 
@@ -87,6 +93,23 @@ your-project/
 
 You do not need to commit every edit before running checks: Pitstop tests the current working tree, but the repository must already have a HEAD commit.
 
+## Validate and install the agent skill
+
+Run validation before `doctor` or `run`. It reads `.pitstop.json` without Docker, image pulls, cache writes, project commands, or shell evaluation. A valid result has `valid: true`, selected jobs, architecture, definition counts, and `issues: []`; invalid config returns exit `2`, one bounded issue, and error code `CONFIG_INVALID`.
+
+```sh
+pitstop validate --repo "$TARGET_REPO" --json
+```
+
+Install the portable skill with an explicit agent and scope. Project scope resolves the Git root; user scope uses the user's home and does not accept `--repo`. Use `--dry-run` in an isolated target to inspect files. `--force` replaces only an owned Pitstop bundle whose manifest is current or explicitly trusted historical content.
+
+```sh
+pitstop skill install --agent codex --scope project --repo "$TARGET_REPO" --dry-run --json
+pitstop skill install --agent claude --scope user --dry-run --json
+```
+
+Codex user installs live at `~/.agents/skills/pitstop-config`; Claude user installs live at `~/.claude/skills/pitstop-config`. Project installs use the matching hidden directory under the Git root. Installation never edits `AGENTS.md`, `CLAUDE.md`, workflow files, or project scripts. See the [AI-agent guide](ai-agent.en.md) for the workflow and manual prompt fallback.
+
 ## Configuration reference
 
 All fields below are required except `name`. Image, architecture and jobs have no automatic defaults.
@@ -108,7 +131,7 @@ IDs contain 1–64 characters. Start with an ASCII letter or digit; remaining ch
 
 Use one JSON document, without comments. Unknown fields such as `env`, `uses` or `engine` are rejected. Set environment variables inside a step's command/script if needed; host shell variables are not automatically forwarded into containers.
 
-Step `run` values intentionally contain shell code executed in containers. Current config checks do not certify command/image safety or GitHub CI coverage. The new validator plan adds rejection of duplicate/case-variant keys, malformed Unicode, unsafe file types and inputs exceeding limits; see the [validation design](superpowers/specs/2026-10-08-config-agent-design.md). These additional rules are not implemented yet.
+Step `run` values intentionally contain shell code executed in containers. `pitstop validate` applies the shared strict parser and bounded checks. It rejects duplicate or unknown fields, malformed Unicode, unsafe file types, unsupported schema versions, and values beyond documented limits. Validation does not certify command/image safety, dependency availability, runtime success, or GitHub CI coverage. See the [validation design](superpowers/specs/2026-10-08-config-agent-design.md).
 
 **`jobs` selects checks, not steps.** You may define several checks and select only some:
 
@@ -349,6 +372,6 @@ docker ps -a --filter "label=com.pitstop.run=RUN_ID"
 
 ## Supported scope
 
-Prebuilt Docker images, shell/shared scripts, ordered steps, selection, snapshots, timeout/cancellation and reports are supported. There is no workflow YAML executor, `uses:`/expression translation, matrix, job dependencies (`needs`), service containers, secret injection, cache volumes, automatic image builds, artifact export, self-hosted runner registration or config generator.
+Prebuilt Docker images, shell/shared scripts, ordered steps, selection, snapshots, timeout/cancellation and reports are supported. There is no workflow YAML executor, `uses:`/expression translation, matrix, job dependencies (`needs`), service containers, secret injection, cache volumes, automatic image builds, artifact export, self-hosted runner registration, automatic workflow conversion, or automatic manifest detection.
 
 See [requirements](requirements.en.md) and [validation](evidence/docker-checks-validation.md). Earlier designs and evidence are listed as historical in the [documentation index](README.md).

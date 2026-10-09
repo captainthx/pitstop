@@ -16,10 +16,10 @@ import (
 	"pitstop/internal/config"
 )
 
-func TestTrustedManifestsIncludeCurrentAndUnreleasedDraft(t *testing.T) {
+func TestTrustedManifestsIncludeCurrentAndHistoricalBundles(t *testing.T) {
 	manifests := agentassets.TrustedManifests()
-	if len(manifests) != 2 || bytes.Equal(manifests[0], manifests[1]) {
-		t.Fatalf("trusted manifest registry = %d entries or lacks distinct draft", len(manifests))
+	if len(manifests) != 3 || bytes.Equal(manifests[0], manifests[1]) || bytes.Equal(manifests[1], manifests[2]) {
+		t.Fatalf("trusted manifest registry = %d entries or lacks distinct history", len(manifests))
 	}
 	for i, data := range manifests {
 		var manifest struct {

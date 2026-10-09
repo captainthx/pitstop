@@ -324,7 +324,7 @@ func loadBundle() (bundle, error) {
 
 func verifyOwnedBundle(root *os.Root, target string) error {
 	manifestPath := filepath.ToSlash(filepath.Join(target, "manifest.json"))
-	trustedManifests := agentassets.TrustedManifests()
+	trustedManifests := agentassets.TrustedBundles()
 	maxManifestSize := 0
 	for _, trusted := range trustedManifests {
 		if len(trusted) > maxManifestSize {

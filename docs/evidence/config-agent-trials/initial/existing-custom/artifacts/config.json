@@ -1,0 +1,1 @@
+{"schemaVersion":2,"runner":{"image":"registry.example.test/team/tooling:2026.10","architecture":"linux/amd64"},"jobs":["verify"],"checks":[{"id":"verify","steps":[{"id":"check","name":"Project verification","run":"./tools/verify --format plain"}]}]}

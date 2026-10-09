@@ -1,0 +1,5 @@
+{
+  "name": "nonstandard-job",
+  "packageManager": "npm@10.9.2",
+  "scripts": {"check": "npm test", "release": "npm publish"}
+}

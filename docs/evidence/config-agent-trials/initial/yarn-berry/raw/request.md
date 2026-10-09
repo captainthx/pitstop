@@ -1,0 +1,1 @@
+Set up a Pitstop check for this Yarn project. Inspect the declared package manager and lockfile, choose the project's existing verification script, and keep install behavior deterministic. Explain assumptions and gaps.
