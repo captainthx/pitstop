@@ -57,7 +57,7 @@ Snapshot ไม่รองรับ submodules, unresolved merges, absolute/bro
 
 มี [design](superpowers/specs/2026-10-08-config-agent-design.md) และ [implementation plan](superpowers/plans/2026-10-08-config-agent.md) สำหรับ base/starter configs หลายภาษา/build tools, `init`, `validate` และ `skill install` ที่ implement ใน checkout ปัจจุบัน ผู้ใช้ใช้ AI agent อ่าน manifests/scripts/workflows แล้วสร้าง config โดย Pitstop ไม่ฝัง AI provider และไม่ execute workflow YAML โดยตรง [หลักฐาน trial ของ config-agent](evidence/config-agent-trials/README.md) บันทึก evaluator 23 ครั้งด้าน mapping และ prerequisite; การตรวจ toolchain จริงเป็นหลักฐานแยกกัน
 
-Validation ใช้ acceptance pipeline เดียวกับ run/doctor/list รวม strict JSON, bounded input, safe file access, semantic limits และ tests/fuzz การผ่าน validation หมายถึง config ถูกต้องตามกฎ ไม่ได้รับรองว่า shell/image ปลอดภัยหรือ checks ครอบคลุม CI ทั้งหมด Task 8 ยังรับผิดชอบการตรวจ runtime และทั้ง branch ดู [roadmap](roadmap.md) สำหรับขอบเขตที่ยังไม่รวมและเกณฑ์พัฒนาต่อ
+Validation ใช้ acceptance pipeline เดียวกับ run/doctor/list รวม strict JSON, bounded input, safe file access, semantic limits และ tests/fuzz การผ่าน validation หมายถึง config ถูกต้องตามกฎ ไม่ได้รับรองว่า shell/image ปลอดภัยหรือ checks ครอบคลุม CI ทั้งหมด ผล runtime ที่เลือกและการตรวจทั้ง branch อยู่ใน [หลักฐาน validation](evidence/config-agent-validation.md) และ [ผล review พร้อมข้อจำกัด test ที่ยังค้าง](evidence/config-agent-review.md) ดู [roadmap](roadmap.md) สำหรับขอบเขตที่ยังไม่รวมและเกณฑ์พัฒนาต่อ
 
 ## หลักฐานและการตรวจสอบ
 

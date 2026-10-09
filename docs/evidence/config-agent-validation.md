@@ -93,7 +93,7 @@ The initial gate had two concrete failures that were corrected in this task: the
 - `quickvalidate` was unavailable in the default and bundled Python environments because PyYAML was unavailable; front matter, links, and referenced hashes were checked with available local tooling and the limitation is retained honestly.
 - The [config-agent trial index](config-agent-trials/README.md) records 14 independent cases and 23 evaluator attempts. Those trials establish mapping and prerequisite reporting, not runtime or Docker coverage.
 
-The acceptance boundary remains the canonical parser and `config.Load` consumers; no smoke path bypasses them. Parser byte/depth, name, command, job/check/step, issue-path and issue-message limits are enforced by unit and fuzz suites, including direct ID and multibyte rendered-path boundaries and exact over-limit codes/paths. Diagnostics expose structured issue codes and JSON paths rather than raw config values. Dry-run paths assert no destination is created. Skill replacement accepts only trusted current or bundled historical manifests; arbitrary destination-declared ownership cannot authorize deletion. Init and installer failures preserve recoverable destinations, and post-publish cancellation reports a completed installation with a warning. Runtime reports use `selectedCoverage=complete` and `workflowCoverage=not_applicable` only for the selected fixture checks.
+The acceptance boundary remains the canonical parser and `config.Load` consumers; no smoke path bypasses them. Parser byte/depth, name, command, job/check/step, issue-path and issue-message limits are enforced by unit and fuzz suites, including direct 64/65-byte ID boundaries and exact count-overflow codes/paths. The rendered-path test checks an oversized multibyte input for bounded valid UTF-8; exact 256/257-byte prefix assertions remain deferred. Diagnostics expose structured issue codes and JSON paths rather than raw config values. Dry-run paths assert no destination is created. Skill replacement accepts only trusted current or bundled historical manifests; arbitrary destination-declared ownership cannot authorize deletion. Init and installer failures preserve recoverable destinations, and post-publish cancellation reports a completed installation with a warning. Runtime reports use `selectedCoverage=complete` and `workflowCoverage=not_applicable` only for the selected fixture checks.
 
 ## Acceptance status
 
@@ -102,4 +102,7 @@ The acceptance boundary remains the canonical parser and `config.Load` consumers
 - [x] Explicit Python and Rust runtime fixtures with actual manifests/locks.
 - [x] Focused pnpm and Yarn Berry Corepack bootstrap/version fixtures.
 - [x] CI integration beside existing formatting, dependency, race, vet, Docker, and JSON checks.
-- [ ] Remote CI execution, release publication, and scoped whole-branch review: intentionally unverified here and owned by the parent review.
+- [x] Whole-branch review and one scoped fix-wave gate; see [review and adjudications](config-agent-review.md).
+- [ ] Remote CI execution and release publication: unverified.
+
+Nonblocking test gaps: exact rendered-path boundary/prefix assertions and cancellation-test fatal-path worker joining remain deferred. The passing cancellation path joins correctly; a failing/delayed test may leave its fake Git child polling. These are not production defects found by the scoped review.

@@ -115,31 +115,25 @@ Skipped repeating green broad suites and unrelated runtime toolchains. Remaining
 
 ## Fix-wave record (2026-10-09)
 
-The review above is retained verbatim as the original read-only record. This section records the bounded resolutions and the evidence collected after it. The parent scoped reviewer still owns the final acceptance decision; this document does not claim a scoped pass.
+The review above is retained verbatim as the original read-only record. This section records the bounded resolutions and the evidence collected after it. The fix-wave record below was written before the scoped gate; the completed scoped outcome and adjudications are preserved at the end of this document.
 
 ### Resolutions
 
 1. Wrong nested containers now return a trusted `JSON_TYPE` issue at the expected field or array-element pointer before the ordered shape scan can consume inner tokens. Parser regressions cover primitive, null, object and array values at `/runner`, `/checks`, `/checks/0`, `/checks/0/steps`, and `/checks/0/steps/0`; each asserts zero `Config`, `errors.As` to `*model.ValidationError`, the exact code/path, and absence of a distinctive secret value.
 2. The pnpm, Yarn Classic and Yarn Berry starters now run `corepack enable && corepack install --global ...` before their bare manager commands. The current manifest was refreshed. The exact `bdeb767` bundle was preserved in `internal/agentassets/testdata/bdeb767`; its trusted manifest hash is `15df7dbb90c001b3234c490b60929a09bbede4b10e0f791d700657d64b3933b3`, and tests independently verify every archived file against that manifest before force-upgrade coverage.
 3. CLI JSON fallback now consumes `--agent` and `--scope`, uses `strconv.ParseBool`'s Cobra-compatible grammar, and prefers a parsed `json` flag value when Cobra returned a command. Syntax regressions cover a string flag consuming `--json`, plus `--json=0` and `--json=FALSE`; each requires no JSON stdout.
-4. Skill installation checks cancellation immediately after project destination resolution and before returning either the resolution error or any dry-run/write path. Deterministic fake-Git tests cover successful and failed resolution, release the blocked process on every path, require `CANCELLED`, and assert no skill directory was created before the boundary completed. The established post-publish success ruling remains unchanged.
+4. Skill installation checks cancellation immediately after project destination resolution and before returning either the resolution error or any dry-run/write path. Deterministic fake-Git tests cover successful and failed resolution, release the blocked process and join it on the passing path, require `CANCELLED`, and assert no skill directory was created before the boundary completed. The established post-publish success ruling remains unchanged.
 5. Human report rendering now escapes C0, Unicode format and DEL characters and bounds displayed messages/paths while leaving machine-readable result fields and filesystem paths untouched. Error/result summaries and CLI stderr use the common sanitizer. Recovery output tests preserve the recovery instruction, show escaped controls and enforce bounded rendering.
-6. Evidence wording now distinguishes representative generated-command assertions from executing every generated step and checking each status. The acceptance statement now names direct ID and multibyte rendered-path boundaries and exact over-limit issue assertions.
+6. Evidence wording now distinguishes representative generated-command assertions from executing every generated step and checking each status. The acceptance statement names direct ID boundaries, exact count-overflow issues, and an oversized rendered-path bounded-valid-UTF-8 check; exact 256/257-byte rendered-prefix assertions remain deferred.
 7. Direct model regressions cover 64/65-byte job, check and step IDs; jobs, checks and total-step overflow tests assert `LIMIT_EXCEEDED` and exact paths.
 
 ### Carry-forward ledger rulings
 
-1. The authorized `feature/config-agent-plan` checkout was reused; no checkout, index or `HEAD` switch occurred during the review or fix wave.
-2. Installer publication remains the commit point. Cancellation after publish continues to report `installed:true` with a warning; the new regression covers only pre-publish Git resolution.
-3. Init destinations remain retained after exclusive-creation persistence failures or cancellation, and retries still refuse retained files with `CONFIG_EXISTS`.
-4. Force replacement trusts only the current embedded manifest and explicit historical manifests, including the exact `bdeb767` predecessor; unknown historical or user-authored content remains blocked.
-5. Evaluator reuse remains a host-limit fallback only; this fix wave did not reuse evaluator state across cases or turn mapping trials into runtime evidence.
-6. Go 1.26.5 was initially an untested floor while the host used Go 1.27.1; this wave ran the complete unit/race/vet/fuzz checks under Go 1.26.5 and records those actual results.
-7. Native Windows, JS/WASM, cross-architecture runtime, hostile same-privilege processes, remote CI, release publication and full all-preset runtime compatibility remain outside the acceptance claim.
+The final coordinator record below preserves the actual ordered ledger rulings. Go-floor verification is test evidence, not a separate ruling.
 
 ### Focused reruns
 
-Before production edits, tests-only regressions were run and observed RED for wrong-container paths, CLI JSON fallback and both cancellation races. After each root fix, the focused suites passed:
+Before production edits, tests-only regressions were run and observed RED for wrong-container paths, CLI JSON fallback and both cancellation races. After the worker fixed each root cause, the focused suites passed:
 
 ```text
 go test ./internal/config -run 'TestParseRejectsWrongContainersWithTrustedPaths|TestParseIssuePathStopsAtUTF8Boundary' -count=1  PASS
@@ -155,4 +149,98 @@ The exact predecessor bundle was archived with `git archive bdeb767 -- internal/
 
 ### Limits and open gate
 
-The initial review's declined platform/runtime/security boundaries remain in force. The fresh controlled Go 1.26.5 floor race/vet/fuzz checks, exact fresh binary/offline/Docker smoke and focused pnpm/Berry Docker evidence are recorded above. The parent scoped review remains before changing Task 8 item 5 to complete. Existing broad evidence is historical support and is not retroactively relabeled as a post-fix rerun. No remote CI, release, global install, dependency or engine change is claimed. The earlier ledger omission of a behavioral RED for the missing-script check remains disclosed; this wave's concrete finding regressions have explicit RED evidence.
+The initial review's declined platform/runtime/security boundaries remain in force. The fresh controlled Go 1.26.5 floor race/vet/fuzz checks, exact fresh binary/offline/Docker smoke and focused pnpm/Berry Docker evidence are recorded above. The completed scoped review below closes Task 8 item 5 with disclosed nonblocking test gaps. Existing broad evidence is historical support and is not retroactively relabeled as a post-fix rerun. No remote CI, release, global install, dependency or engine change is claimed. The earlier ledger omission of a behavioral RED for the missing-script check remains disclosed; this wave's concrete finding regressions have explicit RED evidence.
+
+---
+
+# Final scoped fix-wave review
+
+Range: `bdeb767..cb5d53c`
+
+Date: 2026-10-09
+Scope: exactly one read-only re-review of the five Important and two Minor findings from the original whole-branch review, plus new breakage confined to this fix diff. This is not a second whole-branch audit. No subagents, production edits, index/HEAD changes, or suite reruns were performed; this scratch report is the only file written by this review.
+
+## Strengths
+
+The production fixes are small and target the reported causes: three early parser type errors prevent token-stream desynchronization, one immediate context check preserves cancellation precedence, and the canonical Corepack bootstrap now creates shims. Human rendering applies one sanitizer consistently while machine-readable fields remain unchanged. The asset change also carries its exact immediate predecessor forward as trusted upgrade history instead of weakening ownership verification.
+
+The report records real tests-only RED for parser/CLI/cancellation regressions, fresh floor-controlled checks and a new binary identity. Focused pnpm/Berry runtime evidence is explicitly distinguished from the earlier four-toolchain smoke. The original review is retained as a historical record instead of being rewritten as though the findings never existed.
+
+## Original finding dispositions
+
+| Finding | Verdict | Evidence and assessment |
+| --- | --- | --- |
+| Important 1 — wrong-container diagnostics/value leakage | **ADDRESSED** | `internal/config/parse.go:355-358`, `:382-385`, `:411-414` now return `JSON_TYPE` at the current trusted container path before inner values can be mistaken for field names. `internal/config/parse_test.go:231-261` covers the five relevant nesting locations, asserts zero config, typed issue and exact path/code. That fixes the actual value-leak mechanism; no permissive fallback was added. |
+| Important 2 — Corepack shims | **ADDRESSED** | The three manager assets at `internal/agentassets/bundle/assets/examples/node-pnpm.json:6`, `node-yarn-berry.json:6`, and `node-yarn-classic.json:6` now enable shims before installing the pinned manager. Version pins and lockfile commands are preserved. `assets.go:74-80`, `historical_bdeb767.go:8`, the archived manifest/hash test and `TestInstallForceUpgradesBDEB767Bundle` retain exact predecessor ownership. The reported disposable-container pnpm 9.15.9 and Berry 4.6.0 frozen/immutable install/check results address the concrete runtime concern without claiming every preset was run. |
+| Important 3 — syntax-error JSON mode | **ADDRESSED** | `internal/cli/root.go:39-45` prefers a parsed changed JSON flag; both fallback value-flag lists now include `--agent` and `--scope`, and boolean parsing uses `strconv.ParseBool`. The regression at `internal/cli/root_test.go:220` covers the reproduced agent-value and false-spelling failures. The code handles the corresponding scope-value path through the same list even though that variant lacks its own new test. |
+| Important 4 — pre-publish Git cancellation | **ADDRESSED** | `internal/skill/install.go:95-97` checks cancellation immediately after `destination`, before its error or any dry-run/filesystem work can win. `internal/skill/install_test.go:143-207` covers successful and failed Git resolution, requires `CANCELLED`, and checks no skill directory was created. The post-publication success behavior is untouched. A nonblocking timeout-path test-harness observation is listed below. |
+| Important 5 — terminal-safe recovery text | **ADDRESSED** | `internal/report/report.go:35-61` escapes Unicode controls/format characters and bounds output without splitting a rune or escape sequence. Human error/result/warning paths use it, and CLI stderr is sanitized; JSON serialization and actual filesystem paths are unchanged. The new report test at `internal/report/report_test.go:48-70` covers an ESC-containing long multibyte recovery path and requires the recovery instruction and escaped control to remain visible. The existing recovery-warning test remains. |
+| Minor 1 — full-command assertion wording | **ADDRESSED** | `docs/evidence/config-agent-validation.md:40` now distinguishes representative command assertions from execution/status checks for every generated step. This matches the unchanged smoke. |
+| Minor 2 — exact boundary-test claim | **NOT ADDRESSED in full; partial** | Direct 64/65-byte ID tests and exact jobs/checks/total-step overflow codes/paths are added in `internal/model/types_test.go`. However, `internal/config/parse_test.go:263-271` uses only one 361-byte rendered-path input and asserts `len <= 256` plus valid UTF-8. It does not test the exact 256/+1 boundary or expected retained prefix; even an empty path would satisfy that length/UTF-8 portion. `docs/evidence/config-agent-validation.md:96` and `docs/evidence/config-agent-review.md:126` still claim direct rendered-path boundaries. The original finding expressly allowed narrowing the coverage statement. At the agreed final-wave cap, record the missing exact boundary assertions as deferred and describe this test as a large-input bounded-valid-UTF-8 check; no runtime path-limit bypass was found. |
+
+## New fix-diff findings
+
+### Critical / Important
+
+None. No new production defect was found in the reviewed fix diff.
+
+### Minor / advisory
+
+1. **Carry-forward rulings do not match the actual ordered ledger.** `docs/evidence/config-agent-review.md:137` lists the Go-floor verification history as ruling 6. The actual ledger has seven explicit `Ruling:` entries, and its last entry at `.superpowers/sdd/2026-10-08-config-agent/progress.md:120` preserves the concise human init preview with `--json` required for the full config. That ruling is missing from the carry-forward list. Preserve the seven actual ordered rulings, keep the floor history under test evidence, and retain the full deferred/unverified-boundary ruling rather than replacing it with a narrower summary. This is coordination metadata, not a production defect.
+
+2. **The new cancellation test does not join its worker on failing paths.** `internal/skill/install_test.go:150` defers writing the release file, but the fatal startup/result timeouts at `:183` and `:202` (or a fatal release-write error) return without draining/joining the `Install` goroutine. The passing path joins correctly. On a delayed failing path, temporary-directory cleanup can remove the release file before the fake Git process observes it, leaving the child polling. This is a source-derived test-harness failure-path risk; no failing run or production cancellation regression was observed. The robust eventual improvement is to release and await worker completion before temporary fixtures/environment are cleaned up. Do not claim the current helper guarantees child cleanup on every failing path; this advisory need not trigger another implementation wave.
+
+## Evidence assessed
+
+The worker report and permanent evidence identify fresh Go 1.26.5 full unit/race/vet and both 30-second fuzz passes, offline/config smoke and existing Docker smoke, and the fresh binary `/tmp/pitstop-final-fix-wave-bin` with SHA-256 `34bbdf22d426ede385c603e9d0470f3c3d8d34913db631bb38d8e60e5b3453c3`. They separately report focused pinned pnpm/Berry execution. This re-review assessed that record and the corresponding source/tests; it did not rerun those green commands or present their reported results as independently reproduced here.
+
+The new historical registry embeds `testdata/bdeb767/manifest.json`; its test pins SHA-256 `15df7dbb90c001b3234c490b60929a09bbede4b10e0f791d700657d64b3933b3`, validates each archived file against the manifest, and tests force upgrade. Original trial artifacts are outside this diff. No package-manager or image download was needed for this re-review.
+
+## Final bookkeeping
+
+- Preserve this scoped outcome alongside the original whole-branch review.
+- Narrow the path-boundary coverage claim and explicitly record the deferred exact-limit assertions, rather than calling Minor 2 completely implemented.
+- Copy the actual seven ordered ledger rulings, including the full-preview JSON ruling; keep floor verification as evidence.
+- Record the nonblocking failed-test cleanup advisory accurately instead of guaranteeing all-path child cleanup.
+- Update Task 8 item 5 and final status only after this adjudication is recorded. Remote CI and release remain unverified.
+
+## Declined to judge
+
+- Unchanged parser/installer/engine behavior outside the seven original findings: this dispatch authorized a scoped fix review, not a repeat whole-branch audit.
+- Native/new operating systems, JS/WASM and cross-architecture runtime: excluded from the support claim and not exercised by this fix wave.
+- Malicious same-privilege processes, executable/tool substitution, mounts, kernel/container escapes and power-loss durability: excluded from the validator guarantee; fake Git is a timing fixture only.
+- Complete Docker reference grammar, future registry availability, image/dependency security, arbitrary accepted shell safety, or all-project/all-preset runtime compatibility: separate evidence is required and this scope makes no such claim.
+- Full workflow parity/import, matrices/services/secrets/needs execution, AI-provider embedding and broader engine work: deferred scope, untouched here.
+- Native Claude use, automatic skill discovery, remote CI, release/distribution and real-home installation: no corresponding verification or authorization is claimed.
+- Missing PyYAML quick-validator execution: remains a disclosed tooling gap; other checks are not a substitute for a claimed run.
+- Unknown historical/user-edited bundle migration, uninstall, automatic crash deletion and atomic whole-directory replacement: intentionally outside the known-manifest/manual-recovery contract.
+- Full configuration text in default human init output: the controller explicitly ruled that full preview uses `--json`; that ruling should survive bookkeeping.
+- Full untruncated human recovery paths beyond the display cap: human display is intentionally bounded and machine-readable errors/results retain the full path. The possible absence of an ellipsis when the byte cap is exactly filled is presentation polish, not a new blocker for the terminal-safety fix.
+
+## Assessment
+
+**Ready to merge? Yes, after the stated evidence/coordination bookkeeping.**
+
+All five Important findings and Minor 1 are addressed; no new production blocker was found. Minor 2 remains partially implemented and must be recorded/narrowed honestly at the final-wave cap, alongside the nonblocking test-harness advisory. This scoped pass does not turn earlier limited platform/runtime evidence into broader guarantees.
+
+Skipped repeating green suites and any new whole-branch or runtime matrix pass. Remaining risks are the disclosed exact path-boundary test gap and failing-test cleanup advisory; remote/platform/security limits remain unchanged.
+
+## Coordinator completion and adjudication
+
+The scoped reviewer approved all five Important fixes and Minor 1. Minor 2 is partially implemented: direct ID/count boundaries are tested, while exact rendered-path 256/257-byte prefix expectations remain deferred. The new failure-path fake-Git cleanup advisory is also deferred; no production blocker was found. Coverage wording is narrowed accordingly. Task 8 item 5 is complete with those explicit test limitations. Remote CI and release remain unverified. The original reviews above are historical records; their pending statuses and scratch references describe when they were written.
+
+### Actual ordered rulings and costs
+
+1. Ruling: reuse current authorized feature checkout rather than create a second worktree — plan specifies reuse and no collaborators outside these agents — cost if wrong is checkout contention, mitigated by sequential implementers.
+2. Ruling: installer publish is the commit point: cancellation before publish returns 130 without installed=true; cancellation observed after successful publish returns success with installed=true and a warning — the more specific post-publish accurate-state requirement wins over the generic cancellation code, and a completed install must not be reported as absent. Cost if wrong: very late cancellation returns 0 rather than 130; document and test explicitly in Tasks6/7.
+3. Ruling: init will preserve the destination on every failure after exclusive creation, with an explicit inspection/recovery message, instead of identity-check-then-unlink — stdlib offers no atomic conditional unlink, and preserving files meets the stronger no-data-loss intent for simultaneous editors. Cost if wrong: a failed or canceled creation may leave a partial file that needs manual inspection/removal before retry; docs/tests must state this. This supersedes automatic failed-write deletion in the plan.
+4. Ruling: force replacement accepts only contents authenticated by the current or explicitly bundled historical Pitstop manifest, never by an arbitrary destination-provided owner/hash declaration — the spec requires trusted manifest bytes and preserving user-authored files. Add the prior trusted manifest when Task7 changes the portable bundle; future releases must carry known upgrade manifests. Cost if wrong: an intact historical bundle not listed by the binary is refused and needs manual migration; a forged self-declared manifest cannot authorize deletion.
+5. Ruling: when fresh trial-agent creation is refused by the host thread limit, reuse a completed evaluation agent on a different isolated case, without controller expected answers or implementation context — independent forward testing remains separate from the skill author; no trial is replaced by schema checks. Cost if wrong: earlier case context may influence later choices; disclose reuse in permanent trial evidence.
+6. Ruling: retain the explicit review limits for native/new platforms, same-privilege or kernel/mount/power-loss attackers, image grammar/existence/security, arbitrary shell/dependencies, full workflow parity/import/providers, all-preset real-project runtime, native Claude/autodiscovery, remote CI/release/distribution, unavailable PyYAML quick-validator, and unknown-history migration/uninstall/atomic crash deletion — these are documented deferred or unverified boundaries, not evidence of completed capability; the concrete pnpm/Berry defect stays in scope — cost: users must obtain separate target/runtime/security/release evidence before relying on those behaviors.
+7. Ruling: keep concise human init dry-run summary and require --json for full config preview — examples explicitly select JSON and the documented CLI contract supports machine-readable preview — cost: users requesting full preview must supply --json.
+8. Ruling: defer exact 256/257-byte rendered-issue-path prefix assertions and narrow the coverage claim to the actual oversized-input bounded-valid-UTF-8 check — scoped review found no runtime path-limit bypass and the original finding allowed honest narrower evidence — cost: a future diagnostic prefix regression has weaker direct boundary detection until those assertions are added.
+9. Ruling: defer joining the fake Git cancellation-test worker on every fatal failure path — passing paths join and production cancellation is fixed, while the scoped finding is a nonblocking test-harness advisory at the single final-wave cap — cost: a failing/delayed test can leave a polling fake Git child; release-and-join cleanup remains follow-up test work.
+10. Ruling: accept bounded human recovery-path display while retaining complete machine-readable fields — terminal safety requires bounded escaped text and JSON keeps the actual path — cost: very long paths need JSON output for complete recovery location, and exact-cap truncation may omit an ellipsis.
+11. Ruling: keep feature/config-agent-plan locally with no merge, push or release — authorized implementation and review are confined to this checkout; integration is outside this task — cost: integration and publication remain separate work.
+
+Full task process evidence, including initial behavioral-RED omissions, is retained in [execution record](config-agent-execution.md). No omitted test phase is retroactively claimed. Final code is `cb5d53c`; subsequent completion edits affect evidence/status only.
