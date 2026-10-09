@@ -23,6 +23,8 @@ Updated 2026-10-09: `init`, `validate` and `skill install` are present in the cu
 - [Implementation plan with validation/security acceptance checks](superpowers/plans/2026-10-08-config-agent.md)
 - [Development roadmap and deferred scope](roadmap.md)
 - [Whole-branch review and fix resolutions](evidence/config-agent-review.md)
+- [Closed test-gap follow-up and independent review](evidence/config-agent-test-gaps.md)
+- [Actual terminal output: passing, failing and invalid-config demos](evidence/config-agent-terminal-demo.md)
 
 หลักฐาน agent trial อยู่ใน [ดัชนีหลักฐาน config-agent](evidence/config-agent-trials/README.md); runtime/toolchain verification ต้องมีหลักฐานการรันจริงแยกต่างหาก / Agent-trial evidence is in the [config-agent evidence index](evidence/config-agent-trials/README.md); runtime/toolchain verification requires separate actual-run evidence.
 

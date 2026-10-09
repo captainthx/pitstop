@@ -6,7 +6,7 @@
 
 **เริ่มต้น:** build CLI → ใช้ `pitstop init --dry-run --json` หรือคัดลอกตัวอย่างไปยัง repo เป้าหมาย → ตรวจด้วย `pitstop validate --json` → `pitstop doctor` → `pitstop run`
 
-**สถานะเครื่องมือ config (2026-10-09):** checkout ปัจจุบันมี `init`, `validate` และ `skill install` พร้อม starter สำหรับ Node, Go, Python, Java, .NET, Rust, PHP และ Ruby รวมถึง portable `pitstop-config` skill สำหรับ Codex และ Claude Code มีบันทึก trial ด้าน mapping/prerequisite 23 ครั้งใน [ดัชนีหลักฐาน config-agent](docs/evidence/config-agent-trials/README.md); หลักฐาน runtime และ CI parity ยังแยกต่างหาก ดู [คู่มือปัจจุบัน](docs/user-guide.md), [คู่มือ AI agent](docs/ai-agent.md) และ [แนวทางพัฒนาต่อ](docs/roadmap.md)
+**สถานะเครื่องมือ config (2026-10-09):** checkout ปัจจุบันมี `init`, `validate` และ `skill install` พร้อม starter สำหรับ Node, Go, Python, Java, .NET, Rust, PHP และ Ruby รวมถึง portable `pitstop-config` skill สำหรับ Codex และ Claude Code มีบันทึก trial ด้าน mapping/prerequisite 23 ครั้งใน [ดัชนีหลักฐาน config-agent](docs/evidence/config-agent-trials/README.md); ผล runtime ที่เลือกสำหรับ Node/Go/Python/Rust และ focused pnpm/Yarn Berry อยู่ใน [หลักฐาน local validation](docs/evidence/config-agent-validation.md) ส่วน findings ที่ตรวจพบปิดครบแล้วใน [สถานะ review ปัจจุบัน](docs/evidence/config-agent-review.md) รวมถึง [ผลติดตามข้อค้าง test](docs/evidence/config-agent-test-gaps.md) ผล local นี้ยังไม่ยืนยัน remote CI หรือ workflow parity ดู [คู่มือปัจจุบัน](docs/user-guide.md), [คู่มือ AI agent](docs/ai-agent.md) และ [แนวทางพัฒนาต่อ](docs/roadmap.md)
 
 ## Pitstop ทำอะไรให้
 
