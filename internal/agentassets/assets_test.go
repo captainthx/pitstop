@@ -16,8 +16,8 @@ import (
 	"pitstop/internal/config"
 )
 
-func TestTrustedManifestsIncludeCurrentAndHistoricalBundles(t *testing.T) {
-	manifests := agentassets.TrustedManifests()
+func TestTrustedBundlesIncludeCurrentAndHistoricalBundles(t *testing.T) {
+	manifests := agentassets.TrustedBundles()
 	if len(manifests) != 3 || bytes.Equal(manifests[0], manifests[1]) || bytes.Equal(manifests[1], manifests[2]) {
 		t.Fatalf("trusted manifest registry = %d entries or lacks distinct history", len(manifests))
 	}

@@ -79,9 +79,6 @@ func TrustedBundles() [][]byte {
 	return [][]byte{append([]byte(nil), current...), append([]byte(nil), historicalManifest21cd1c2...), append([]byte(nil), historicalDraftManifestFF87a16...)}
 }
 
-// TrustedManifests is retained for callers compiled against the Task 6 API.
-func TrustedManifests() [][]byte { return TrustedBundles() }
-
 func Preset(name string) ([]byte, error) {
 	for _, candidate := range presetNames {
 		if candidate == name {

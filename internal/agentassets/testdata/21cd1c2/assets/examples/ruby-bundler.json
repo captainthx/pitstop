@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 2,
+  "runner": {"image": "ruby:3.4.10-bookworm", "architecture": "linux/arm64"},
+  "jobs": ["verify"],
+  "checks": [{"id": "verify", "steps": [
+    {"id": "install", "name": "Install locked gems", "run": "bundle install --jobs 4 --retry 3"},
+    {"id": "test", "name": "Run Rake checks", "run": "bundle exec rake"}
+  ]}]
+}

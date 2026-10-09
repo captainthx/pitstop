@@ -57,7 +57,7 @@ CI can reuse project scripts, but matching results depend on the image/toolchain
 
 The [design](superpowers/specs/2026-10-08-config-agent-design.md) and [implementation plan](superpowers/plans/2026-10-08-config-agent.md) document the implemented base/starters across languages/build tools, `init`, `validate`, and `skill install`. A user's agent reads manifests/scripts/workflows to create configuration; Pitstop does not embed an AI provider or execute workflow YAML. The [config-agent trial evidence](evidence/config-agent-trials/README.md) records 23 evaluator attempts for mapping and prerequisite reporting; runtime/toolchain checks are separate evidence.
 
-Validation will share one acceptance pipeline with run/doctor/list, covering strict JSON, bounded input, safe file access, semantic limits and regression/fuzz checks. Passing validation means the config follows supported rules, not that shell/image execution is safe or checks cover all CI behavior. See the [roadmap](roadmap.md) for deferred scope and development triggers.
+Validation shares one acceptance pipeline with run/doctor/list, covering strict JSON, bounded input, safe file access, semantic limits and regression/fuzz checks. Passing validation means the config follows supported rules, not that shell/image execution is safe or checks cover all CI behavior. Task 8 retains runtime and whole-branch verification; see the [roadmap](roadmap.md) for deferred scope and development triggers.
 
 ## Validation
 

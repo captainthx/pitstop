@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 2,
+  "runner": {"image": "composer:2.10.3", "architecture": "linux/arm64"},
+  "jobs": ["verify"],
+  "checks": [{"id": "verify", "steps": [
+    {"id": "install", "name": "Install Composer dependencies", "run": "composer install --no-interaction --prefer-dist"},
+    {"id": "test", "name": "Run Composer test script", "run": "composer run-script test"}
+  ]}]
+}

@@ -48,7 +48,11 @@ Go บน host ใช้ build ตัว Pitstop เท่านั้น เค
 ```sh
 PITSTOP_SOURCE="$PWD"
 TARGET_REPO="/absolute/path/to/your/repo"
-cp "$PITSTOP_SOURCE/examples/docker-react.json" "$TARGET_REPO/.pitstop.json"
+if [ -e "$TARGET_REPO/.pitstop.json" ] || [ -L "$TARGET_REPO/.pitstop.json" ]; then
+  echo "เก็บ .pitstop.json เดิมไว้ ให้แก้ไขโดยตั้งใจ"
+else
+  cp "$PITSTOP_SOURCE/examples/docker-react.json" "$TARGET_REPO/.pitstop.json"
+fi
 ```
 
 ถ้ามี config อยู่แล้ว ให้เก็บไฟล์เดิมและแก้โดยตั้งใจ เลือก preset ด้วย `--preset` หรือใช้ `custom` พร้อม `--image` และ `--command` อย่างน้อยหนึ่งครั้ง ชื่อ preset ทั้งหมดดูได้จาก `pitstop init -h` หากต้องการเส้นทาง manual ให้คัดลอก [ตัวอย่าง Node](examples/docker-react.json) หรือ [ตัวอย่าง Go](examples/docker-go.json) แล้วแก้ให้ตรงกับโปรเจกต์

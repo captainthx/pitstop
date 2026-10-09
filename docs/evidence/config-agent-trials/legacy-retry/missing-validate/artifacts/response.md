@@ -9,3 +9,5 @@ pitstop validate --repo /Users/thanyatab/Desktop/project/my-lab/pitstop/.superpo
 ```
 
 Review the missing lockfile and missing `test` script before running the configured check.
+
+Controller publication note: the evaluator's original `../repo/.pitstop.json` link pointed into the ignored scratch checkout. The preserved published artifact is [`provisional-config.json`](provisional-config.json); this corrects the review link only and does not alter the captured CLI output or evaluator wording.

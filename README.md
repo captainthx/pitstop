@@ -48,7 +48,11 @@ Run from the Pitstop checkout and replace the target path:
 ```sh
 PITSTOP_SOURCE="$PWD"
 TARGET_REPO="/absolute/path/to/your/repo"
-cp "$PITSTOP_SOURCE/examples/docker-react.json" "$TARGET_REPO/.pitstop.json"
+if [ -e "$TARGET_REPO/.pitstop.json" ] || [ -L "$TARGET_REPO/.pitstop.json" ]; then
+  echo "preserving existing .pitstop.json; edit it deliberately"
+else
+  cp "$PITSTOP_SOURCE/examples/docker-react.json" "$TARGET_REPO/.pitstop.json"
+fi
 ```
 
 If a config already exists, preserve it and edit it deliberately. A base preview is:
