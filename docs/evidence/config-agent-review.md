@@ -244,3 +244,5 @@ The scoped reviewer approved all five Important fixes and Minor 1. Minor 2 is pa
 11. Ruling: keep feature/config-agent-plan locally with no merge, push or release — authorized implementation and review are confined to this checkout; integration is outside this task — cost: integration and publication remain separate work.
 
 Full task process evidence, including initial behavioral-RED omissions, is retained in [execution record](config-agent-execution.md). No omitted test phase is retroactively claimed. Final code is `cb5d53c`; subsequent completion edits affect evidence/status only.
+
+The implementer’s original [fix-wave report](config-agent-fix-wave.md) is preserved alongside the review record.
