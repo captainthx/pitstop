@@ -1,3 +1,9 @@
+# Current review status
+
+All five Important findings and the remaining test-only findings are closed. The user-requested follow-up at `3e77208` passed independent scoped re-review, with no new finding. See [test-gap implementation and review evidence](config-agent-test-gaps.md). The reports and deferred rulings below are historical; the path-boundary and fake-Git test deferrals are superseded by this follow-up. Remote CI, release and previously documented platform/runtime/security limits remain unverified.
+
+---
+
 # Final whole-branch review
 
 Base: `e6f8328fc6e181a1d3a1994c3f1d7c93479a7b3d`  
