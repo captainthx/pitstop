@@ -119,7 +119,7 @@ func TestLoadRejectsSpecialFiles(t *testing.T) {
 		if err := syscall.Mkfifo(path, 0600); err != nil {
 			t.Fatal(err)
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		cmd := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestLoadFIFOHelper$")
 		cmd.Env = append(os.Environ(), "PITSTOP_FIFO_REPO="+d)

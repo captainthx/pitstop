@@ -6,7 +6,7 @@
     {"path":"assets/examples/base.json","sha256":"1a8c148300b3cc52f7b1f4cd562bde19f450caf6f7536a9a4cbc26d3209a6159"},
     {"path":"assets/examples/custom-image.json","sha256":"b383958f3046b596861f8eca49599e7f0e982a26cddf99a55db66e483c31c603"},
     {"path":"assets/examples/dotnet.json","sha256":"960f2fdfb6e82f536819402e21815c13cb16f42d46e1c30be97e5f045796d78d"},
-    {"path":"assets/examples/go.json","sha256":"6fac968fe09441117554f8bcbd8715eb0c949d9f3373c7d33efd61bdcff3fce0"},
+    {"path":"assets/examples/go.json","sha256":"f95b5a255ef0238be67b82bf1de4af8b73b85a67441ee42d9ff50686ea3aecfb"},
     {"path":"assets/examples/java-gradle.json","sha256":"642ac720341a9467bcbf966f349d97464796bb99dc4a535266beb3168eadfbb7"},
     {"path":"assets/examples/java-maven.json","sha256":"d833a5c28d30968f5709d8f94d7c3afb83010efcecc5ecd94ad685b30c620870"},
     {"path":"assets/examples/mixed-language.json","sha256":"309f3ba1a1a481dde915c43c43fbfe328b0c75b27e6795b97852ddae6b6ae142"},

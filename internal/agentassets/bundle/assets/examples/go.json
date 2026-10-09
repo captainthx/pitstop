@@ -5,6 +5,6 @@
   "checks": [{"id": "verify", "steps": [
     {"id": "vet", "run": "go vet ./..."},
     {"id": "test", "run": "go test -race ./..."},
-    {"id": "build", "run": "go build ./..."}
+    {"id": "build", "run": "go build -buildvcs=false ./..."}
   ]}]
 }

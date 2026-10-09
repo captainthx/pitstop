@@ -10,19 +10,21 @@ The final smoke used a fresh absolute binary and isolated temporary resources:
 GOTOOLCHAIN=go1.26.5
 go version go1.26.5 darwin/arm64
 Docker Server 29.4.0, linux/arm64 (aarch64)
-PITSTOP_BIN=/tmp/pitstop-task8-bin
+PITSTOP_BIN=/tmp/pitstop-task8-final-bin
 ```
 
 The binary was built with:
 
 ```sh
-rtk proxy env GOTOOLCHAIN=go1.26.5 go build -trimpath -o /tmp/pitstop-task8-bin ./cmd/pitstop
+rtk proxy env GOTOOLCHAIN=go1.26.5 go build -trimpath -o /tmp/pitstop-task8-final-bin ./cmd/pitstop
+shasum -a 256 /tmp/pitstop-task8-final-bin
+# 9872a5c6c58ba2f3323c23a733cb45041aa2df428303da15e1c08e76b5962c80
 ```
 
 The offline acceptance command was:
 
 ```sh
-rtk proxy env PITSTOP_BIN=/tmp/pitstop-task8-bin PITSTOP_CONFIG_AGENT_RUNTIME=0 sh scripts/config-agent-smoke.sh
+rtk proxy env PITSTOP_BIN=/tmp/pitstop-task8-final-bin PITSTOP_CONFIG_AGENT_RUNTIME=0 sh scripts/config-agent-smoke.sh
 ```
 
 It passed init dry-run and write, existing-file preservation, duplicate rejection, custom init, project skill dry-run/install/no-force collision/owned force replacement, and canonical validation of every embedded example and mapping. Every CLI response was parsed by the repository's `scripts/validate-json.go`, then checked for command, exit code, and relevant result fields.
@@ -30,7 +32,7 @@ It passed init dry-run and write, existing-file preservation, duplicate rejectio
 The runtime command was:
 
 ```sh
-rtk proxy env PITSTOP_BIN=/tmp/pitstop-task8-bin sh scripts/config-agent-smoke.sh
+rtk proxy env PITSTOP_BIN=/tmp/pitstop-task8-final-bin sh scripts/config-agent-smoke.sh
 ```
 
 It selected and ran these temporary Git fixtures with actual manifests and lockfiles:
@@ -38,16 +40,37 @@ It selected and ran these temporary Git fixtures with actual manifests and lockf
 | Toolchain | Image | Result |
 | --- | --- | --- |
 | Node | `node:22-bookworm` | passed `npm ci` and `npm run check`; image ID `sha256:80503c2cadca910dfe16f1516025a2133cdfb0e839f02e79191f83548f2ec729` |
-| Go | `golang:1.26.5` | passed vet, test, and build; image ID `sha256:04b188c2db8449ea15c09355dfab9ce9ed4ecf9414e94674104e316bda7d1996` |
+| Go | `golang:1.26.5` | passed `init --preset go`, vet, race test, and snapshot-safe build; image ID `sha256:04b188c2db8449ea15c09355dfab9ce9ed4ecf9414e94674104e316bda7d1996` |
 | Python | `python:3.13-slim-bookworm` | passed pinned `pytest==8.3.5` install and pytest; image ID `sha256:55432fc4ef6d07e33c10449312f0ec00071bbb310bb9bd7ba626a31fbbc2cb0d` |
 | Rust | `rust:1.99.0-bookworm` | passed locked Cargo test and build; image ID `sha256:e393e07b3c3c39f238de676b0eb60c03dc7aefe5d6e37be6d29c686bf4d7e256` |
 
 The fixtures, temporary HOME/cache, reports, and validator binary were removed by the smoke trap. Docker cleanup remained ownership-scoped to Pitstop runs; no image or unrelated container cleanup was performed.
 
+The existing Docker snapshot/cleanup smoke also passed with the same binary:
+
+```text
+rtk proxy env PITSTOP_BIN=/tmp/pitstop-task8-final-bin sh scripts/docker-smoke.sh
+docker smoke passed (alpine:3.22, linux/arm64)
+```
+
+## Final gate
+
+The floor-controlled final checks passed after the bounded fixes:
+
+```text
+rtk proxy env GOTOOLCHAIN=go1.26.5 go test -race -count=1 ./...       PASS
+rtk proxy env GOTOOLCHAIN=go1.26.5 go vet ./...                       PASS
+rtk proxy env GOTOOLCHAIN=go1.26.5 go test ./internal/config -run '^$' -fuzz '^FuzzParse$' -fuzztime=30s          PASS (31.475s)
+rtk proxy env GOTOOLCHAIN=go1.26.5 go test ./internal/config -run '^$' -fuzz '^FuzzConfigRoundTrip$' -fuzztime=30s PASS (31.298s)
+rtk git diff --check                                                   PASS
+```
+
+The initial gate had two concrete failures that were corrected in this task: the race FIFO helper's one-second subprocess deadline was too short for bounded race-instrumented startup, so it is now five seconds; `go vet` identified an unreachable return in `walkValue`, which was removed. The canonical Go starter and matching root example now use `go build -buildvcs=false ./...`, because runtime executes a source snapshot without `.git`; the runtime smoke exercises that starter through `init --preset go`.
+
 ## Coverage and limits
 
-- The first new-smoke check was intentionally run before implementation and failed because `scripts/config-agent-smoke.sh` was missing. The implemented smoke then passed; this is the genuine RED/GREEN record.
-- A first runtime attempt exposed Go VCS stamping in the source snapshot. The fixture now uses `go build -buildvcs=false ./...`, which reflects the snapshot execution boundary; the failure is retained here as a fixture correction rather than a passing claim.
+- The preimplementation missing-script check was only a harness presence check; no behavioral RED was applicable before the acceptance harness existed.
+- A first runtime attempt exposed Go VCS stamping in the source snapshot. The canonical starter and matching root example now use `go build -buildvcs=false ./...`; the failure is retained here as a fixture correction, and the final runtime smoke exercises the corrected preset.
 - The CI workflow runs the offline smoke and all embedded parser checks using its freshly built binary. Local evidence does not establish remote CI success.
 - The runtime sample covers Node, Go, Python, and Rust only. It does not claim that every embedded language, package manager, image, workflow mapping, or host OS was executed.
 - `quickvalidate` was unavailable in the default and bundled Python environments because PyYAML was unavailable; front matter, links, and referenced hashes were checked with available local tooling and the limitation is retained honestly.

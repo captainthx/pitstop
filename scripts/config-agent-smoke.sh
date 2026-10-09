@@ -255,20 +255,15 @@ fi
 
 make_runtime_fixture() {
   name=$1
-  image=$2
-  config=$3
   fixture="$ROOT/runtime-$name"
   mkdir -p "$fixture"
   git -C "$fixture" init -q
   git -C "$fixture" config user.name "Pitstop smoke"
   git -C "$fixture" config user.email "pitstop@example.invalid"
-  printf '%s\n' "$config" >"$fixture/.pitstop.json"
-  git -C "$fixture" add .
-  git -C "$fixture" commit -qm "runtime fixture"
   echo "$fixture"
 }
 
-NODE_REPO=$(make_runtime_fixture node 'node:22-bookworm' '')
+NODE_REPO=$(make_runtime_fixture node)
 cat >"$NODE_REPO/package.json" <<'JSON'
 {"name":"pitstop-smoke-node","version":"1.0.0","scripts":{"check":"node -e \"if (process.platform !== 'linux') process.exit(1)\""}}
 JSON
@@ -280,7 +275,7 @@ cat >"$NODE_REPO/.pitstop.json" <<JSON
 JSON
 git -C "$NODE_REPO" add . && git -C "$NODE_REPO" commit -qm "node manifest"
 
-GO_REPO=$(make_runtime_fixture go 'golang:1.26.5' '')
+GO_REPO=$(make_runtime_fixture go)
 cat >"$GO_REPO/go.mod" <<'EOF'
 module example.invalid/pitstop-smoke-go
 
@@ -291,12 +286,23 @@ package main
 
 func main() {}
 EOF
-cat >"$GO_REPO/.pitstop.json" <<JSON
-{"schemaVersion":2,"runner":{"image":"golang:1.26.5","architecture":"$ARCH"},"jobs":["verify"],"checks":[{"id":"verify","steps":[{"id":"vet","run":"go vet ./..."},{"id":"test","run":"go test ./..."},{"id":"build","run":"go build -buildvcs=false ./..."}]}]}
-JSON
+OUT="$ROOT/runtime-go-init.json"
+run_json 0 "$OUT" init --repo "$GO_REPO" --preset go --arch "$ARCH" --json
+assert_envelope "$OUT" init 0
+python3 - "$OUT" "$GO_REPO/.pitstop.json" <<'PY'
+import json
+import pathlib
+import sys
+
+result = json.load(open(sys.argv[1]))["result"]
+assert result["preset"] == "go", result
+assert result["written"] is True, result
+assert result["config"]["checks"][0]["steps"][-1]["run"] == "go build -buildvcs=false ./...", result
+assert pathlib.Path(sys.argv[2]).is_file()
+PY
 git -C "$GO_REPO" add . && git -C "$GO_REPO" commit -qm "go manifest"
 
-PYTHON_REPO=$(make_runtime_fixture python 'python:3.13-slim-bookworm' '')
+PYTHON_REPO=$(make_runtime_fixture python)
 cat >"$PYTHON_REPO/requirements.txt" <<'EOF'
 pytest==8.3.5
 EOF
@@ -309,7 +315,7 @@ cat >"$PYTHON_REPO/.pitstop.json" <<JSON
 JSON
 git -C "$PYTHON_REPO" add . && git -C "$PYTHON_REPO" commit -qm "python manifest lock"
 
-RUST_REPO=$(make_runtime_fixture rust 'rust:1.99.0-bookworm' '')
+RUST_REPO=$(make_runtime_fixture rust)
 mkdir -p "$RUST_REPO/src"
 cat >"$RUST_REPO/Cargo.toml" <<'EOF'
 [package]

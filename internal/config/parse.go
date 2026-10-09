@@ -177,7 +177,6 @@ func walkValue(dec *json.Decoder, depth int) error {
 	default:
 		return io.ErrUnexpectedEOF
 	}
-	return nil
 }
 
 func walkObject(dec *json.Decoder, depth int) error {
