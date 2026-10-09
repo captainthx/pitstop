@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 2,
+  "runner": {"image": "alpine:3.22", "architecture": "linux/arm64"},
+  "jobs": ["verify"],
+  "checks": [{"id": "verify", "steps": [
+    {"id": "configure", "name": "Configure project checks", "run": "printf '%s\\n' 'Edit .pitstop.json to define project checks' >&2; exit 2"}
+  ]}]
+}

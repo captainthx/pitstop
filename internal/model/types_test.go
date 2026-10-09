@@ -52,17 +52,18 @@ func TestConfigLimitsAndNames(t *testing.T) {
 	tooMany := base()
 	tooMany.Jobs = []string{"verify"}
 	for i := 1; i < MaxJobs+1; i++ {
-		tooMany.Jobs = append(tooMany.Jobs, "j"+strings.Repeat("x", i))
+		tooMany.Jobs = append(tooMany.Jobs, "j"+strconv.Itoa(i))
 	}
-	if err := tooMany.Validate(); err == nil {
-		t.Fatal("jobs over limit accepted")
+	var ve *ValidationError
+	if err := tooMany.Validate(); !errors.As(err, &ve) || ve.Issue.Code != "LIMIT_EXCEEDED" || ve.Issue.Path != "/jobs" {
+		t.Fatalf("jobs over limit issue=%#v err=%v", ve, err)
 	}
 	tooMany = base()
 	for i := 1; i < MaxChecks+1; i++ {
-		tooMany.Checks = append(tooMany.Checks, Check{ID: "c" + strings.Repeat("x", i), Steps: []CheckStep{{ID: "s", Run: "true"}}})
+		tooMany.Checks = append(tooMany.Checks, Check{ID: "c" + strconv.Itoa(i), Steps: []CheckStep{{ID: "s", Run: "true"}}})
 	}
-	if err := tooMany.Validate(); err == nil {
-		t.Fatal("checks over limit accepted")
+	if err := tooMany.Validate(); !errors.As(err, &ve) || ve.Issue.Code != "LIMIT_EXCEEDED" || ve.Issue.Path != "/checks" {
+		t.Fatalf("checks over limit issue=%#v err=%v", ve, err)
 	}
 	steps := base()
 	steps.Checks[0].Steps = make([]CheckStep, MaxStepsPerCheck)
@@ -162,11 +163,12 @@ func TestConfigTotalStepsAndNameBoundaries(t *testing.T) {
 	if err := c.Validate(); err != nil {
 		t.Fatalf("2048 steps rejected: %v", err)
 	}
+	var ve *ValidationError
 	over := c
 	over.Jobs = append(append([]string(nil), c.Jobs...), "overflow")
 	over.Checks = append(append([]Check(nil), c.Checks...), Check{ID: "overflow", Steps: []CheckStep{{ID: "step", Run: "true"}}})
-	if err := over.Validate(); err == nil {
-		t.Fatal("2049 steps accepted")
+	if err := over.Validate(); !errors.As(err, &ve) || ve.Issue.Code != "LIMIT_EXCEEDED" || ve.Issue.Path != "/checks/16/steps" {
+		t.Fatalf("2049-step issue=%#v err=%v", ve, err)
 	}
 	name := c
 	name.Checks = []Check{{ID: "verify", Steps: []CheckStep{{ID: "step", Name: strings.Repeat("a", MaxNameBytes), Run: "true"}}}}
@@ -181,5 +183,42 @@ func TestConfigTotalStepsAndNameBoundaries(t *testing.T) {
 	name.Checks[0].Steps[0].Name = ""
 	if err := name.Validate(); err != nil {
 		t.Fatalf("absent name representation rejected: %v", err)
+	}
+}
+
+func TestConfigIDBoundaries(t *testing.T) {
+	base := func() Config {
+		return Config{SchemaVersion: 2, Jobs: []string{"verify"}, Runner: RunnerConfig{Image: "alpine:3.22", Architecture: "linux/arm64"}, Checks: []Check{{ID: "verify", Steps: []CheckStep{{ID: "step", Run: "true"}}}}}
+	}
+	validID := "a" + strings.Repeat("x", MaxIDBytes-1)
+	c := base()
+	c.Jobs = []string{validID}
+	c.Checks[0].ID = validID
+	if err := c.Validate(); err != nil {
+		t.Fatalf("%d-byte job/check ID rejected: %v", MaxIDBytes, err)
+	}
+	c.Jobs[0] += "x"
+	var ve *ValidationError
+	if err := c.Validate(); !errors.As(err, &ve) || ve.Issue.Code != "ID_INVALID" || ve.Issue.Path != "/jobs/0" {
+		t.Fatalf("%d-byte job ID issue=%#v err=%v", MaxIDBytes+1, ve, err)
+	}
+	c = base()
+	c.Checks[0].ID = validID
+	c.Jobs[0] = validID
+	if err := c.Validate(); err != nil {
+		t.Fatalf("%d-byte check ID rejected: %v", MaxIDBytes, err)
+	}
+	c.Checks[0].ID += "x"
+	if err := c.Validate(); !errors.As(err, &ve) || ve.Issue.Code != "ID_INVALID" || ve.Issue.Path != "/checks/0/id" {
+		t.Fatalf("%d-byte check ID issue=%#v err=%v", MaxIDBytes+1, ve, err)
+	}
+	c = base()
+	c.Checks[0].Steps[0].ID = validID
+	if err := c.Validate(); err != nil {
+		t.Fatalf("%d-byte step ID rejected: %v", MaxIDBytes, err)
+	}
+	c.Checks[0].Steps[0].ID += "x"
+	if err := c.Validate(); !errors.As(err, &ve) || ve.Issue.Code != "ID_INVALID" || ve.Issue.Path != "/checks/0/steps/0/id" {
+		t.Fatalf("%d-byte step ID issue=%#v err=%v", MaxIDBytes+1, ve, err)
 	}
 }

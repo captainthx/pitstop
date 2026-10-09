@@ -44,6 +44,30 @@ func TestHumanSkillInstallErrorShowsRecoveryWarning(t *testing.T) {
 		t.Fatalf("human output omitted recovery path: %q", b.String())
 	}
 }
+
+func TestHumanEscapesAndBoundsUntrustedPathsAndErrors(t *testing.T) {
+	rawPath := "/tmp/\x1b[31m" + strings.Repeat("界", 200)
+	var b bytes.Buffer
+	e := model.Envelope{
+		SchemaVersion: model.SchemaVersion,
+		Command:       "skill install",
+		ExitCode:      2,
+		Result: model.SkillInstallResult{
+			TargetPath: rawPath,
+			Warnings:   []string{"retained backup for recovery: " + rawPath},
+		},
+		Error: &model.ErrorInfo{Code: "SKILL_INSTALL_FAILED", Message: "recover from " + rawPath},
+	}
+	if err := Human(&b, e); err != nil {
+		t.Fatal(err)
+	}
+	if strings.ContainsRune(b.String(), '\x1b') || !strings.Contains(b.String(), `\u001b`) || !strings.Contains(b.String(), "retained backup for recovery") {
+		t.Fatalf("unsafe or incomplete human output: %q", b.String())
+	}
+	if len(b.String()) > 2*model.MaxIssueMessageBytes+model.MaxIssuePathBytes+256 {
+		t.Fatalf("human output was not bounded: %d", len(b.String()))
+	}
+}
 func TestEnvelopeIsOneDocument(t *testing.T) {
 	var b bytes.Buffer
 	want := model.Envelope{SchemaVersion: 1, Command: "run", ExitCode: 2, Error: &model.ErrorInfo{Code: "CONFIG_INVALID", Message: "missing config"}}

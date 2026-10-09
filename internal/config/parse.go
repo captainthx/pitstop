@@ -355,7 +355,7 @@ func validateV2ShapeOrdered(data []byte) error {
 func scanChecks(dec *json.Decoder, value any, path string) error {
 	open, ok := value.(json.Delim)
 	if !ok || open != '[' {
-		return nil
+		return issue("JSON_TYPE", path, "field has an invalid type")
 	}
 	for i := 0; dec.More(); i++ {
 		tok, err := dec.Token()
@@ -382,7 +382,7 @@ func scanChecks(dec *json.Decoder, value any, path string) error {
 func scanSteps(dec *json.Decoder, value any, path string) error {
 	open, ok := value.(json.Delim)
 	if !ok || open != '[' {
-		return nil
+		return issue("JSON_TYPE", path, "field has an invalid type")
 	}
 	for i := 0; dec.More(); i++ {
 		tok, err := dec.Token()
@@ -411,7 +411,7 @@ func scanSteps(dec *json.Decoder, value any, path string) error {
 func scanObject(dec *json.Decoder, opening any, path string, allowed map[string]struct{}, nested func(string, any, string) (bool, error)) error {
 	open, ok := opening.(json.Delim)
 	if !ok || open != '{' {
-		return nil
+		return issue("JSON_TYPE", path, "field has an invalid type")
 	}
 	for dec.More() {
 		tok, err := dec.Token()

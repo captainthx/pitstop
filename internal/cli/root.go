@@ -11,6 +11,7 @@ import (
 	"pitstop/internal/model"
 	"pitstop/internal/report"
 	"pitstop/internal/run"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -32,20 +33,27 @@ func Execute(args []string, stdout, stderr io.Writer) int {
 	return ExecuteContext(context.Background(), args, stdout, stderr)
 }
 func ExecuteContext(ctx context.Context, args []string, stdout, stderr io.Writer) int {
-	jsonMode := jsonMode(args)
+	jsonOut := jsonMode(args)
 	root := newRoot(ctx, stdout, stderr)
 	root.SetArgs(args)
 	cmd, err := root.ExecuteC()
+	if cmd != nil {
+		if flag := cmd.Flags().Lookup("json"); flag != nil && flag.Changed {
+			if parsed, parseErr := strconv.ParseBool(flag.Value.String()); parseErr == nil {
+				jsonOut = parsed
+			}
+		}
+	}
 	if err != nil {
 		if x, ok := err.(exitError); ok {
 			return x.code
 		}
 		var oe outputError
 		if errors.As(err, &oe) {
-			_, _ = fmt.Fprintln(stderr, oe.err)
+			_, _ = fmt.Fprintln(stderr, report.DisplayMessage(oe.err.Error()))
 			return 2
 		}
-		if jsonMode {
+		if jsonOut {
 			name := command(args)
 			if cmd != nil {
 				switch cmd.Name() {
@@ -59,17 +67,17 @@ func ExecuteContext(ctx context.Context, args []string, stdout, stderr io.Writer
 			}
 			e := model.Envelope{SchemaVersion: model.SchemaVersion, Command: name, ExitCode: 2, Error: &model.ErrorInfo{Code: "CONFIG_INVALID", Message: err.Error()}}
 			if werr := report.WriteEnvelope(stdout, e); werr != nil {
-				_, _ = fmt.Fprintln(stderr, werr)
+				_, _ = fmt.Fprintln(stderr, report.DisplayMessage(werr.Error()))
 			}
 		} else {
-			_, _ = fmt.Fprintln(stderr, err)
+			_, _ = fmt.Fprintln(stderr, report.DisplayMessage(err.Error()))
 		}
 		return 2
 	}
 	return 0
 }
 func command(args []string) string {
-	valueFlags := map[string]bool{"--repo": true, "--job": true, "--arch": true, "--timeout": true, "--command": true, "--preset": true, "--image": true}
+	valueFlags := map[string]bool{"--repo": true, "--job": true, "--arch": true, "--timeout": true, "--command": true, "--preset": true, "--image": true, "--agent": true, "--scope": true}
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		if a == "--" {
@@ -108,7 +116,7 @@ func splitFlag(arg string) (string, bool) {
 }
 
 func jsonMode(args []string) bool {
-	valueFlags := map[string]bool{"--repo": true, "--job": true, "--arch": true, "--timeout": true, "--command": true, "--preset": true, "--image": true}
+	valueFlags := map[string]bool{"--repo": true, "--job": true, "--arch": true, "--timeout": true, "--command": true, "--preset": true, "--image": true, "--agent": true, "--scope": true}
 	mode := false
 	for i := 0; i < len(args); i++ {
 		a := args[i]
@@ -118,7 +126,8 @@ func jsonMode(args []string) bool {
 		name, hasValue := splitFlag(a)
 		if name == "--json" {
 			if hasValue {
-				mode = strings.TrimPrefix(a, "--json=") != "false"
+				parsed, err := strconv.ParseBool(strings.TrimPrefix(a, "--json="))
+				mode = err == nil && parsed
 			} else {
 				mode = true
 			}

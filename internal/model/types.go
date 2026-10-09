@@ -16,6 +16,7 @@ const MaxJobs = 128
 const MaxChecks = 128
 const MaxStepsPerCheck = 128
 const MaxTotalSteps = 2048
+const MaxIDBytes = 64
 const MaxRunBytes = 65536
 const MaxNameBytes = 256
 const MaxImageBytes = 1024
@@ -187,7 +188,7 @@ func validImage(s string) bool {
 	return s != ""
 }
 func validID(s string) bool {
-	if len(s) == 0 || len(s) > 64 || !((s[0] >= 'A' && s[0] <= 'Z') || (s[0] >= 'a' && s[0] <= 'z') || (s[0] >= '0' && s[0] <= '9')) {
+	if len(s) == 0 || len(s) > MaxIDBytes || !((s[0] >= 'A' && s[0] <= 'Z') || (s[0] >= 'a' && s[0] <= 'z') || (s[0] >= '0' && s[0] <= '9')) {
 		return false
 	}
 	for _, r := range s[1:] {

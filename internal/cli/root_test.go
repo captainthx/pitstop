@@ -217,6 +217,23 @@ func TestValidateCancellationAndFlagValues(t *testing.T) {
 	}
 }
 
+func TestSyntaxErrorsRespectCobraJSONValuesAndStringFlags(t *testing.T) {
+	cases := [][]string{
+		{"skill", "install", "--agent", "--json", "--scope", "project", "--bad"},
+		{"validate", "--json=0", "--bad"},
+		{"validate", "--json=FALSE", "--bad"},
+	}
+	for _, args := range cases {
+		var out, errOut bytes.Buffer
+		if code := Execute(args, &out, &errOut); code != 2 {
+			t.Fatalf("args=%v code=%d stdout=%q stderr=%q", args, code, out.String(), errOut.String())
+		}
+		if out.Len() != 0 {
+			t.Fatalf("args=%v emitted JSON despite Cobra's false/unavailable json flag: %q", args, out.String())
+		}
+	}
+}
+
 func TestValidateOutputFailureDoesNotWriteSecondEnvelope(t *testing.T) {
 	d := t.TempDir()
 	if out, err := exec.Command("git", "init", "-q", d).CombinedOutput(); err != nil {

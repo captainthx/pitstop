@@ -92,6 +92,9 @@ func Install(ctx context.Context, opts Options) (result model.SkillInstallResult
 	result.BundleVersion = agentassets.BundleVersion
 
 	rootPath, targetRel, err := destination(opts)
+	if cancelErr := contextError(ctx); cancelErr != nil {
+		return result, cancelErr
+	}
 	if err != nil {
 		return result, err
 	}

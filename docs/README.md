@@ -17,11 +17,12 @@
 
 ## งาน config/agent ปัจจุบัน / Current config-agent work
 
-Updated 2026-10-09: `init`, `validate` and `skill install` are present in the current checkout. The [config-agent trial evidence](evidence/config-agent-trials/README.md) records 23 independent evaluator attempts and their prerequisite findings. The design and plan remain the contract record; use the current guides for command behavior and the roadmap for deferred work.
+Updated 2026-10-09: `init`, `validate` and `skill install` are present in the current checkout. The [config-agent validation evidence](evidence/config-agent-validation.md) records current runtime and focused package-manager checks; the [config-agent trial evidence](evidence/config-agent-trials/README.md) records 23 independent evaluator attempts and their prerequisite findings. The design and plan remain the contract record; use the current guides for command behavior and the roadmap for deferred work.
 
 - [Config initialization, validation and agent skill design](superpowers/specs/2026-10-08-config-agent-design.md)
 - [Implementation plan with validation/security acceptance checks](superpowers/plans/2026-10-08-config-agent.md)
 - [Development roadmap and deferred scope](roadmap.md)
+- [Whole-branch review and fix resolutions](evidence/config-agent-review.md)
 
 หลักฐาน agent trial อยู่ใน [ดัชนีหลักฐาน config-agent](evidence/config-agent-trials/README.md); runtime/toolchain verification ต้องมีหลักฐานการรันจริงแยกต่างหาก / Agent-trial evidence is in the [config-agent evidence index](evidence/config-agent-trials/README.md); runtime/toolchain verification requires separate actual-run evidence.
 

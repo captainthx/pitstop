@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 2,
+  "runner": {"image": "node:22-bookworm", "architecture": "linux/arm64"},
+  "jobs": ["frontend"],
+  "checks": [{"id": "frontend", "steps": [{"id": "check", "name": "Run frontend package checks", "run": "cd packages/frontend && npm ci && npm test"}]}]
+}

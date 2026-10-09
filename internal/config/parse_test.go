@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"unicode/utf8"
 
 	"pitstop/internal/model"
 )
@@ -224,5 +225,47 @@ func TestParseJobsElementTypesCarryJSONPointers(t *testing.T) {
 		if err == nil || !reflect.DeepEqual(got, model.Config{}) || !errors.As(err, &ve) || ve.Issue.Code != "JSON_TYPE" || ve.Issue.Path != "/jobs/0" {
 			t.Fatalf("jobs element %s: config=%#v issue=%#v err=%v", value, got, ve, err)
 		}
+	}
+}
+
+func TestParseRejectsWrongContainersWithTrustedPaths(t *testing.T) {
+	secret := "SECRET_COMMAND"
+	cases := []struct {
+		name, input, path string
+	}{
+		{"runner array", strings.Replace(validConfig, `"runner":{"image":"alpine:3.22","architecture":"linux/arm64"}`, `"runner":["`+secret+`"]`, 1), "/runner"},
+		{"runner null", strings.Replace(validConfig, `"runner":{"image":"alpine:3.22","architecture":"linux/arm64"}`, `"runner":null`, 1), "/runner"},
+		{"checks object", strings.Replace(validConfig, `"checks":[{"id":"verify","steps":[{"id":"check","run":"true"}]}]`, `"checks":{"private":"`+secret+`"}`, 1), "/checks"},
+		{"checks null", strings.Replace(validConfig, `"checks":[{"id":"verify","steps":[{"id":"check","run":"true"}]}]`, `"checks":null`, 1), "/checks"},
+		{"check primitive", strings.Replace(validConfig, `"checks":[{"id":"verify","steps":[{"id":"check","run":"true"}]}]`, `"checks":["`+secret+`"]`, 1), "/checks/0"},
+		{"check object steps", strings.Replace(validConfig, `"steps":[{"id":"check","run":"true"}]`, `"steps":{"private":"`+secret+`"}`, 1), "/checks/0/steps"},
+		{"steps null", strings.Replace(validConfig, `"steps":[{"id":"check","run":"true"}]`, `"steps":null`, 1), "/checks/0/steps"},
+		{"step array", strings.Replace(validConfig, `"steps":[{"id":"check","run":"true"}]`, `"steps":["`+secret+`"]`, 1), "/checks/0/steps/0"},
+		{"step null", strings.Replace(validConfig, `"steps":[{"id":"check","run":"true"}]`, `"steps":[null]`, 1), "/checks/0/steps/0"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := Parse([]byte(tc.input))
+			var ve *model.ValidationError
+			if err == nil || !reflect.DeepEqual(got, model.Config{}) || !errors.As(err, &ve) {
+				t.Fatalf("config=%#v issue=%#v err=%v", got, ve, err)
+			}
+			if ve.Issue.Code != "JSON_TYPE" || ve.Issue.Path != tc.path {
+				t.Fatalf("issue=%#v want JSON_TYPE at %s", ve.Issue, tc.path)
+			}
+			if strings.Contains(err.Error(), secret) {
+				t.Fatalf("diagnostic leaked secret: %q", err)
+			}
+		})
+	}
+}
+
+func TestParseIssuePathStopsAtUTF8Boundary(t *testing.T) {
+	key := strings.Repeat("ก", 120)
+	input := validConfig[:len(validConfig)-1] + `,"` + key + `":1}`
+	_, err := Parse([]byte(input))
+	var ve *model.ValidationError
+	if !errors.As(err, &ve) || ve.Issue.Code != "JSON_UNKNOWN_FIELD" || len(ve.Issue.Path) > model.MaxIssuePathBytes || !utf8.ValidString(ve.Issue.Path) {
+		t.Fatalf("issue=%#v err=%v", ve, err)
 	}
 }

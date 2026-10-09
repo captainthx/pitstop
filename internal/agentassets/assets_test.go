@@ -18,7 +18,7 @@ import (
 
 func TestTrustedBundlesIncludeCurrentAndHistoricalBundles(t *testing.T) {
 	manifests := agentassets.TrustedBundles()
-	if len(manifests) != 4 {
+	if len(manifests) != 5 {
 		t.Fatalf("trusted manifest registry = %d entries or lacks distinct history", len(manifests))
 	}
 	for i := range manifests {
@@ -40,6 +40,49 @@ func TestTrustedBundlesIncludeCurrentAndHistoricalBundles(t *testing.T) {
 			t.Fatalf("manifest %d invalid: %v", i, err)
 		}
 	}
+}
+
+func TestBDEB767FixtureMatchesArchivedManifestAndTrustedHistory(t *testing.T) {
+	manifestPath := filepath.Join("testdata", "bdeb767", "manifest.json")
+	manifestBytes, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hash := sha256.Sum256(manifestBytes)
+	if got := hex.EncodeToString(hash[:]); got != "15df7dbb90c001b3234c490b60929a09bbede4b10e0f791d700657d64b3933b3" {
+		t.Fatalf("archived bdeb767 manifest hash = %s", got)
+	}
+	if !trustedManifestContains(manifestBytes) {
+		t.Fatal("archived bdeb767 manifest is not trusted for force upgrades")
+	}
+	var manifest struct {
+		Files []struct {
+			Path   string `json:"path"`
+			SHA256 string `json:"sha256"`
+		} `json:"files"`
+	}
+	if err := json.Unmarshal(manifestBytes, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range manifest.Files {
+		data, err := os.ReadFile(filepath.Join("testdata", "bdeb767", filepath.FromSlash(entry.Path)))
+		if err != nil {
+			t.Fatalf("archived fixture %s: %v", entry.Path, err)
+		}
+		hash := sha256.Sum256(data)
+		if got := hex.EncodeToString(hash[:]); got != entry.SHA256 {
+			t.Fatalf("archived fixture %s hash=%s want=%s", entry.Path, got, entry.SHA256)
+		}
+	}
+}
+
+func trustedManifestContains(want []byte) bool {
+	for _, manifest := range agentassets.TrustedBundles() {
+		if bytes.Equal(manifest, want) {
+			return true
+		}
+	}
+	return false
 }
 
 func TestBundleCompleteAndValid(t *testing.T) {
@@ -190,6 +233,15 @@ func TestBundleCompleteAndValid(t *testing.T) {
 	assertAssetContains(t, "assets/source/scripts/check.sh", "npm run check")
 	assertAssetContains(t, "assets/source/local-action/action.yml", "npm run check")
 	assertAssetContains(t, "assets/source/manifests/python-pyproject.toml", "pytest")
+	for _, preset := range []string{"node-pnpm", "node-yarn-classic", "node-yarn-berry"} {
+		data, err := agentassets.Preset(preset)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(data), `corepack enable && corepack install --global `) {
+			t.Fatalf("%s does not enable Corepack shims before installing its pinned manager", preset)
+		}
+	}
 }
 
 func assertAssetContains(t *testing.T, path, want string) {

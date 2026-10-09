@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 2,
+  "runner": {"image": "golang:1.26.5", "architecture": "linux/arm64"},
+  "jobs": ["verify"],
+  "checks": [{"id": "verify", "steps": [
+    {"id": "vet", "run": "go vet ./..."},
+    {"id": "test", "run": "go test -race ./..."},
+    {"id": "build", "run": "go build -buildvcs=false ./..."}
+  ]}]
+}

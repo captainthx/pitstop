@@ -1,0 +1,8 @@
+name: checks
+on: [pull_request]
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sh scripts/check.sh

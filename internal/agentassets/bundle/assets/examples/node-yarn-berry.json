@@ -3,7 +3,7 @@
   "runner": {"image": "node:22-bookworm", "architecture": "linux/arm64"},
   "jobs": ["verify"],
   "checks": [{"id": "verify", "steps": [
-    {"id": "bootstrap", "name": "Bootstrap pinned Yarn Berry", "run": "corepack install --global yarn@4.6.0"},
+    {"id": "bootstrap", "name": "Bootstrap pinned Yarn Berry", "run": "corepack enable && corepack install --global yarn@4.6.0"},
     {"id": "install", "name": "Install dependencies", "run": "yarn install --immutable"},
     {"id": "check", "name": "Run project checks", "run": "yarn run check"}
   ]}]

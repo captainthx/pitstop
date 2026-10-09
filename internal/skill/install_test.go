@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"pitstop/internal/agentassets"
 	"pitstop/internal/model"
@@ -136,6 +137,71 @@ func TestInstallRejectsContentionAndCancellation(t *testing.T) {
 	result, err = Install(ctx, Options{Agent: "codex", Scope: "project", Repo: repo})
 	if err == nil || result.Installed {
 		t.Fatalf("cancel result=%#v err=%v", result, err)
+	}
+}
+
+func TestInstallCancellationWinsGitResolutionSuccessAndFailure(t *testing.T) {
+	for _, success := range []bool{true, false} {
+		t.Run(map[bool]string{true: "success", false: "failure"}[success], func(t *testing.T) {
+			repo := skillTestRepo(t)
+			fakeBin := t.TempDir()
+			started := filepath.Join(t.TempDir(), "started")
+			release := filepath.Join(t.TempDir(), "release")
+			defer func() { _ = os.WriteFile(release, nil, 0600) }()
+			git := filepath.Join(fakeBin, "git")
+			script := "#!/bin/sh\nset -eu\n: > \"$PITSTOP_FAKE_GIT_STARTED\"\nwhile [ ! -e \"$PITSTOP_FAKE_GIT_RELEASE\" ]; do sleep 0.01; done\n"
+			if success {
+				script += "printf '%s\\n' \"$PITSTOP_FAKE_GIT_REPO\"\n"
+			} else {
+				script += "exit 1\n"
+			}
+			if err := os.WriteFile(git, []byte(script), 0700); err != nil {
+				t.Fatal(err)
+			}
+			t.Setenv("PATH", fakeBin+string(os.PathListSeparator)+os.Getenv("PATH"))
+			t.Setenv("PITSTOP_FAKE_GIT_STARTED", started)
+			t.Setenv("PITSTOP_FAKE_GIT_RELEASE", release)
+			t.Setenv("PITSTOP_FAKE_GIT_REPO", repo)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+			type result struct {
+				value model.SkillInstallResult
+				err   error
+			}
+			results := make(chan result, 1)
+			go func() {
+				value, err := Install(ctx, Options{Agent: "codex", Scope: "project", Repo: repo})
+				results <- result{value: value, err: err}
+			}()
+			deadline := time.After(5 * time.Second)
+			for {
+				if _, err := os.Stat(started); err == nil {
+					break
+				}
+				select {
+				case <-deadline:
+					t.Fatal("fake Git did not start")
+				default:
+					time.Sleep(5 * time.Millisecond)
+				}
+			}
+			cancel()
+			if err := os.WriteFile(release, nil, 0600); err != nil {
+				t.Fatal(err)
+			}
+			select {
+			case got := <-results:
+				var installErr *model.Error
+				if got.err == nil || got.value.Installed || !errors.As(got.err, &installErr) || installErr.Code != "CANCELLED" {
+					t.Fatalf("result=%#v err=%v", got.value, got.err)
+				}
+				if _, err := os.Stat(filepath.Join(repo, ".agents")); err == nil {
+					t.Fatal("cancellation created skill directories before destination resolution completed")
+				}
+			case <-time.After(5 * time.Second):
+				t.Fatal("installation did not return after releasing fake Git")
+			}
+		})
 	}
 }
 
@@ -324,6 +390,20 @@ func TestInstallForceUpgradesTask7Bundle(t *testing.T) {
 	}
 }
 
+func TestInstallForceUpgradesBDEB767Bundle(t *testing.T) {
+	repo := skillTestRepo(t)
+	resolvedRepo, _ := filepath.EvalSymlinks(repo)
+	target := filepath.Join(resolvedRepo, ".agents", "skills", "pitstop-config")
+	if err := os.MkdirAll(target, 0700); err != nil {
+		t.Fatal(err)
+	}
+	writeTrustedFixture(t, target, "bdeb767")
+	result, err := Install(context.Background(), Options{Agent: "codex", Scope: "project", Repo: repo, Force: true})
+	if err != nil || !result.Installed {
+		t.Fatalf("bdeb767 upgrade result=%#v err=%v", result, err)
+	}
+}
+
 func TestTask6ManifestMatchesPredecessorFixture(t *testing.T) {
 	want, err := os.ReadFile(filepath.Join("..", "agentassets", "testdata", "21cd1c2", "manifest.json"))
 	if err != nil {
@@ -367,10 +447,10 @@ func trustedManifestContains(want []byte) bool {
 func writeHistoricalDraft(t *testing.T, target string) {
 	t.Helper()
 	manifests := agentassets.TrustedBundles()
-	if len(manifests) < 4 {
+	if len(manifests) < 5 {
 		t.Fatal("historical manifest missing")
 	}
-	m, err := parseManifest(manifests[3])
+	m, err := parseManifest(manifests[4])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -395,7 +475,7 @@ func writeHistoricalDraft(t *testing.T, target string) {
 			t.Fatal(err)
 		}
 	}
-	if err := os.WriteFile(filepath.Join(target, "manifest.json"), manifests[3], 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(target, "manifest.json"), manifests[4], 0600); err != nil {
 		t.Fatal(err)
 	}
 }
