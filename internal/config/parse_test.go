@@ -261,11 +261,29 @@ func TestParseRejectsWrongContainersWithTrustedPaths(t *testing.T) {
 }
 
 func TestParseIssuePathStopsAtUTF8Boundary(t *testing.T) {
-	key := strings.Repeat("ก", 120)
-	input := validConfig[:len(validConfig)-1] + `,"` + key + `":1}`
-	_, err := Parse([]byte(input))
-	var ve *model.ValidationError
-	if !errors.As(err, &ve) || ve.Issue.Code != "JSON_UNKNOWN_FIELD" || len(ve.Issue.Path) > model.MaxIssuePathBytes || !utf8.ValidString(ve.Issue.Path) {
-		t.Fatalf("issue=%#v err=%v", ve, err)
+	cases := []struct {
+		name string
+		key  string
+		want string
+	}{
+		{"ASCII at limit", strings.Repeat("a", model.MaxIssuePathBytes-1), "/" + strings.Repeat("a", model.MaxIssuePathBytes-1)},
+		{"ASCII over limit", strings.Repeat("a", model.MaxIssuePathBytes), "/" + strings.Repeat("a", model.MaxIssuePathBytes-1)},
+		{"multibyte at limit", strings.Repeat("a", model.MaxIssuePathBytes-4) + "ก", "/" + strings.Repeat("a", model.MaxIssuePathBytes-4) + "ก"},
+		{"multibyte crosses limit", strings.Repeat("a", model.MaxIssuePathBytes-3) + "ก", "/" + strings.Repeat("a", model.MaxIssuePathBytes-3)},
+		{"JSON Pointer escapes at limit", strings.Repeat("a", model.MaxIssuePathBytes-5) + "~/", "/" + strings.Repeat("a", model.MaxIssuePathBytes-5) + "~0~1"},
+		{"JSON Pointer escapes over limit", strings.Repeat("a", model.MaxIssuePathBytes-4) + "~/", "/" + strings.Repeat("a", model.MaxIssuePathBytes-4) + "~0~"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			input := validConfig[:len(validConfig)-1] + `,"` + tc.key + `":1}`
+			got, err := Parse([]byte(input))
+			var ve *model.ValidationError
+			if !errors.As(err, &ve) || !reflect.DeepEqual(got, model.Config{}) {
+				t.Fatalf("config=%#v issue=%#v err=%v", got, ve, err)
+			}
+			if ve.Issue.Code != "JSON_UNKNOWN_FIELD" || ve.Issue.Path != tc.want || len(ve.Issue.Path) > model.MaxIssuePathBytes || !utf8.ValidString(ve.Issue.Path) {
+				t.Fatalf("issue=%#v want code JSON_UNKNOWN_FIELD path %q (err=%v)", ve.Issue, tc.want, err)
+			}
+		})
 	}
 }

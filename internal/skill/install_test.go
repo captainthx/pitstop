@@ -143,65 +143,145 @@ func TestInstallRejectsContentionAndCancellation(t *testing.T) {
 func TestInstallCancellationWinsGitResolutionSuccessAndFailure(t *testing.T) {
 	for _, success := range []bool{true, false} {
 		t.Run(map[bool]string{true: "success", false: "failure"}[success], func(t *testing.T) {
-			repo := skillTestRepo(t)
-			fakeBin := t.TempDir()
-			started := filepath.Join(t.TempDir(), "started")
-			release := filepath.Join(t.TempDir(), "release")
-			defer func() { _ = os.WriteFile(release, nil, 0600) }()
-			git := filepath.Join(fakeBin, "git")
-			script := "#!/bin/sh\nset -eu\n: > \"$PITSTOP_FAKE_GIT_STARTED\"\nwhile [ ! -e \"$PITSTOP_FAKE_GIT_RELEASE\" ]; do sleep 0.01; done\n"
-			if success {
-				script += "printf '%s\\n' \"$PITSTOP_FAKE_GIT_REPO\"\n"
-			} else {
-				script += "exit 1\n"
-			}
-			if err := os.WriteFile(git, []byte(script), 0700); err != nil {
-				t.Fatal(err)
-			}
-			t.Setenv("PATH", fakeBin+string(os.PathListSeparator)+os.Getenv("PATH"))
-			t.Setenv("PITSTOP_FAKE_GIT_STARTED", started)
-			t.Setenv("PITSTOP_FAKE_GIT_RELEASE", release)
-			t.Setenv("PITSTOP_FAKE_GIT_REPO", repo)
-			ctx, cancel := context.WithCancel(context.Background())
-			defer cancel()
-			type result struct {
-				value model.SkillInstallResult
-				err   error
-			}
-			results := make(chan result, 1)
-			go func() {
-				value, err := Install(ctx, Options{Agent: "codex", Scope: "project", Repo: repo})
-				results <- result{value: value, err: err}
-			}()
-			deadline := time.After(5 * time.Second)
-			for {
-				if _, err := os.Stat(started); err == nil {
-					break
-				}
-				select {
-				case <-deadline:
-					t.Fatal("fake Git did not start")
-				default:
-					time.Sleep(5 * time.Millisecond)
-				}
-			}
-			cancel()
-			if err := os.WriteFile(release, nil, 0600); err != nil {
-				t.Fatal(err)
-			}
-			select {
-			case got := <-results:
-				var installErr *model.Error
-				if got.err == nil || got.value.Installed || !errors.As(got.err, &installErr) || installErr.Code != "CANCELLED" {
-					t.Fatalf("result=%#v err=%v", got.value, got.err)
-				}
-				if _, err := os.Stat(filepath.Join(repo, ".agents")); err == nil {
-					t.Fatal("cancellation created skill directories before destination resolution completed")
-				}
-			case <-time.After(5 * time.Second):
-				t.Fatal("installation did not return after releasing fake Git")
+			got, err := runCancelledGitResolution(t, success, false)
+			var installErr *model.Error
+			if err == nil || got.Installed || !errors.As(err, &installErr) || installErr.Code != "CANCELLED" {
+				t.Fatalf("result=%#v err=%v", got, err)
 			}
 		})
+	}
+}
+
+func TestInstallCancellationCleanupOnReleaseWriteFailure(t *testing.T) {
+	got, err := runCancelledGitResolution(t, true, true)
+	var installErr *model.Error
+	if err == nil || got.Installed || !errors.As(err, &installErr) || installErr.Code != "CANCELLED" {
+		t.Fatalf("result=%#v err=%v", got, err)
+	}
+}
+
+func runCancelledGitResolution(t *testing.T, success, releaseFailure bool) (model.SkillInstallResult, error) {
+	t.Helper()
+	const timeout = 5 * time.Second
+	repo := skillTestRepo(t)
+	controlDir := t.TempDir()
+	fakeBin := t.TempDir()
+	started := filepath.Join(controlDir, "started")
+	release := filepath.Join(controlDir, "release")
+	abort := filepath.Join(controlDir, "abort")
+	done := filepath.Join(controlDir, "done")
+	git := filepath.Join(fakeBin, "git")
+	script := "#!/bin/sh\nset -eu\n: > \"$PITSTOP_FAKE_GIT_STARTED\"\nwhile [ ! -e \"$PITSTOP_FAKE_GIT_RELEASE\" ] && [ ! -e \"$PITSTOP_FAKE_GIT_ABORT\" ]; do sleep 0.01; done\n: > \"$PITSTOP_FAKE_GIT_DONE\"\nif [ -e \"$PITSTOP_FAKE_GIT_ABORT\" ]; then exit 2; fi\n"
+	if success {
+		script += "printf '%s\\n' \"$PITSTOP_FAKE_GIT_REPO\"\n"
+	} else {
+		script += "exit 1\n"
+	}
+	if err := os.WriteFile(git, []byte(script), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", fakeBin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("PITSTOP_FAKE_GIT_STARTED", started)
+	t.Setenv("PITSTOP_FAKE_GIT_RELEASE", release)
+	t.Setenv("PITSTOP_FAKE_GIT_ABORT", abort)
+	t.Setenv("PITSTOP_FAKE_GIT_DONE", done)
+	t.Setenv("PITSTOP_FAKE_GIT_REPO", repo)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	type installResult struct {
+		value model.SkillInstallResult
+		err   error
+	}
+	results := make(chan installResult, 1)
+	workerDone := make(chan struct{})
+	go func() {
+		defer close(workerDone)
+		value, err := Install(ctx, Options{Agent: "codex", Scope: "project", Repo: repo})
+		results <- installResult{value: value, err: err}
+	}()
+	releaseFakeGit := func() error {
+		if releaseFailure {
+			return errors.New("controlled release write failure")
+		}
+		return os.WriteFile(release, nil, 0600)
+	}
+
+	joined := false
+	signaled := false
+	defer func() {
+		cancel()
+		if !signaled {
+			if err := os.WriteFile(release, nil, 0600); err != nil {
+				if abortErr := os.WriteFile(abort, nil, 0600); abortErr != nil {
+					t.Errorf("could not release fake Git during cleanup: release=%v abort=%v", err, abortErr)
+				}
+			} else {
+				signaled = true
+			}
+		}
+		if !joined {
+			select {
+			case <-workerDone:
+				joined = true
+			case <-time.After(timeout):
+				t.Errorf("fake Git install worker did not terminate during cleanup")
+			}
+		}
+		if joined && !waitForFile(done, timeout) {
+			t.Errorf("fake Git child did not report completion during cleanup")
+		}
+	}()
+
+	if !waitForFile(started, timeout) {
+		t.Fatalf("fake Git did not start")
+	}
+	cancel()
+	if err := releaseFakeGit(); err != nil {
+		if err := os.WriteFile(abort, nil, 0600); err != nil {
+			t.Fatalf("abort fake Git after release failure: %v", err)
+		}
+		signaled = true
+	} else {
+		signaled = true
+	}
+
+	var got installResult
+	select {
+	case got = <-results:
+	case <-time.After(timeout):
+		t.Fatalf("installation did not return after releasing fake Git")
+	}
+	select {
+	case <-workerDone:
+		joined = true
+	case <-time.After(timeout):
+		t.Fatalf("installation worker did not terminate after returning")
+	}
+	if _, err := os.Stat(filepath.Join(repo, ".agents")); err == nil {
+		t.Fatalf("cancellation created skill directories before destination resolution completed")
+	} else if !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("check canceled skill directories: %v", err)
+	}
+	if !waitForFile(done, timeout) {
+		t.Fatalf("fake Git child did not report completion")
+	}
+	return got.value, got.err
+}
+
+func waitForFile(path string, timeout time.Duration) bool {
+	ticker := time.NewTicker(5 * time.Millisecond)
+	defer ticker.Stop()
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	for {
+		if _, err := os.Stat(path); err == nil {
+			return true
+		}
+		select {
+		case <-ticker.C:
+		case <-timer.C:
+			return false
+		}
 	}
 }
 

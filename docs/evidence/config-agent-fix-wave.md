@@ -9,7 +9,7 @@ Scope: five Important and two Minor findings from `final-branch-review.md` at `b
 - CLI syntax fallback follows Cobra's bool grammar and all known string value flags, while using parsed `--json` state when available.
 - Project skill installation checks cancellation immediately after Git destination resolution; deterministic success/failure fake-Git tests cover release and cleanup.
 - Human summaries and CLI human errors escape C0/Cf/DEL and bound displayed paths/messages while preserving machine fields.
-- Evidence wording distinguishes representative command assertions from execution of every generated step. Direct ID and rendered-path boundary tests assert exact codes and paths.
+- Evidence wording distinguishes representative command assertions from execution of every generated step. Direct ID/count and rendered-path boundary tests assert exact codes, zero values and retained paths.
 
 ## Evidence
 
@@ -24,3 +24,7 @@ The fresh Go 1.26.5 floor race/vet/fuzz checks, exact fresh binary/offline/Docke
 The ledger's initial omissions remain explicit: the earlier missing-script check had no behavioral RED, and historical broad acceptance evidence was not rerun or relabeled for this fix wave.
 
 Commit: the final fix-wave changeset recorded in the handoff; no push or release.
+
+## User-requested test-gap follow-up
+
+The scoped review's two remaining test-only gaps have passing correction-round checks after the final fix wave. The parser test now covers exact 256/257-byte rendered-path prefixes for ASCII, a three-byte UTF-8 rune and JSON Pointer escaping, with `JSON_UNKNOWN_FIELD`, zero `Config` and valid UTF-8 assertions. The cancellation fixture now releases or aborts the blocked fake Git, waits for `workerDone` before temporary/environment cleanup on every bounded path, restores the no-`.agents` guard, and checks a child-completion marker; successful and failing resolution plus a controlled release-write failure are covered. See [config-agent test-gap evidence](config-agent-test-gaps.md) for commands, results and limits. The coordinator follow-up gate remains pending independent scoped re-review.

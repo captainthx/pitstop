@@ -246,3 +246,11 @@ The scoped reviewer approved all five Important fixes and Minor 1. Minor 2 is pa
 Full task process evidence, including initial behavioral-RED omissions, is retained in [execution record](config-agent-execution.md). No omitted test phase is retroactively claimed. Final code is `cb5d53c`; subsequent completion edits affect evidence/status only.
 
 The implementer’s original [fix-wave report](config-agent-fix-wave.md) is preserved alongside the review record.
+
+## Human-requested test-gap follow-up (2026-10-09)
+
+The original review and all eleven ordered rulings above remain historical records. The user explicitly requested a bounded follow-up, which supersedes only historical Rulings 8 and 9 for the current checkout: the exact rendered-path boundary assertions and fake-Git fatal-path worker cleanup are now implemented and validated. No production code changed.
+
+`TestParseIssuePathStopsAtUTF8Boundary` now checks exact 256-byte and one-byte-over retained prefixes for ASCII, a three-byte UTF-8 rune and JSON Pointer escaping, along with `JSON_UNKNOWN_FIELD`, zero `Config` and valid UTF-8. The cancellation fixture now has bounded release/abort cleanup, joins the installer worker before temporary/environment cleanup, and asserts the fake-Git child completion marker on successful/failing resolution and a controlled release-write failure. The helper's startup and result timeout cleanup paths use the same bounded release-and-join logic.
+
+The pre-follow-up focused tests were already green, so no behavioral RED was available without changing production behavior; the new assertions close coverage gaps rather than repair a discovered runtime defect. Results and limits are recorded in [config-agent-test-gaps.md](config-agent-test-gaps.md): affected packages, repeated cancellation runs, Go 1.26.5 race/vet and diff checks passed. The coordinator follow-up gate remains pending the parent agent's independent scoped re-review. Remote CI, release and the existing platform/security/runtime boundaries remain outside this follow-up.
