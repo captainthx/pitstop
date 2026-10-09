@@ -53,6 +53,9 @@ jobs:
       - name: Build CLI
         run: go build -trimpath -o "$RUNNER_TEMP/pitstop" ./cmd/pitstop
 
+      - name: Check config-agent smoke and embedded configs
+        run: PITSTOP_BIN="$RUNNER_TEMP/pitstop" PITSTOP_CONFIG_AGENT_RUNTIME=0 sh scripts/config-agent-smoke.sh
+
       - name: Check Docker checks on a real daemon
         run: PITSTOP_BIN="$RUNNER_TEMP/pitstop" sh scripts/docker-smoke.sh
 
