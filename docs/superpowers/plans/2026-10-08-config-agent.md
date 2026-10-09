@@ -10,7 +10,9 @@
 
 **Spec:** [Config/agent design](../specs/2026-10-08-config-agent-design.md). Read this and the existing [Docker design](../specs/2026-10-07-docker-checks-design.md) before work. Deferred scope: [roadmap](../../roadmap.md).
 
-**Status:** Tasks 1–6 and Task 7 are implemented in this checkout. Task 7 has 23 evaluator attempts across 14 cases, with preserved raw artifacts and controller validation in the [trial evidence index](../../evidence/config-agent-trials/README.md); runtime/toolchain, whole-branch, and CI evidence remain Task 8. Baseline `e6f8328fc6e181a1d3a1994c3f1d7c93479a7b3d`. This documentation branch is `feature/config-agent-plan`; reuse it for execution unless the user selects another checkout. Do not switch back to the merged Docker branch. No push/release.
+**Status:** Tasks 1–7 and Task 8 items 1–4 and 6 are implemented in this checkout. Task 7 has 23 evaluator attempts across 14 cases, with preserved raw artifacts and controller validation in the [trial evidence index](../../evidence/config-agent-trials/README.md); selected Node/Go/Python/Rust runtime, offline smoke, CI wiring, and final local checks are recorded in [config-agent validation](../../evidence/config-agent-validation.md). Task 8 item 5 remains open for the controller's whole-branch trust-boundary review. Baseline `e6f8328fc6e181a1d3a1994c3f1d7c93479a7b3d`. This documentation branch is `feature/config-agent-plan`; reuse it for execution unless the user selects another checkout. Do not switch back to the merged Docker branch. No push/release.
+
+**Completed task summary:** The progress ledger records Tasks 1–3 complete with focused regressions and fuzz evidence, Task 4 complete with canonical asset/parser checks, Task 5 complete with preservation/cleanup evidence, Task 6 complete with transactional installer and trusted-history evidence, and Task 7 complete with 14 cases and 23 evaluator attempts. The ledger preserves where an initial behavioral RED was omitted or was a build failure; this summary does not retroactively claim RED evidence. Task 8 evidence is linked above; its whole-branch trust-boundary review remains pending.
 
 ## Global Constraints
 
@@ -220,11 +222,11 @@ rtk go test ./internal/config -run '^$' -fuzz '^FuzzConfigRoundTrip$' -fuzztime=
 - Consumes all tasks, existing scripts/docker-smoke.sh and CI.
 - Produces scripts/config-agent-smoke.sh accepting an absolute PITSTOP_BIN; all resources confined to temporary repo/home with cleanup; docs/evidence/config-agent-validation.md records actual commands/environment/outcomes/limits.
 
-- [ ] **1. Add offline smoke**: temp empty Git repo; init base dry-run/no file, actual init, validate, invalid duplicate config rejected, existing config preserved, custom harmless check config, project skill dry-run/no writes, install, no-force collision, owned force replacement. Parse stdout with existing scripts/validate-json.go; additionally assert command, exit and relevant result fields so merely valid JSON is insufficient.
+- [x] **1. Add offline smoke**: temp empty Git repo; init base dry-run/no file, actual init, validate, invalid duplicate config rejected, existing config preserved, custom harmless check config, project skill dry-run/no writes, install, no-force collision, owned force replacement. Parse stdout with existing scripts/validate-json.go; additionally assert command, exit and relevant result fields so merely valid JSON is insufficient.
 
-- [ ] **2. Add example smoke**: parse all embedded templates/mapping configs with canonical parser and run representative Node/Go plus at least two newly covered toolchains on a real Docker daemon in temporary fixtures with actual manifests/locks. Select those new toolchains explicitly before execution and record them in evidence. If a toolchain/image is unavailable, document unverified status; schema validation does not substitute for runtime evidence. Preserve snapshot/cleanup smoke and original repo invariants. Do not claim all languages were tested.
+- [x] **2. Add example smoke**: parse all embedded templates/mapping configs with canonical parser and run representative Node/Go plus at least two newly covered toolchains on a real Docker daemon in temporary fixtures with actual manifests/locks. Select those new toolchains explicitly before execution and record them in evidence. If a toolchain/image is unavailable, document unverified status; schema validation does not substitute for runtime evidence. Preserve snapshot/cleanup smoke and original repo invariants. Do not claim all languages were tested.
 
-- [ ] **3. Run final checks once after all changes**:
+- [x] **3. Run final checks once after all changes**:
 
 ```sh
 rtk go test -race -count=1 ./...
@@ -236,11 +238,11 @@ rtk git diff --check
 
   Then build the CLI into a temporary directory and run offline/config-agent smoke plus existing docker-smoke with PITSTOP_BIN set to that exact binary. Verify builds/tests with the Go 1.26.5 floor in CI or a controlled toolchain; local Go 1.27.1 alone does not prove floor compatibility. Do not change go.mod merely to use json/v2. Fix failures and rerun affected tests; only broaden after new failures/changes.
 
-- [ ] **4. Update .github/workflows/ci.yml** with offline config-agent smoke and example parsing beside existing checks. Use the CI-built binary; preserve formatting/dependency/race/vet/Docker/JSON checks. Fuzz runs may remain explicit local acceptance commands; seeded fuzz tests run in ordinary go test. Never claim remote CI passed without actual remote evidence.
+- [x] **4. Update .github/workflows/ci.yml** with offline config-agent smoke and example parsing beside existing checks. Use the CI-built binary; preserve formatting/dependency/race/vet/Docker/JSON checks. Fuzz runs may remain explicit local acceptance commands; seeded fuzz tests run in ordinary go test. Never claim remote CI passed without actual remote evidence.
 
 - [ ] **5. Review trust boundaries and record evidence**: confirm every Load consumer is covered, no parser bypass, no raw-value diagnostics, all limits tested at boundary/+1, no unsafe file operations/unknown force deletions, all dry-runs truly read-only. Include remaining gaps/OS limitations/trial coverage in evidence and current docs. Review whole branch before completion; if the user chooses independent agents, give reviewer the spec, plan and diff and resolve concrete findings.
 
-- [ ] **6. Commit task artifacts and hand off**: `rtk git diff --check`, `rtk git status --short --branch`; show implementation summary/evidence and any open acceptance item. No automatic merge/push/release/install in the user's real home.
+- [x] **6. Commit task artifacts and hand off**: `rtk git diff --check`, `rtk git status --short --branch`; show implementation summary/evidence and any open acceptance item. No automatic merge/push/release/install in the user's real home.
 
 ## Self-review and execution handoff
 

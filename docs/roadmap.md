@@ -8,9 +8,9 @@
 
 AI-agent-led configuration, manual starters, strict shared validation and CLI installation of a portable skill are implemented in the current checkout and documented by the [design](superpowers/specs/2026-10-08-config-agent-design.md) and [implementation plan](superpowers/plans/2026-10-08-config-agent.md).
 
-`pitstop init`, `pitstop validate` และ `pitstop skill install` มีใน CLI ปัจจุบัน พร้อม starter และ portable skill หลายภาษา หลักฐาน agent trial ด้าน mapping/prerequisite 23 ครั้งอยู่ใน [ดัชนีหลักฐาน](evidence/config-agent-trials/README.md) ส่วน runtime/toolchain verification และ release publication ต้องมีหลักฐานแยกก่อนสรุปความสำเร็จ
+`pitstop init`, `pitstop validate` และ `pitstop skill install` มีใน CLI ปัจจุบัน พร้อม starter และ portable skill หลายภาษา หลักฐาน agent trial ด้าน mapping/prerequisite 23 ครั้งอยู่ใน [ดัชนีหลักฐาน](evidence/config-agent-trials/README.md) และหลักฐาน runtime ของ Node, Go, Python และ Rust อยู่ใน [หลักฐาน config-agent validation](evidence/config-agent-validation.md) ส่วน release publication ยังไม่ยืนยัน
 
-The commands and portable bundle are present in the current checkout. Agent mapping/prerequisite trials are recorded in the [trial evidence index](evidence/config-agent-trials/README.md). Runtime/toolchain verification and release publication remain separate evidence or release work and must not be inferred from parser checks.
+The commands and portable bundle are present in the current checkout. Agent mapping/prerequisite trials are recorded in the [trial evidence index](evidence/config-agent-trials/README.md), and local runtime evidence for Node, Go, Python, and Rust is recorded in [config-agent validation](evidence/config-agent-validation.md). This evidence covers four selected toolchains; it does not claim every preset or language, and release publication remains unverified.
 
 ## งานที่ยังไม่รวมในรอบนี้ / Deferred scope
 

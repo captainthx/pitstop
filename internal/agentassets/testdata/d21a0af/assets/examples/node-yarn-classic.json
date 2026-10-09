@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 2,
+  "runner": {"image": "node:22-bookworm", "architecture": "linux/arm64"},
+  "jobs": ["verify"],
+  "checks": [{"id": "verify", "steps": [
+    {"id": "bootstrap", "name": "Bootstrap pinned Yarn Classic", "run": "corepack install --global yarn@1.22.22"},
+    {"id": "install", "name": "Install dependencies", "run": "yarn install --frozen-lockfile"},
+    {"id": "check", "name": "Run project checks", "run": "yarn run check"}
+  ]}]
+}

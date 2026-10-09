@@ -310,13 +310,26 @@ func TestInstallForceUpgradesTask6Bundle(t *testing.T) {
 	}
 }
 
+func TestInstallForceUpgradesTask7Bundle(t *testing.T) {
+	repo := skillTestRepo(t)
+	resolvedRepo, _ := filepath.EvalSymlinks(repo)
+	target := filepath.Join(resolvedRepo, ".agents", "skills", "pitstop-config")
+	if err := os.MkdirAll(target, 0700); err != nil {
+		t.Fatal(err)
+	}
+	writeTask7Fixture(t, target)
+	result, err := Install(context.Background(), Options{Agent: "codex", Scope: "project", Repo: repo, Force: true})
+	if err != nil || !result.Installed {
+		t.Fatalf("Task 7 upgrade result=%#v err=%v", result, err)
+	}
+}
+
 func TestTask6ManifestMatchesPredecessorFixture(t *testing.T) {
 	want, err := os.ReadFile(filepath.Join("..", "agentassets", "testdata", "21cd1c2", "manifest.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	manifests := agentassets.TrustedBundles()
-	if len(manifests) < 2 || !bytes.Equal(manifests[1], want) {
+	if !trustedManifestContains(want) {
 		t.Fatalf("trusted Task 6 manifest does not match predecessor fixture")
 	}
 	repo := skillTestRepo(t)
@@ -332,13 +345,32 @@ func TestTask6ManifestMatchesPredecessorFixture(t *testing.T) {
 	}
 }
 
+func TestTask7ManifestMatchesPredecessorFixture(t *testing.T) {
+	want, err := os.ReadFile(filepath.Join("..", "agentassets", "testdata", "d21a0af", "manifest.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !trustedManifestContains(want) {
+		t.Fatalf("trusted Task 7 manifest does not match predecessor fixture")
+	}
+}
+
+func trustedManifestContains(want []byte) bool {
+	for _, manifest := range agentassets.TrustedBundles() {
+		if bytes.Equal(manifest, want) {
+			return true
+		}
+	}
+	return false
+}
+
 func writeHistoricalDraft(t *testing.T, target string) {
 	t.Helper()
 	manifests := agentassets.TrustedBundles()
-	if len(manifests) < 3 {
+	if len(manifests) < 4 {
 		t.Fatal("historical manifest missing")
 	}
-	m, err := parseManifest(manifests[2])
+	m, err := parseManifest(manifests[3])
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -363,14 +395,24 @@ func writeHistoricalDraft(t *testing.T, target string) {
 			t.Fatal(err)
 		}
 	}
-	if err := os.WriteFile(filepath.Join(target, "manifest.json"), manifests[2], 0600); err != nil {
+	if err := os.WriteFile(filepath.Join(target, "manifest.json"), manifests[3], 0600); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func writeTask6Fixture(t *testing.T, target string) {
 	t.Helper()
-	manifestPath := filepath.Join("..", "agentassets", "testdata", "21cd1c2", "manifest.json")
+	writeTrustedFixture(t, target, "21cd1c2")
+}
+
+func writeTask7Fixture(t *testing.T, target string) {
+	t.Helper()
+	writeTrustedFixture(t, target, "d21a0af")
+}
+
+func writeTrustedFixture(t *testing.T, target, fixtureName string) {
+	t.Helper()
+	manifestPath := filepath.Join("..", "agentassets", "testdata", fixtureName, "manifest.json")
 	manifest, err := os.ReadFile(manifestPath)
 	if err != nil {
 		t.Fatal(err)
@@ -380,7 +422,7 @@ func writeTask6Fixture(t *testing.T, target string) {
 		t.Fatal(err)
 	}
 	for _, entry := range m.Files {
-		fixture := filepath.Join("..", "agentassets", "testdata", "21cd1c2", filepath.FromSlash(entry.Path))
+		fixture := filepath.Join("..", "agentassets", "testdata", fixtureName, filepath.FromSlash(entry.Path))
 		data, readErr := os.ReadFile(fixture)
 		if readErr != nil {
 			t.Fatalf("trusted fixture %s: %v", entry.Path, readErr)

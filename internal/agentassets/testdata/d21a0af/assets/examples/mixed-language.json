@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 2,
+  "runner": {"image": "pitstop-local/node-go-tools:2026.10", "architecture": "linux/arm64"},
+  "jobs": ["verify"],
+  "checks": [{"id": "verify", "steps": [
+    {"id": "node", "name": "Check frontend package", "run": "npm ci --prefix frontend && npm run check --prefix frontend"},
+    {"id": "go", "name": "Check backend package", "run": "go test ./backend/..."}
+  ]}]
+}

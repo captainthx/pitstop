@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 2,
+  "runner": {"image": "node:22-bookworm", "architecture": "linux/arm64"},
+  "jobs": ["review-gate"],
+  "checks": [{"id": "review-gate", "steps": [{"id": "check", "name": "Verify repository", "run": "npm run check"}]}]
+}

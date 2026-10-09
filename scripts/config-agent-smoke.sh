@@ -36,7 +36,7 @@ run_json() {
 }
 
 assert_envelope() {
-  python3 - "$1" "$2" "$3" <<'PY'
+  python3 -I - "$1" "$2" "$3" <<'PY'
 import json
 import sys
 
@@ -61,7 +61,7 @@ git -C "$INIT_REPO" init -q
 OUT="$ROOT/init-dry-run.json"
 run_json 0 "$OUT" init --repo "$INIT_REPO" --preset base --arch "$ARCH" --dry-run --json
 assert_envelope "$OUT" init 0
-python3 - "$OUT" "$INIT_REPO/.pitstop.json" <<'PY'
+python3 -I - "$OUT" "$INIT_REPO/.pitstop.json" <<'PY'
 import json
 import pathlib
 import sys
@@ -77,7 +77,7 @@ PY
 OUT="$ROOT/init.json"
 run_json 0 "$OUT" init --repo "$INIT_REPO" --preset base --arch "$ARCH" --json
 assert_envelope "$OUT" init 0
-python3 - "$OUT" "$INIT_REPO/.pitstop.json" <<'PY'
+python3 -I - "$OUT" "$INIT_REPO/.pitstop.json" <<'PY'
 import json
 import pathlib
 import sys
@@ -94,7 +94,7 @@ cp "$INIT_REPO/.pitstop.json" "$ROOT/original-config.json"
 OUT="$ROOT/init-collision.json"
 run_json 2 "$OUT" init --repo "$INIT_REPO" --preset base --arch "$ARCH" --json
 assert_envelope "$OUT" init 2
-python3 - "$OUT" "$INIT_REPO/.pitstop.json" "$ROOT/original-config.json" <<'PY'
+python3 -I - "$OUT" "$INIT_REPO/.pitstop.json" "$ROOT/original-config.json" <<'PY'
 import json
 import pathlib
 import sys
@@ -107,7 +107,7 @@ PY
 OUT="$ROOT/validate.json"
 run_json 0 "$OUT" validate --repo "$INIT_REPO" --json
 assert_envelope "$OUT" validate 0
-python3 - "$OUT" <<'PY'
+python3 -I - "$OUT" <<'PY'
 import json
 import sys
 
@@ -124,7 +124,7 @@ JSON
 OUT="$ROOT/validate-duplicate.json"
 run_json 2 "$OUT" validate --repo "$INIT_REPO" --json
 assert_envelope "$OUT" validate 2
-python3 - "$OUT" <<'PY'
+python3 -I - "$OUT" <<'PY'
 import json
 import sys
 
@@ -141,7 +141,7 @@ git -C "$CUSTOM_REPO" init -q
 OUT="$ROOT/init-custom.json"
 run_json 0 "$OUT" init --repo "$CUSTOM_REPO" --preset custom --image alpine:3.22 --arch "$ARCH" --command 'printf custom-smoke' --json
 assert_envelope "$OUT" init 0
-python3 - "$OUT" "$CUSTOM_REPO/.pitstop.json" <<'PY'
+python3 -I - "$OUT" "$CUSTOM_REPO/.pitstop.json" <<'PY'
 import json
 import pathlib
 import sys
@@ -160,7 +160,7 @@ SKILL_TARGET="$SKILL_REPO/.agents/skills/pitstop-config"
 OUT="$ROOT/skill-dry-run.json"
 run_json 0 "$OUT" skill install --agent codex --scope project --repo "$SKILL_REPO" --dry-run --json
 assert_envelope "$OUT" "skill install" 0
-python3 - "$OUT" "$SKILL_TARGET" <<'PY'
+python3 -I - "$OUT" "$SKILL_TARGET" <<'PY'
 import json
 import pathlib
 import sys
@@ -176,7 +176,7 @@ PY
 OUT="$ROOT/skill-install.json"
 run_json 0 "$OUT" skill install --agent codex --scope project --repo "$SKILL_REPO" --json
 assert_envelope "$OUT" "skill install" 0
-python3 - "$OUT" "$SKILL_TARGET" <<'PY'
+python3 -I - "$OUT" "$SKILL_TARGET" <<'PY'
 import json
 import pathlib
 import sys
@@ -192,7 +192,7 @@ PY
 OUT="$ROOT/skill-collision.json"
 run_json 2 "$OUT" skill install --agent codex --scope project --repo "$SKILL_REPO" --json
 assert_envelope "$OUT" "skill install" 2
-python3 - "$OUT" <<'PY'
+python3 -I - "$OUT" <<'PY'
 import json
 import sys
 
@@ -205,7 +205,7 @@ PY
 OUT="$ROOT/skill-force.json"
 run_json 0 "$OUT" skill install --agent codex --scope project --repo "$SKILL_REPO" --force --json
 assert_envelope "$OUT" "skill install" 0
-python3 - "$OUT" "$SKILL_TARGET" <<'PY'
+python3 -I - "$OUT" "$SKILL_TARGET" <<'PY'
 import json
 import pathlib
 import sys
@@ -219,8 +219,10 @@ assert not list(target.parent.glob(".pitstop-config.*")), list(target.parent.glo
 PY
 
 for config_dir in "$SKILL_TARGET/assets/examples" "$SKILL_TARGET/assets/mappings"; do
+  found=0
   for source in "$config_dir"/*.json; do
     [ -f "$source" ] || continue
+    found=1
     name=$(basename "$source" .json)
     parse_repo="$ROOT/parse-$name"
     mkdir -p "$parse_repo"
@@ -229,7 +231,7 @@ for config_dir in "$SKILL_TARGET/assets/examples" "$SKILL_TARGET/assets/mappings
     OUT="$ROOT/parse-$name.json"
     run_json 0 "$OUT" validate --repo "$parse_repo" --json
     assert_envelope "$OUT" validate 0
-    python3 - "$OUT" <<'PY'
+    python3 -I - "$OUT" <<'PY'
 import json
 import sys
 
@@ -240,6 +242,7 @@ assert result["stepCount"] >= 1, result
 assert result["issues"] == [], result
 PY
   done
+  [ "$found" -eq 1 ] || { echo "no embedded JSON configs found in $config_dir" >&2; exit 1; }
 done
 
 echo "offline config-agent smoke passed: init/validate/custom/skill and all embedded examples/mappings"
@@ -270,9 +273,22 @@ JSON
 cat >"$NODE_REPO/package-lock.json" <<'JSON'
 {"name":"pitstop-smoke-node","version":"1.0.0","lockfileVersion":3,"requires":true,"packages":{"":{"name":"pitstop-smoke-node","version":"1.0.0"}}}
 JSON
-cat >"$NODE_REPO/.pitstop.json" <<JSON
-{"schemaVersion":2,"runner":{"image":"node:22-bookworm","architecture":"$ARCH"},"jobs":["verify"],"checks":[{"id":"verify","steps":[{"id":"install","run":"npm ci"},{"id":"check","run":"npm run check"}]}]}
-JSON
+OUT="$ROOT/runtime-node-init.json"
+run_json 0 "$OUT" init --repo "$NODE_REPO" --preset node-npm --arch "$ARCH" --json
+assert_envelope "$OUT" init 0
+python3 -I - "$OUT" "$NODE_REPO/.pitstop.json" <<'PY'
+import json
+import pathlib
+import sys
+
+result = json.load(open(sys.argv[1]))["result"]
+if result["preset"] != "node-npm" or not result["written"]:
+    raise SystemExit(result)
+if result["config"]["checks"][0]["steps"][0]["run"] != "npm ci":
+    raise SystemExit(result)
+if not pathlib.Path(sys.argv[2]).is_file():
+    raise SystemExit("node preset did not write config")
+PY
 git -C "$NODE_REPO" add . && git -C "$NODE_REPO" commit -qm "node manifest"
 
 GO_REPO=$(make_runtime_fixture go)
@@ -289,7 +305,7 @@ EOF
 OUT="$ROOT/runtime-go-init.json"
 run_json 0 "$OUT" init --repo "$GO_REPO" --preset go --arch "$ARCH" --json
 assert_envelope "$OUT" init 0
-python3 - "$OUT" "$GO_REPO/.pitstop.json" <<'PY'
+python3 -I - "$OUT" "$GO_REPO/.pitstop.json" <<'PY'
 import json
 import pathlib
 import sys
@@ -310,9 +326,22 @@ cat >"$PYTHON_REPO/test_smoke.py" <<'EOF'
 def test_runtime_fixture():
     assert True
 EOF
-cat >"$PYTHON_REPO/.pitstop.json" <<JSON
-{"schemaVersion":2,"runner":{"image":"python:3.13-slim-bookworm","architecture":"$ARCH"},"jobs":["verify"],"checks":[{"id":"verify","steps":[{"id":"install","run":"python -m pip install --requirement requirements.txt"},{"id":"test","run":"python -m pytest"}]}]}
-JSON
+OUT="$ROOT/runtime-python-init.json"
+run_json 0 "$OUT" init --repo "$PYTHON_REPO" --preset python-pip --arch "$ARCH" --json
+assert_envelope "$OUT" init 0
+python3 -I - "$OUT" "$PYTHON_REPO/.pitstop.json" <<'PY'
+import json
+import pathlib
+import sys
+
+result = json.load(open(sys.argv[1]))["result"]
+if result["preset"] != "python-pip" or not result["written"]:
+    raise SystemExit(result)
+if result["config"]["checks"][0]["steps"][0]["run"] != "python -m pip install --requirement requirements.txt":
+    raise SystemExit(result)
+if not pathlib.Path(sys.argv[2]).is_file():
+    raise SystemExit("python preset did not write config")
+PY
 git -C "$PYTHON_REPO" add . && git -C "$PYTHON_REPO" commit -qm "python manifest lock"
 
 RUST_REPO=$(make_runtime_fixture rust)
@@ -339,9 +368,22 @@ mod tests {
     fn runtime_fixture() { assert!(super::smoke()); }
 }
 EOF
-cat >"$RUST_REPO/.pitstop.json" <<JSON
-{"schemaVersion":2,"runner":{"image":"rust:1.99.0-bookworm","architecture":"$ARCH"},"jobs":["verify"],"checks":[{"id":"verify","steps":[{"id":"test","run":"cargo test --locked"},{"id":"build","run":"cargo build --locked"}]}]}
-JSON
+OUT="$ROOT/runtime-rust-init.json"
+run_json 0 "$OUT" init --repo "$RUST_REPO" --preset rust --arch "$ARCH" --json
+assert_envelope "$OUT" init 0
+python3 -I - "$OUT" "$RUST_REPO/.pitstop.json" <<'PY'
+import json
+import pathlib
+import sys
+
+result = json.load(open(sys.argv[1]))["result"]
+if result["preset"] != "rust" or not result["written"]:
+    raise SystemExit(result)
+if result["config"]["checks"][0]["steps"][0]["run"] != "cargo test --locked":
+    raise SystemExit(result)
+if not pathlib.Path(sys.argv[2]).is_file():
+    raise SystemExit("rust preset did not write config")
+PY
 git -C "$RUST_REPO" add . && git -C "$RUST_REPO" commit -qm "rust manifest lock"
 
 for name in node go python rust; do
@@ -350,7 +392,7 @@ for name in node go python rust; do
   echo "runtime toolchain selected: $name"
   run_json 0 "$OUT" run --repo "$repo" --json
   assert_envelope "$OUT" run 0
-  python3 - "$OUT" "$name" <<'PY'
+  python3 -I - "$OUT" "$name" <<'PY'
 import json
 import sys
 
