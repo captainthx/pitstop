@@ -4,7 +4,7 @@
 
 รัน lint, test และ build ของโปรเจกต์ใน Linux container ก่อน commit หรือ push โดยใช้ไฟล์ที่กำลังแก้บนเครื่อง แล้วเก็บ log กับรายงานผลไว้ให้ตรวจย้อนหลัง
 
-**เริ่มต้น:** build CLI → ใช้ `pitstop init --dry-run --json` หรือคัดลอกตัวอย่างไปยัง repo เป้าหมาย → ตรวจด้วย `pitstop validate --json` → `pitstop doctor` → `pitstop run`
+**เริ่มต้น:** ติดตั้ง CLI → ใช้ `pitstop init --dry-run --json` หรือคัดลอกตัวอย่างไปยัง repo เป้าหมาย → ตรวจด้วย `pitstop validate --json` → `pitstop doctor` → `pitstop run`
 
 **สถานะเครื่องมือ config (2026-10-09):** checkout ปัจจุบันมี `init`, `validate` และ `skill install` พร้อม starter สำหรับ Node, Go, Python, Java, .NET, Rust, PHP และ Ruby รวมถึง portable `pitstop-config` skill สำหรับ Codex และ Claude Code มีบันทึก trial ด้าน mapping/prerequisite 23 ครั้งใน [ดัชนีหลักฐาน config-agent](docs/evidence/config-agent-trials/README.md); ผล runtime ที่เลือกสำหรับ Node/Go/Python/Rust และ focused pnpm/Yarn Berry อยู่ใน [หลักฐาน local validation](docs/evidence/config-agent-validation.md) ส่วน findings ที่ตรวจพบปิดครบแล้วใน [สถานะ review ปัจจุบัน](docs/evidence/config-agent-review.md) รวมถึง [ผลติดตามข้อค้าง test](docs/evidence/config-agent-test-gaps.md) ผล local นี้ยังไม่ยืนยัน remote CI หรือ workflow parity ดู [คู่มือปัจจุบัน](docs/user-guide.md), [คู่มือ AI agent](docs/ai-agent.md) และ [แนวทางพัฒนาต่อ](docs/roadmap.md)
 
@@ -23,7 +23,29 @@ working tree → snapshot → container ใหม่ต่อ check → รั�
 
 CLI นี้รันคำสั่งใน `.pitstop.json` โดยตรง ดูขอบเขตการรองรับใน [คู่มือ](docs/user-guide.md#ขอบเขตที่รองรับ)
 
-## 1. ติดตั้ง CLI จาก source
+## 1. ติดตั้ง CLI
+
+ตัวติดตั้งจาก release รองรับ macOS/Linux บน arm64/amd64 โดยไม่ต้องมี Go **สถานะ 2026-10-20: ยังไม่ได้เผยแพร่ release** ลิงก์ต่อไปนี้ใช้ได้หลังเผยแพร่ release แรก ระหว่างนี้ build จาก source ด้านล่างได้
+
+ดาวน์โหลดเป็นไฟล์ใหม่ อ่านก่อน แล้วค่อยรัน หากดาวน์โหลดล้มเหลวให้หยุด:
+
+```sh
+PITSTOP_INSTALLER="$(mktemp "${TMPDIR:-/tmp}/pitstop-installer.XXXXXXXX")"
+curl --disable --fail --show-error --location --proto '=https' --proto-redir '=https' \
+  --connect-timeout 15 --max-time 180 --output "$PITSTOP_INSTALLER" \
+  https://github.com/captainthx/pitstop/releases/latest/download/install.sh
+cat "$PITSTOP_INSTALLER"
+```
+
+```sh
+sh "$PITSTOP_INSTALLER"
+export PATH="$HOME/.local/bin:$PATH"
+pitstop version
+```
+
+ตัวติดตั้งตรวจ checksum และเวอร์ชันก่อนแทนที่ binary ไฟล์เดิมต้องอนุญาตด้วย `--force` ไม่ใช้ sudo หรือแก้ shell profile ดู [วิธีติดตั้ง อัปเกรด ลบ และขอบเขตความเชื่อถือ](docs/install.md) การรัน checks ยังต้องมี Git และ Docker; checksum ไม่ป้องกันแหล่งเผยแพร่ที่ถูกยึด และ binary macOS ยังไม่ notarize
+
+### Build from source
 
 ใน checkout ของ Pitstop ใช้ Git, Go **1.26.5** ตาม `go.mod` และ Docker CLI/daemon สำหรับรัน checks:
 
@@ -35,7 +57,7 @@ pitstop version
 pitstop -h
 ```
 
-เพิ่มบรรทัด `export PATH="$HOME/.local/bin:$PATH"` ในไฟล์ตั้งค่า shell หากต้องการให้ใช้ได้ใน terminal ครั้งถัดไป ปัจจุบันขั้นตอนที่รองรับคือ build จาก source; ยังไม่มี installer link หรือคำสั่งติดตั้ง release ที่จัดทำไว้
+เพิ่มบรรทัด `export PATH="$HOME/.local/bin:$PATH"` ในไฟล์ตั้งค่า shell หากต้องการให้ใช้ได้ใน terminal ครั้งถัดไป วิธี build จาก source ใช้ได้ก่อนเผยแพร่ release และเป็นทางเลือกแทน binary สำเร็จรูป
 
 Go บน host ใช้ build ตัว Pitstop เท่านั้น เครื่องมือที่ check ใช้ เช่น Node, Java หรือ Go ต้องอยู่ใน Docker image [รายละเอียดสิ่งที่ต้องเตรียม](docs/user-guide.md#สิ่งที่ต้องเตรียม)
 

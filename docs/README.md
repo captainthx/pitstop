@@ -15,6 +15,10 @@
 - [Docker checks design](superpowers/specs/2026-10-07-docker-checks-design.md)
 - [Docker checks implementation plan](superpowers/plans/2026-10-07-docker-checks.md)
 
+## ตัวติดตั้งและ release / Installer and releases
+
+Updated 2026-10-20: [installation and release procedure](install.md), [approved design](superpowers/specs/2026-10-20-release-install-design.md), [implementation plan](superpowers/plans/2026-10-20-release-install.md), and [validation evidence](evidence/release-install.md). The source includes macOS/Linux arm64/amd64 assets, checksum verification and a draft-only release workflow. Publication is pending; links are not live installation endpoints until a release is published.
+
 ## งาน config/agent ปัจจุบัน / Current config-agent work
 
 Updated 2026-10-09: `init`, `validate` and `skill install` are present in the current checkout. The [config-agent validation evidence](evidence/config-agent-validation.md) records current runtime and focused package-manager checks; the [config-agent trial evidence](evidence/config-agent-trials/README.md) records 23 independent evaluator attempts and their prerequisite findings. The design and plan remain the contract record; use the current guides for command behavior and the roadmap for deferred work.

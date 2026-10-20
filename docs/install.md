@@ -1,0 +1,97 @@
+# ติดตั้งและออก release / Installation and releases
+
+[ไทย README](../README.th.md) · [English README](../README.md) · [Docs](README.md)
+
+**สถานะ 2026-10-20 / Status:** installer และ draft-release workflow อยู่ใน source นี้ แต่ยังไม่มี GitHub Release ที่เผยแพร่ ณ เวลาตรวจสอบ ลิงก์ติดตั้งด้านล่างใช้ได้หลัง maintainer เผยแพร่ release แรกแล้วเท่านั้น ตอนนี้ใช้ [build จาก source](../README.md#build-from-source) ได้ / The source includes the installer and draft-release workflow. No release was published when checked; the download commands below become usable after the first release is published. Source builds remain available now.
+
+## ติดตั้งจากลิงก์ / Install from a link
+
+รองรับ macOS และ Linux บน arm64/amd64 ต้องมี `curl` และ `sha256sum` หรือ `shasum` ไม่ต้องมี Go สำหรับ binary สำเร็จรูป ต้องมี Git และ Docker CLI/daemon เมื่อต้องการรัน checks / Supports macOS/Linux on arm64/amd64. Requires curl and sha256sum or shasum; Go is unnecessary for prebuilt binaries. Running checks still requires Git and a reachable Docker daemon.
+
+1. ดาวน์โหลด installer ไปยังไฟล์ชั่วคราว ถ้า download ล้มเหลวให้หยุด / Download to a new temporary file; stop if the download fails:
+
+```sh
+PITSTOP_INSTALLER="$(mktemp "${TMPDIR:-/tmp}/pitstop-installer.XXXXXXXX")"
+curl --disable --fail --show-error --location \
+  --proto '=https' --proto-redir '=https' \
+  --connect-timeout 15 --max-time 180 \
+  --output "$PITSTOP_INSTALLER" \
+  https://github.com/captainthx/pitstop/releases/latest/download/install.sh
+```
+
+2. อ่าน script ก่อนรัน / Review the script before executing:
+
+```sh
+cat "$PITSTOP_INSTALLER"
+```
+
+3. ติดตั้งแล้วตรวจเวอร์ชัน / Install and check:
+
+```sh
+sh "$PITSTOP_INSTALLER"
+export PATH="$HOME/.local/bin:$PATH"
+pitstop version
+```
+
+Installer จะเลือกแพลตฟอร์มและ resolve latest เพียงครั้งเดียว จากนั้นดาวน์โหลด binary และ checksum จาก tag เดียวกัน ตรวจ SHA-256 และเวอร์ชัน ก่อนย้าย binary เข้า `~/.local/bin/pitstop` ไม่เรียก sudo และไม่แก้ shell profile / The installer resolves latest once, fetches assets from that pinned tag, checks SHA-256 and executable version, then installs to `~/.local/bin/pitstop`. It never invokes sudo or edits shell profiles.
+
+เพิ่ม `export PATH="$HOME/.local/bin:$PATH"` ลง `~/.zshrc` สำหรับ zsh หรือ `~/.bashrc` สำหรับ interactive bash ด้วยตัวเอง แล้วเปิด terminal ใหม่ หากมี Pitstop หลายชุด ใช้ `command -v pitstop` ตรวจตัวที่ shell เลือก / Add that export to your shell configuration yourself for future terminals. Use `command -v pitstop` to find the executable selected by PATH.
+
+## ระบุเวอร์ชันและตำแหน่ง / Version and directory
+
+ดู tag ที่เผยแพร่จริงใน [Releases](https://github.com/captainthx/pitstop/releases) ตัวอย่าง `v0.1.0` ด้านล่างเป็นเพียงตัวอย่าง ต้องแทนด้วย tag ที่มีแล้ว / Choose an actually published tag; v0.1.0 below is an example, not a claim that it exists:
+
+```sh
+sh "$PITSTOP_INSTALLER" --version v0.1.0
+sh "$PITSTOP_INSTALLER" --version v0.1.0 --bin-dir "$HOME/tools/bin"
+sh "$PITSTOP_INSTALLER" --help
+```
+
+รองรับ stable tag รูปแบบ `vMAJOR.MINOR.PATCH` เท่านั้น หากต้องการ pin ตัว installer ด้วย ให้เปลี่ยน URL ดาวน์โหลดจาก `/releases/latest/download/install.sh` เป็น `/releases/download/v0.1.0/install.sh` ตาม tag ที่เลือก / Only stable vMAJOR.MINOR.PATCH tags are accepted. To pin the installer itself, use the matching versioned installer URL too.
+
+## อัปเกรด / Upgrade
+
+ดาวน์โหลดและอ่าน installer ใหม่ตามขั้นตอนด้านบน แล้วใช้ `--force` เพื่ออนุญาตแทนที่ไฟล์เดิมอย่างชัดเจน / Download and review the installer again, then explicitly allow replacement:
+
+```sh
+sh "$PITSTOP_INSTALLER" --force
+pitstop version
+```
+
+หากใช้ `--bin-dir` ต้องส่งตำแหน่งเดิมทุกครั้ง ตัวติดตั้งไม่เขียนทับ symlink หรือ directory แม้ระบุ force และไม่เปลี่ยน config หรือ skill ที่เคยติดตั้ง / Repeat a custom --bin-dir on upgrades. Symlinks and non-regular destinations are refused even with force. Project configs and installed skills are not changed by CLI upgrades.
+
+## ลบ CLI / Remove the CLI
+
+สำหรับตำแหน่งเริ่มต้น ตรวจ path ก่อนแล้วลบเฉพาะ binary / For the default location, inspect the path and remove only the binary:
+
+```sh
+command -v pitstop
+rm -i "$HOME/.local/bin/pitstop"
+```
+
+ไม่ลบรายงาน cache, `.pitstop.json` หรือ skill ของ agent โดยอัตโนมัติ / Reports, project configs and agent skills are retained.
+
+## ขอบเขตความปลอดภัย / Trust and failure behavior
+
+- HTTPS เท่านั้นและไม่อ่าน `.curlrc`; checksum ตรวจความตรงกันของ binary ก่อน execute ไม่ป้องกันผู้โจมตีที่แก้ทั้ง release และ checksum ได้ / HTTPS only, with curl configuration disabled. Checksums detect corruption; they do not authenticate a release against a compromised GitHub account.
+- ใช้ directory ที่ผู้ใช้เป็นเจ้าของและควบคุมเอง การแข่งแก้ path โดยผู้ใช้อื่นใน shared directory อยู่นอกขอบเขต / Install only into a directory you own and control; hostile concurrent changes in shared directories are outside this boundary.
+- ดาวน์โหลดหรือตรวจไม่ผ่านจะไม่แทนที่ binary เดิม staging อยู่บน filesystem เดียวกับปลายทางแล้ว rename; ไม่รับประกัน durability หากเครื่องดับ / Download, checksum, version or staging failures preserve the existing binary. Same-filesystem rename publishes the staged binary; power-loss durability is not guaranteed.
+- Installer ไม่ดาวน์โหลด Go, Docker หรือ dependencies ของโปรเจกต์ / The installer does not install Go, Docker or project dependencies.
+- Binary ของ macOS ยังไม่มี Developer ID signing/notarization หาก macOS บล็อก ให้ตรวจสอบแหล่งที่มาหรือ build จาก source อย่าปิดระบบป้องกันทั้งเครื่อง / macOS binaries are not Developer ID signed or notarized. If blocked, verify the source or build locally; do not disable system protections.
+- การ cross-build ไม่ใช่หลักฐาน runtime บนทุก OS/architecture ดู [หลักฐาน](evidence/release-install.md) / Cross-compilation is not native runtime verification for every target; see the evidence.
+
+## ขั้นตอน maintainer / Maintainer release procedure
+
+1. ตรวจ source และผล CI บน commit ที่จะออก release เลือก tag ใหม่ที่ยังไม่เคยใช้ / Review the source and CI for the intended commit and choose an unused stable tag.
+2. ทดสอบแพ็กเกจใน directory ใหม่ / Test packaging into a new directory:
+
+```sh
+PITSTOP_TEST_RELEASE=1 go test ./scripts -count=1
+sh scripts/release.sh v0.1.0 /absolute/path/to/new-release-directory
+```
+
+3. เมื่อพร้อมออก release ให้ maintainer สร้างและ push tag จาก commit ที่ตรวจแล้วเอง / When release is authorized, the maintainer creates and pushes the tag from the reviewed commit. Implementation of this feature does not itself push or publish.
+4. `.github/workflows/release.yml` ทดสอบบน macOS/Linux, ตรวจ source และสร้าง binary 4 ไฟล์, `install.sh`, `checksums.txt` ก่อนสร้าง **draft** GitHub Release สิทธิ์เขียน repo อยู่เฉพาะ job สร้าง draft และไม่ checkout source ใน job นั้น / The workflow tests and builds six assets, then creates a draft. Only the draft job receives contents:write; it does not check out or execute project source.
+5. ตรวจ draft, checksums, tag/commit, native smoke และ release notes แล้วค่อย publish ผ่าน GitHub UI ก่อนแจก installer link / Inspect the draft, checksums, tag/commit, native smoke and notes; publish through GitHub before distributing the install link.
+
+รัน workflow ซ้ำบน tag ที่มี release แล้วจะล้มเหลวแทนการเขียนทับ assets เดิม Homebrew, Windows, signed releases, notarization, self-update และการทดสอบ runtime ทุกสถาปัตยกรรมยังไม่รวม / Rerunning a tag with an existing release fails rather than overwriting assets. Homebrew, Windows, signing, notarization, self-update and complete native coverage are deferred.

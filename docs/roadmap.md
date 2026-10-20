@@ -1,6 +1,6 @@
 # แนวทางพัฒนา Pitstop / Development roadmap
 
-**Updated:** 2026-10-09 (Asia/Bangkok). This is planning guidance, not a release promise or a list of installed CLI features.
+**Updated:** 2026-10-20 (Asia/Bangkok). This is planning guidance, not a release promise or a list of installed CLI features.
 
 [Current docs / เอกสารปัจจุบัน](README.md) · [Requirements / ข้อกำหนด](requirements.md) · [English requirements](requirements.en.md)
 
@@ -11,6 +11,8 @@ AI-agent-led configuration, manual starters, strict shared validation and CLI in
 `pitstop init`, `pitstop validate` และ `pitstop skill install` มีใน CLI ปัจจุบัน พร้อม starter และ portable skill หลายภาษา หลักฐาน agent trial ด้าน mapping/prerequisite 23 ครั้งอยู่ใน [ดัชนีหลักฐาน](evidence/config-agent-trials/README.md) และหลักฐาน runtime ของ Node, Go, Python และ Rust อยู่ใน [หลักฐาน config-agent validation](evidence/config-agent-validation.md) ส่วน release publication ยังไม่ยืนยัน
 
 The commands and portable bundle are present in the current checkout. Agent mapping/prerequisite trials are recorded in the [trial evidence index](evidence/config-agent-trials/README.md), and local runtime evidence for Node, Go, Python, and Rust is recorded in [config-agent validation](evidence/config-agent-validation.md). This evidence covers four selected toolchains; it does not claim every preset or language, and release publication remains unverified.
+
+Release installation now has a macOS/Linux arm64/amd64 build script, checksum-validating installer and draft-only workflow in this checkout. See [installation/release guidance](install.md) and [verification evidence](evidence/release-install.md). No release has been published by this implementation.
 
 ## งานที่ยังไม่รวมในรอบนี้ / Deferred scope
 
@@ -35,7 +37,7 @@ The commands and portable bundle are present in the current checkout. Agent mapp
 | Self-hosted runner registration / upload source | เมื่อมีความต้องการใช้ GitHub runner จริง ต้องกำหนด authentication, source handling และ execution trust separately. |
 | Native Windows / broader platforms | เมื่อมี demand ให้แก้ Unix locking/file safety and verify on target OS; do not advertise unsupported portability. |
 | Docker engine / snapshot / cleanup refactors | แผน config/agent ไม่เปลี่ยน algorithms เหล่านี้ งานปรับโครงสร้างต้องมีปัญหาและหลักฐานแยก; reuse the existing backend for this release. |
-| Release installer / publishing | งานเดิมยังพักไว้ ต้องมีคำสั่งจากผู้ใช้และ release verification; planning/docs updates do not authorize push, release or publish. |
+| Release publication / distribution extensions | Installer and draft workflow are implemented; tag push and publication remain separate maintainer actions. Homebrew, Windows, signed checksums/provenance, Developer ID/notarization, self-update and full native target coverage need separate verification and scope. |
 
 ## หลักการอัปเดต / Maintenance
 

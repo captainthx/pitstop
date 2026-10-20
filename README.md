@@ -4,7 +4,7 @@
 
 Run your project's lint, test and build commands in Linux containers before commit or push. Test the files currently on your machine and retain logs and a report for review.
 
-**Start here:** build the CLI → use `pitstop init --dry-run --json` or copy an example to the target repo → inspect with `pitstop validate --json` → `pitstop doctor` → `pitstop run`.
+**Start here:** install the CLI → use `pitstop init --dry-run --json` or copy an example to the target repo → inspect with `pitstop validate --json` → `pitstop doctor` → `pitstop run`.
 
 **Configuration tooling status (2026-10-09):** the current checkout includes `init`, `validate`, and `skill install`, plus starters for Node, Go, Python, Java, .NET, Rust, PHP, and Ruby. The portable `pitstop-config` skill guides evidence-based AI configuration for Codex and Claude Code. The 23-attempt mapping/prerequisite trial record is in the [config-agent evidence index](docs/evidence/config-agent-trials/README.md); selected Node/Go/Python/Rust runtime and focused pnpm/Yarn Berry checks are recorded in [local validation evidence](docs/evidence/config-agent-validation.md). All identified review findings are closed in the [current review status](docs/evidence/config-agent-review.md), including the [test-gap follow-up](docs/evidence/config-agent-test-gaps.md). Remote CI and workflow parity are not established by these local checks. See the [current guide](docs/user-guide.en.md), [agent guide](docs/ai-agent.en.md), and [development roadmap](docs/roadmap.md).
 
@@ -23,7 +23,29 @@ working tree → snapshot → fresh container per check → ordered steps → re
 
 The CLI executes commands defined in `.pitstop.json`. See the [supported scope](docs/user-guide.en.md#supported-scope).
 
-## 1. Install the CLI from source
+## 1. Install the CLI
+
+The release installer supports macOS/Linux on arm64/amd64 without Go. **Publication pending (2026-10-20):** no release is published yet; the following link becomes usable after the first release. Until then, build from source below.
+
+Download to a new file, review it, then run it (stop if downloading fails):
+
+```sh
+PITSTOP_INSTALLER="$(mktemp "${TMPDIR:-/tmp}/pitstop-installer.XXXXXXXX")"
+curl --disable --fail --show-error --location --proto '=https' --proto-redir '=https' \
+  --connect-timeout 15 --max-time 180 --output "$PITSTOP_INSTALLER" \
+  https://github.com/captainthx/pitstop/releases/latest/download/install.sh
+cat "$PITSTOP_INSTALLER"
+```
+
+```sh
+sh "$PITSTOP_INSTALLER"
+export PATH="$HOME/.local/bin:$PATH"
+pitstop version
+```
+
+The installer checks the binary checksum and version before replacement. Existing files require `--force`; no sudo or shell profile edits. See [installation, upgrades, removal and release trust limits](docs/install.md). Git and Docker are still required for checks. Checksums do not protect against a compromised release publisher; macOS binaries are not notarized.
+
+### Build from source
 
 From this Pitstop source checkout, use Git and Go **1.26.5** as specified in `go.mod`. Docker CLI and a reachable daemon are needed to run checks:
 
@@ -35,7 +57,7 @@ pitstop version
 pitstop -h
 ```
 
-Add `export PATH="$HOME/.local/bin:$PATH"` to your shell configuration to retain it in new terminals. Building from source is the documented installation method today; no release installer link is provided yet.
+Add `export PATH="$HOME/.local/bin:$PATH"` to your shell configuration to retain it in new terminals. Source builds remain available before release publication and as an alternative to prebuilt binaries.
 
 Host Go builds Pitstop. The project's Node, Java, Go or other check tools belong in the Docker image. See [prerequisites](docs/user-guide.en.md#prerequisites).
 
