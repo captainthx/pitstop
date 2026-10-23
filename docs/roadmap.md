@@ -1,6 +1,6 @@
 # แนวทางพัฒนา Pitstop / Development roadmap
 
-**Updated:** 2026-10-20 (Asia/Bangkok). This is planning guidance, not a release promise or a list of installed CLI features.
+**Updated:** 2026-10-23 (Asia/Bangkok). This is planning guidance, not a release promise or a list of installed CLI features.
 
 [Current docs / เอกสารปัจจุบัน](README.md) · [Requirements / ข้อกำหนด](requirements.md) · [English requirements](requirements.en.md)
 
@@ -12,7 +12,7 @@ AI-agent-led configuration, manual starters, strict shared validation and CLI in
 
 The commands and portable bundle are present in the current checkout. Agent mapping/prerequisite trials are recorded in the [trial evidence index](evidence/config-agent-trials/README.md), and local runtime evidence for Node, Go, Python, and Rust is recorded in [config-agent validation](evidence/config-agent-validation.md). This evidence covers four selected toolchains; it does not claim every preset or language, and release publication remains unverified.
 
-Release installation now has a macOS/Linux arm64/amd64 build script, checksum-validating installer and draft-only workflow in this checkout. See [installation/release guidance](install.md) and [verification evidence](evidence/release-install.md). Published versions are listed in [GitHub Releases](https://github.com/captainthx/pitstop/releases); see the installation guide for download and upgrade commands.
+Release installation now has a macOS/Linux arm64/amd64 build script, checksum-validating installer and draft-only workflow in this checkout. See [installation/release guidance](install.md) and [verification evidence](evidence/release-install.md). [v0.1.0 is published](https://github.com/captainthx/pitstop/releases/tag/v0.1.0), with [remote CI and live installation evidence](evidence/release-v0.1.0.md). The repository remains private; use authenticated installation.
 
 ## งานที่ยังไม่รวมในรอบนี้ / Deferred scope
 
@@ -37,7 +37,7 @@ Release installation now has a macOS/Linux arm64/amd64 build script, checksum-va
 | Self-hosted runner registration / upload source | เมื่อมีความต้องการใช้ GitHub runner จริง ต้องกำหนด authentication, source handling และ execution trust separately. |
 | Native Windows / broader platforms | เมื่อมี demand ให้แก้ Unix locking/file safety and verify on target OS; do not advertise unsupported portability. |
 | Docker engine / snapshot / cleanup refactors | แผน config/agent ไม่เปลี่ยน algorithms เหล่านี้ งานปรับโครงสร้างต้องมีปัญหาและหลักฐานแยก; reuse the existing backend for this release. |
-| Release publication / distribution extensions | Installer and draft workflow are implemented; tag push and publication remain separate maintainer actions. Homebrew, Windows, signed checksums/provenance, Developer ID/notarization, self-update and full native target coverage need separate verification and scope. |
+| Distribution extensions | v0.1.0 is published; future releases follow the documented maintainer process. Homebrew, Windows, signed checksums/provenance, Developer ID/notarization, self-update and full native target coverage need separate verification and scope. |
 
 ## หลักการอัปเดต / Maintenance
 

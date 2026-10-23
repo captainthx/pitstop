@@ -17,7 +17,7 @@
 
 ## ตัวติดตั้งและ release / Installer and releases
 
-Updated 2026-10-20: [installation and release procedure](install.md), [approved design](superpowers/specs/2026-10-20-release-install-design.md), [implementation plan](superpowers/plans/2026-10-20-release-install.md), and [validation evidence](evidence/release-install.md). The source includes macOS/Linux arm64/amd64 assets, checksum verification and a draft-only release workflow. Use the installation guide for the latest stable release or a pinned version.
+Updated 2026-10-23: [installation and release procedure](install.md), [approved design](superpowers/specs/2026-10-20-release-install-design.md), [implementation plan](superpowers/plans/2026-10-20-release-install.md), and [validation evidence](evidence/release-install.md). The source includes macOS/Linux arm64/amd64 assets, checksum verification and a draft-only release workflow. [v0.1.0 is published](https://github.com/captainthx/pitstop/releases/tag/v0.1.0); see [publication and live-install evidence](evidence/release-v0.1.0.md). The repository is private and installation requires authenticated GitHub CLI access.
 
 ## งาน config/agent ปัจจุบัน / Current config-agent work
 

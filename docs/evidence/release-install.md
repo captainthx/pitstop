@@ -2,6 +2,8 @@
 
 Date: 2026-10-20, Asia/Bangkok. Scope: [approved design](../superpowers/specs/2026-10-20-release-install-design.md), [plan](../superpowers/plans/2026-10-20-release-install.md).
 
+The original implementation checks below are dated 2026-10-20. For subsequent main integration, private authentication, published v0.1.0, remote CI and live installation results, see [publication verification](release-v0.1.0.md).
+
 ## Decisions and execution
 
 - Ruling: retain the existing feature checkout and Go module path. Release binaries use the existing linker variables; no caller imports or engine/snapshot behavior need changes. Cost: `go install github.com/captainthx/pitstop/cmd/pitstop@...` is not a supported installation route.
@@ -59,6 +61,6 @@ Add the install directory to PATH in your shell configuration: /install/.local/b
 
 That commit is the HEAD before these implementation changes were committed; the local build included the working-tree changes. Production workflow builds from a checked-out release tag. The smoke exited 0; its container was removed. This verifies Linux arm64 installation/version in Docker, not full Pitstop check execution on a separate native Linux machine.
 
-## Limits
+## Limits of the original local verification
 
 No remote GitHub Actions run, live-release installation, separate-host Linux execution, Linux amd64 native execution, macOS amd64 native execution, Developer ID signing/notarization, signed checksums/provenance or hostile shared-directory race resistance is claimed. The hermetic tests model host selection; the separate container smoke supplies actual Linux arm64 installation/version evidence. CI defines native macOS/Linux checks that must run remotely after integration. SHA-256 checks file consistency, not publisher authenticity. Shellcheck and actionlint were not installed, so neither tool was run. No global CLI/skill or user profile was changed.
