@@ -74,7 +74,13 @@ jobs:
       - name: Check config-agent smoke and embedded configs
         run: PITSTOP_BIN="$RUNNER_TEMP/pitstop" PITSTOP_CONFIG_AGENT_RUNTIME=0 sh scripts/config-agent-smoke.sh
 
-      - name: Check Docker checks on a real daemon
+      - name: Set up platform-capable Docker
+        uses: docker/setup-docker-action@7ec28a010822b4626af4874f9448a4b05ac6f3e5 # v5
+        with:
+          version: v29.8.2
+          daemon-config: '{"features":{"containerd-snapshotter":true}}'
+
+      - name: Run Docker checks on a real daemon
         run: PITSTOP_BIN="$RUNNER_TEMP/pitstop" sh scripts/docker-smoke.sh
 
       - name: Check CLI JSON output

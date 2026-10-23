@@ -6,32 +6,48 @@
 
 ## ติดตั้งจากลิงก์ / Install from a link
 
-รองรับ macOS และ Linux บน arm64/amd64 ต้องมี `curl` และ `sha256sum` หรือ `shasum` ไม่ต้องมี Go สำหรับ binary สำเร็จรูป ต้องมี Git และ Docker CLI/daemon เมื่อต้องการรัน checks / Supports macOS/Linux on arm64/amd64. Requires curl and sha256sum or shasum; Go is unnecessary for prebuilt binaries. Running checks still requires Git and a reachable Docker daemon.
+รองรับ macOS และ Linux บน arm64/amd64 ต้องมีเครื่องมือ SHA-256 (`sha256sum` หรือ `shasum`) และไม่ต้องมี Go สำหรับ binary สำเร็จรูป การรัน checks ยังต้องมี Git กับ Docker / Supports macOS/Linux arm64/amd64, requires a SHA-256 utility, and does not require Go for prebuilt binaries. Checks still require Git and Docker.
 
-1. ดาวน์โหลด installer ไปยังไฟล์ชั่วคราว ถ้า download ล้มเหลวให้หยุด / Download to a new temporary file; stop if the download fails:
+**Repository นี้เป็น private / This repository is private.** ใช้ GitHub CLI ที่ล็อกอินด้วยบัญชีที่เข้าถึง repo ได้ การออก release ไม่เปลี่ยน visibility / Use GitHub CLI authenticated with repository access. Publishing a release does not change repository visibility.
+
+1. ล็อกอิน GitHub CLI และดาวน์โหลด installer ถ้า download ล้มเหลวให้หยุด / Authenticate GitHub CLI and download the installer; stop on failure:
 
 ```sh
+gh auth login --hostname github.com
 PITSTOP_INSTALLER="$(mktemp "${TMPDIR:-/tmp}/pitstop-installer.XXXXXXXX")"
-curl --disable --fail --show-error --location \
-  --proto '=https' --proto-redir '=https' \
-  --connect-timeout 15 --max-time 180 \
-  --output "$PITSTOP_INSTALLER" \
-  https://github.com/captainthx/pitstop/releases/latest/download/install.sh
+gh release download --repo captainthx/pitstop --pattern install.sh \
+  --output "$PITSTOP_INSTALLER" --clobber
 ```
 
-2. อ่าน script ก่อนรัน / Review the script before executing:
+2. อ่าน script ก่อนรัน / Review before executing:
 
 ```sh
 cat "$PITSTOP_INSTALLER"
 ```
 
-3. ติดตั้งแล้วตรวจเวอร์ชัน / Install and check:
+3. ติดตั้งผ่าน session ของ gh แล้วตรวจเวอร์ชัน / Install using the gh session and check:
 
 ```sh
-sh "$PITSTOP_INSTALLER"
+sh "$PITSTOP_INSTALLER" --github-auth
 export PATH="$HOME/.local/bin:$PATH"
 pitstop version
 ```
+
+ไม่ต้องคัดลอก token มาใส่ flag ตัวติดตั้งใช้ `gh` กับ host/repo ที่กำหนดตายตัว และปิด interactive prompt ของคำสั่งดาวน์โหลด / Do not pass a token as an installer flag. The installer uses gh against the fixed GitHub host/repository with interactive prompts disabled. Authenticated network handling follows gh defaults; the explicit curl timeouts below apply only to the public route.
+
+### Public repository HTTPS route
+
+สำหรับ public repository เท่านั้น ใช้ curl แทน gh ได้ / For a public repository, curl can replace gh:
+
+```sh
+PITSTOP_INSTALLER="$(mktemp "${TMPDIR:-/tmp}/pitstop-installer.XXXXXXXX")"
+curl --disable --fail --show-error --location \
+  --proto '=https' --proto-redir '=https' \
+  --connect-timeout 15 --max-time 180 --output "$PITSTOP_INSTALLER" \
+  https://github.com/captainthx/pitstop/releases/latest/download/install.sh
+```
+
+อ่าน script แล้วรัน `sh "$PITSTOP_INSTALLER"` โดยไม่ต้องใส่ `--github-auth` / Review it, then run without --github-auth.
 
 Installer จะเลือกแพลตฟอร์มและ resolve latest เพียงครั้งเดียว จากนั้นดาวน์โหลด binary และ checksum จาก tag เดียวกัน ตรวจ SHA-256 และเวอร์ชัน ก่อนย้าย binary เข้า `~/.local/bin/pitstop` ไม่เรียก sudo และไม่แก้ shell profile / The installer resolves latest once, fetches assets from that pinned tag, checks SHA-256 and executable version, then installs to `~/.local/bin/pitstop`. It never invokes sudo or edits shell profiles.
 
@@ -42,19 +58,19 @@ Installer จะเลือกแพลตฟอร์มและ resolve late
 ดู tag ที่เผยแพร่จริงใน [Releases](https://github.com/captainthx/pitstop/releases) ตัวอย่างด้านล่าง pin เป็น `v0.1.0` เปลี่ยนเป็น tag ที่ต้องการได้ / The commands below pin v0.1.0; choose another published stable tag when needed:
 
 ```sh
-sh "$PITSTOP_INSTALLER" --version v0.1.0
-sh "$PITSTOP_INSTALLER" --version v0.1.0 --bin-dir "$HOME/tools/bin"
+sh "$PITSTOP_INSTALLER" --github-auth --version v0.1.0
+sh "$PITSTOP_INSTALLER" --github-auth --version v0.1.0 --bin-dir "$HOME/tools/bin"
 sh "$PITSTOP_INSTALLER" --help
 ```
 
-รองรับ stable tag รูปแบบ `vMAJOR.MINOR.PATCH` เท่านั้น หากต้องการ pin ตัว installer ด้วย ให้เปลี่ยน URL ดาวน์โหลดจาก `/releases/latest/download/install.sh` เป็น `/releases/download/v0.1.0/install.sh` ตาม tag ที่เลือก / Only stable vMAJOR.MINOR.PATCH tags are accepted. To pin the installer itself, use the matching versioned installer URL too.
+รองรับ stable tag รูปแบบ `vMAJOR.MINOR.PATCH` เท่านั้น หากใช้ gh ให้ระบุ tag ในคำสั่ง `gh release download v0.1.0 ...` เพื่อ pin ตัว installer ด้วย หากใช้ public HTTPS ให้เปลี่ยน URL ดาวน์โหลดจาก `/releases/latest/download/install.sh` เป็น `/releases/download/v0.1.0/install.sh` ตาม tag ที่เลือก / Only stable vMAJOR.MINOR.PATCH tags are accepted. Pin the installer itself with `gh release download v0.1.0 ...`, or use the matching versioned public URL. For a public curl installation, omit --github-auth in the commands below.
 
 ## อัปเกรด / Upgrade
 
 ดาวน์โหลดและอ่าน installer ใหม่ตามขั้นตอนด้านบน แล้วใช้ `--force` เพื่ออนุญาตแทนที่ไฟล์เดิมอย่างชัดเจน / Download and review the installer again, then explicitly allow replacement:
 
 ```sh
-sh "$PITSTOP_INSTALLER" --force
+sh "$PITSTOP_INSTALLER" --github-auth --force
 pitstop version
 ```
 
@@ -76,7 +92,7 @@ rm -i "$HOME/.local/bin/pitstop"
 - HTTPS เท่านั้นและไม่อ่าน `.curlrc`; checksum ตรวจความตรงกันของ binary ก่อน execute ไม่ป้องกันผู้โจมตีที่แก้ทั้ง release และ checksum ได้ / HTTPS only, with curl configuration disabled. Checksums detect corruption; they do not authenticate a release against a compromised GitHub account.
 - ใช้ directory ที่ผู้ใช้เป็นเจ้าของและควบคุมเอง การแข่งแก้ path โดยผู้ใช้อื่นใน shared directory อยู่นอกขอบเขต / Install only into a directory you own and control; hostile concurrent changes in shared directories are outside this boundary.
 - ดาวน์โหลดหรือตรวจไม่ผ่านจะไม่แทนที่ binary เดิม staging อยู่บน filesystem เดียวกับปลายทางแล้ว rename; ไม่รับประกัน durability หากเครื่องดับ / Download, checksum, version or staging failures preserve the existing binary. Same-filesystem rename publishes the staged binary; power-loss durability is not guaranteed.
-- Installer ไม่ดาวน์โหลด Go, Docker หรือ dependencies ของโปรเจกต์ / The installer does not install Go, Docker or project dependencies.
+- Installer ไม่ดาวน์โหลด Go, GitHub CLI, Docker หรือ dependencies ของโปรเจกต์ / The installer does not install Go, GitHub CLI, Docker or project dependencies.
 - Binary ของ macOS ยังไม่มี Developer ID signing/notarization หาก macOS บล็อก ให้ตรวจสอบแหล่งที่มาหรือ build จาก source อย่าปิดระบบป้องกันทั้งเครื่อง / macOS binaries are not Developer ID signed or notarized. If blocked, verify the source or build locally; do not disable system protections.
 - การ cross-build ไม่ใช่หลักฐาน runtime บนทุก OS/architecture ดู [หลักฐาน](evidence/release-install.md) / Cross-compilation is not native runtime verification for every target; see the evidence.
 

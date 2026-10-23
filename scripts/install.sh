@@ -6,15 +6,16 @@ umask 077
 die() { printf 'pitstop installer: %s\n' "$*" >&2; exit 1; }
 usage() {
   cat <<'EOF'
-Usage: sh install.sh [--version vMAJOR.MINOR.PATCH] [--bin-dir DIRECTORY] [--force]
+Usage: sh install.sh [--version vMAJOR.MINOR.PATCH] [--bin-dir DIRECTORY] [--force] [--github-auth]
 Defaults: latest published stable release; $HOME/.local/bin.
 --force permits replacing an existing regular file. Symlinks are never replaced.
-Requires curl, SHA-256 (sha256sum or shasum), macOS/Linux on arm64/amd64.
+Requires curl (or authenticated gh with --github-auth), SHA-256, macOS/Linux arm64/amd64.
 EOF
 }
 version=latest
 bin_dir=${HOME:+$HOME/.local/bin}
 force=false
+github_auth=false
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --version|--bin-dir)
@@ -23,6 +24,7 @@ while [ "$#" -gt 0 ]; do
       case "$option" in --version) version=$2;; --bin-dir) bin_dir=$2;; esac
       shift 2;;
     --force) force=true; shift;;
+    --github-auth) github_auth=true; shift;;
     --help|-h) usage; exit 0;;
     *) die "Unknown argument: $1";;
   esac
@@ -36,7 +38,11 @@ valid_version() {
 [ "$version" = latest ] || valid_version "$version" || die 'Invalid version; use vMAJOR.MINOR.PATCH'
 case "$(uname -s)" in Darwin) platform=darwin;; Linux) platform=linux;; *) die 'Unsupported operating system';; esac
 case "$(uname -m)" in arm64|aarch64) arch=arm64;; x86_64|amd64) arch=amd64;; *) die 'Unsupported architecture';; esac
-command -v curl >/dev/null 2>&1 || die 'curl is required'
+if [ "$github_auth" = true ]; then
+  command -v gh >/dev/null 2>&1 || die '--github-auth requires GitHub CLI (gh) and an authenticated account with repository access'
+else
+  command -v curl >/dev/null 2>&1 || die 'curl is required; private repositories require --github-auth'
+fi
 if command -v sha256sum >/dev/null 2>&1; then
   hash_tool=sha256sum
 elif command -v shasum >/dev/null 2>&1; then
@@ -51,9 +57,16 @@ fetch() {
     --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 180 "$@"
 }
 repo=https://github.com/captainthx/pitstop
+github() {
+  GH_HOST=github.com GH_PROMPT_DISABLED=1 gh "$@" --repo github.com/captainthx/pitstop
+}
 if [ "$version" = latest ]; then
-  resolved=$(fetch --head --output /dev/null --write-out '%{url_effective}' "$repo/releases/latest") || die 'Cannot resolve latest release'
-  case "$resolved" in "$repo/releases/tag/"*) version=${resolved#"$repo/releases/tag/"};; *) die 'Unexpected latest release URL';; esac
+  if [ "$github_auth" = true ]; then
+    version=$(github release view --json tagName --jq .tagName) || die 'Cannot resolve latest release; check gh authentication and repository access'
+  else
+    resolved=$(fetch --head --output /dev/null --write-out '%{url_effective}' "$repo/releases/latest") || die 'Cannot resolve latest release; private repositories require --github-auth'
+    case "$resolved" in "$repo/releases/tag/"*) version=${resolved#"$repo/releases/tag/"};; *) die 'Unexpected latest release URL';; esac
+  fi
   valid_version "$version" || die 'Invalid latest release version'
 fi
 
@@ -81,8 +94,15 @@ trap 'exit 143' TERM HUP
 tmp=$(mktemp -d "${TMPDIR:-/tmp}/pitstop-install.XXXXXXXX") || die 'Cannot create private download directory'
 asset=pitstop_${platform}_${arch}
 base=$repo/releases/download/$version
-fetch --output "$tmp/checksums.txt" "$base/checksums.txt" || die 'checksum download failed'
-fetch --output "$tmp/binary" "$base/$asset" || die 'binary download failed'
+download() {
+  if [ "$github_auth" = true ]; then
+    github release download "$version" --pattern "$1" --output "$2"
+  else
+    fetch --output "$2" "$base/$1"
+  fi
+}
+download checksums.txt "$tmp/checksums.txt" || die 'checksum download failed'
+download "$asset" "$tmp/binary" || die 'binary download failed'
 expected=$(LC_ALL=C awk -v asset="$asset" '
   $2 == asset {
     count++

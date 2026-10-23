@@ -27,21 +27,23 @@ CLI นี้รันคำสั่งใน `.pitstop.json` โดยตร�
 
 ติดตั้งจาก [GitHub Releases](https://github.com/captainthx/pitstop/releases) บน macOS/Linux arm64/amd64 โดยไม่ต้องมี Go ตัวติดตั้งเลือก stable release ล่าสุด หรือเลือก build จาก source ด้านล่างได้
 
-ดาวน์โหลดเป็นไฟล์ใหม่ อ่านก่อน แล้วค่อยรัน หากดาวน์โหลดล้มเหลวให้หยุด:
+Repository นี้เป็น private ให้ติดตั้ง [GitHub CLI](https://cli.github.com/) และล็อกอินบัญชีที่เข้าถึง repo ได้ จากนั้นดาวน์โหลดเป็นไฟล์ใหม่ อ่านก่อน แล้วค่อยรัน หากดาวน์โหลดล้มเหลวให้หยุด:
 
 ```sh
+gh auth login --hostname github.com
 PITSTOP_INSTALLER="$(mktemp "${TMPDIR:-/tmp}/pitstop-installer.XXXXXXXX")"
-curl --disable --fail --show-error --location --proto '=https' --proto-redir '=https' \
-  --connect-timeout 15 --max-time 180 --output "$PITSTOP_INSTALLER" \
-  https://github.com/captainthx/pitstop/releases/latest/download/install.sh
+gh release download --repo captainthx/pitstop --pattern install.sh \
+  --output "$PITSTOP_INSTALLER" --clobber
 cat "$PITSTOP_INSTALLER"
 ```
 
 ```sh
-sh "$PITSTOP_INSTALLER"
+sh "$PITSTOP_INSTALLER" --github-auth
 export PATH="$HOME/.local/bin:$PATH"
 pitstop version
 ```
+
+วิธีนี้ใช้ session ของ gh ที่ล็อกอินไว้ ไม่ส่ง credential ผ่าน argument ของตัวติดตั้ง หากเป็น public repository ใช้ [วิธี HTTPS ผ่าน curl](docs/install.md#public-repository-https-route) ได้ด้วย
 
 ตัวติดตั้งตรวจ checksum และเวอร์ชันก่อนแทนที่ binary ไฟล์เดิมต้องอนุญาตด้วย `--force` ไม่ใช้ sudo หรือแก้ shell profile ดู [วิธีติดตั้ง อัปเกรด ลบ และขอบเขตความเชื่อถือ](docs/install.md) การรัน checks ยังต้องมี Git และ Docker; checksum ไม่ป้องกันแหล่งเผยแพร่ที่ถูกยึด และ binary macOS ยังไม่ notarize
 

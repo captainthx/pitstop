@@ -15,3 +15,7 @@ Approved scope: GitHub Releases binaries for macOS/Linux, arm64/amd64; a user-lo
 ## Verification
 
 Hermetic installer tests cover platform mapping, latest pinning, checksum mismatch/missing/duplicate entries, failed/partial download, unsupported host, invalid arguments/tag, version mismatch, spaces, overwrite opt-in, symlink/non-file refusal and preserving old bytes on failures. A local release build verifies four executable formats, injected metadata and checksum inventory. Existing Go tests/vet and config-agent smoke remain required.
+
+## Release-time prerequisite discovered (2026-10-23)
+
+The repository is private. Preserve visibility and support explicit `--github-auth` using an existing authenticated GitHub CLI session; credentials are never installer arguments. Host is pinned to github.com and repository to github.com/captainthx/pitstop, with interactive prompts disabled. Resolve latest once via gh, then download both assets from that exact tag. Public curl behavior remains available unchanged. Documentation must lead with authenticated installation for this repository. User authorized main integration and v0.1.0 publication on 2026-10-23; the previous implementation-only publishing restriction is superseded for this release.

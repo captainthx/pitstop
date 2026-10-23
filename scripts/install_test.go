@@ -30,6 +30,9 @@ func TestReleaseInstaller(t *testing.T) {
 		{name: "mac arm64", host: "Darwin", arch: "arm64", want: "Installed"},
 		{name: "mac amd64", host: "Darwin", want: "Installed"},
 		{name: "latest pinned", latest: "v1.2.3", want: "Installed"},
+		{name: "authenticated pinned release", args: []string{"--github-auth"}, want: "Installed"},
+		{name: "authenticated latest pinned", latest: "v1.2.3", args: []string{"--github-auth"}, want: "Installed"},
+		{name: "authenticated download failure preserves old", download: "authfail", existing: true, args: []string{"--github-auth", "--force"}, wantFail: true, want: "download"},
 		{name: "existing refused", existing: true, wantFail: true, want: "--force"},
 		{name: "upgrade", existing: true, args: []string{"--force"}, want: "Installed"},
 		{name: "wrong checksum preserves old", manifest: "wrong", existing: true, args: []string{"--force"}, wantFail: true, want: "checksum"},
@@ -123,6 +126,33 @@ cp "$TEST_ASSETS/$name" "$out"
 			if tc.download == "rename" {
 				writeFixture(t, filepath.Join(fake, "mv"), "#!/bin/sh\nexit 1\n", 0o700)
 			}
+			for _, arg := range tc.args {
+				if arg == "--github-auth" {
+					writeFixture(t, filepath.Join(fake, "curl"), "#!/bin/sh\nexit 95\n", 0o700)
+				}
+			}
+			writeFixture(t, filepath.Join(fake, "gh"), `#!/bin/sh
+[ "$GH_HOST" = github.com ] && [ "$GH_PROMPT_DISABLED" = 1 ] || exit 96
+case "$1 $2" in
+  'release view') printf '%s\n' "$TEST_LATEST"; exit 0;;
+  'release download') shift 2;;
+  *) exit 97;;
+esac
+[ "$TEST_DOWNLOAD" != authfail ] || exit 1
+tag=$1
+shift
+[ "$tag" = v1.2.3 ] || exit 98
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --pattern) name=$2; shift 2;;
+    --output) out=$2; shift 2;;
+    --repo) [ "$2" = github.com/captainthx/pitstop ] || exit 99; shift 2;;
+    *) exit 100;;
+  esac
+done
+printf 'https://github.com/captainthx/pitstop/releases/download/%s/%s\n' "$tag" "$name" >> "$TEST_REQUESTS"
+cp "$TEST_ASSETS/$name" "$out"
+`, 0o700)
 			realChmod, err := exec.LookPath("chmod")
 			if err != nil {
 				t.Fatal(err)
