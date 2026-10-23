@@ -27,6 +27,12 @@ The CLI executes commands defined in `.pitstop.json`. See the [supported scope](
 
 Install a published [GitHub Release](https://github.com/captainthx/pitstop/releases) on macOS/Linux arm64/amd64 without Go. The installer selects the latest stable release; source builds remain available below.
 
+Installation options:
+
+- [Download the latest installer (install.sh)](https://github.com/captainthx/pitstop/releases/latest/download/install.sh) — no Go or GitHub CLI required; review the script and run it with `sh`.
+- [Install with GitHub CLI](docs/install.md#authenticated-github-cli-route).
+- [Build from source](#build-from-source).
+
 Download over HTTPS without signing in or installing GitHub CLI. Review the script before running it; stop if downloading fails:
 
 ```sh

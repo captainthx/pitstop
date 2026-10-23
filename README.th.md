@@ -27,6 +27,12 @@ CLI นี้รันคำสั่งใน `.pitstop.json` โดยตร�
 
 ติดตั้งจาก [GitHub Releases](https://github.com/captainthx/pitstop/releases) บน macOS/Linux arm64/amd64 โดยไม่ต้องมี Go ตัวติดตั้งเลือก stable release ล่าสุด หรือเลือก build จาก source ด้านล่างได้
 
+ตัวเลือกการติดตั้ง:
+
+- [ดาวน์โหลดตัวติดตั้งเวอร์ชันล่าสุด (install.sh)](https://github.com/captainthx/pitstop/releases/latest/download/install.sh) — ไม่ต้องมี Go หรือ GitHub CLI อ่าน script แล้วรันด้วย `sh`
+- [ติดตั้งผ่าน GitHub CLI](docs/install.md#authenticated-github-cli-route)
+- [Build จาก source](#build-from-source)
+
 ดาวน์โหลดผ่านลิงก์ได้โดยไม่ต้องล็อกอินหรือมี GitHub CLI อ่าน script ก่อนรัน และหยุดหากดาวน์โหลดล้มเหลว:
 
 ```sh
