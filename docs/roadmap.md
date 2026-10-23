@@ -12,7 +12,7 @@ AI-agent-led configuration, manual starters, strict shared validation and CLI in
 
 The commands and portable bundle are present in the current checkout. Agent mapping/prerequisite trials are recorded in the [trial evidence index](evidence/config-agent-trials/README.md), and local runtime evidence for Node, Go, Python, and Rust is recorded in [config-agent validation](evidence/config-agent-validation.md). This evidence covers four selected toolchains; it does not claim every preset or language, and release publication remains unverified.
 
-Release installation now has a macOS/Linux arm64/amd64 build script, checksum-validating installer and draft-only workflow in this checkout. See [installation/release guidance](install.md) and [verification evidence](evidence/release-install.md). No release has been published by this implementation.
+Release installation now has a macOS/Linux arm64/amd64 build script, checksum-validating installer and draft-only workflow in this checkout. See [installation/release guidance](install.md) and [verification evidence](evidence/release-install.md). Published versions are listed in [GitHub Releases](https://github.com/captainthx/pitstop/releases); see the installation guide for download and upgrade commands.
 
 ## งานที่ยังไม่รวมในรอบนี้ / Deferred scope
 

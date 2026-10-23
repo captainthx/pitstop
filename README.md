@@ -25,7 +25,7 @@ The CLI executes commands defined in `.pitstop.json`. See the [supported scope](
 
 ## 1. Install the CLI
 
-The release installer supports macOS/Linux on arm64/amd64 without Go. **Publication pending (2026-10-20):** no release is published yet; the following link becomes usable after the first release. Until then, build from source below.
+Install a published [GitHub Release](https://github.com/captainthx/pitstop/releases) on macOS/Linux arm64/amd64 without Go. The installer selects the latest stable release; source builds remain available below.
 
 Download to a new file, review it, then run it (stop if downloading fails):
 

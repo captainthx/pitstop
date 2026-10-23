@@ -6,7 +6,7 @@
 
 สถานะ 2026-10-09: checkout ปัจจุบันมี `init`, `validate` และ `skill install` พร้อม `doctor`, `list`, `run` และ `version` ดูขั้นตอน portable skill ใน [คู่มือ AI agent](ai-agent.md) และ [หลักฐาน trial ของ config-agent](evidence/config-agent-trials/README.md) ซึ่งบันทึก mapping กับ prerequisite จาก evaluator 23 ครั้ง หลักฐานนี้ยังไม่ยืนยัน runtime หรือ CI parity ดูขอบเขตที่ยังไม่รวมใน [roadmap](roadmap.md)
 
-ใน checkout มี [ตัวติดตั้งจาก release](install.md) สำหรับ macOS/Linux arm64/amd64 แล้ว แต่ยังไม่ได้เผยแพร่ release ตอนนี้ยัง build จาก source ได้ การติดตั้ง binary สำเร็จรูปต้องมี curl และเครื่องมือ SHA-256 โดยไม่ต้องมี Go
+ใน checkout มี [ตัวติดตั้งจาก release](install.md) สำหรับ macOS/Linux arm64/amd64 แล้ว เลือกติดตั้ง release ที่เผยแพร่หรือ build จาก source ได้ การติดตั้ง binary สำเร็จรูปต้องมี curl และเครื่องมือ SHA-256 โดยไม่ต้องมี Go
 
 ## สิ่งที่ต้องเตรียม
 

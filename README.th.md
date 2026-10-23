@@ -25,7 +25,7 @@ CLI นี้รันคำสั่งใน `.pitstop.json` โดยตร�
 
 ## 1. ติดตั้ง CLI
 
-ตัวติดตั้งจาก release รองรับ macOS/Linux บน arm64/amd64 โดยไม่ต้องมี Go **สถานะ 2026-10-20: ยังไม่ได้เผยแพร่ release** ลิงก์ต่อไปนี้ใช้ได้หลังเผยแพร่ release แรก ระหว่างนี้ build จาก source ด้านล่างได้
+ติดตั้งจาก [GitHub Releases](https://github.com/captainthx/pitstop/releases) บน macOS/Linux arm64/amd64 โดยไม่ต้องมี Go ตัวติดตั้งเลือก stable release ล่าสุด หรือเลือก build จาก source ด้านล่างได้
 
 ดาวน์โหลดเป็นไฟล์ใหม่ อ่านก่อน แล้วค่อยรัน หากดาวน์โหลดล้มเหลวให้หยุด:
 

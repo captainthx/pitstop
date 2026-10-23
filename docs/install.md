@@ -2,7 +2,7 @@
 
 [ไทย README](../README.th.md) · [English README](../README.md) · [Docs](README.md)
 
-**สถานะ 2026-10-20 / Status:** installer และ draft-release workflow อยู่ใน source นี้ แต่ยังไม่มี GitHub Release ที่เผยแพร่ ณ เวลาตรวจสอบ ลิงก์ติดตั้งด้านล่างใช้ได้หลัง maintainer เผยแพร่ release แรกแล้วเท่านั้น ตอนนี้ใช้ [build จาก source](../README.md#build-from-source) ได้ / The source includes the installer and draft-release workflow. No release was published when checked; the download commands below become usable after the first release is published. Source builds remain available now.
+**อัปเดต 2026-10-23 / Updated:** ติดตั้ง stable release จาก [GitHub Releases](https://github.com/captainthx/pitstop/releases) ด้วยคำสั่งด้านล่าง หรือ [build จาก source](../README.md#build-from-source) / Install a published stable GitHub Release using the commands below, or build from source.
 
 ## ติดตั้งจากลิงก์ / Install from a link
 
@@ -39,7 +39,7 @@ Installer จะเลือกแพลตฟอร์มและ resolve late
 
 ## ระบุเวอร์ชันและตำแหน่ง / Version and directory
 
-ดู tag ที่เผยแพร่จริงใน [Releases](https://github.com/captainthx/pitstop/releases) ตัวอย่าง `v0.1.0` ด้านล่างเป็นเพียงตัวอย่าง ต้องแทนด้วย tag ที่มีแล้ว / Choose an actually published tag; v0.1.0 below is an example, not a claim that it exists:
+ดู tag ที่เผยแพร่จริงใน [Releases](https://github.com/captainthx/pitstop/releases) ตัวอย่างด้านล่าง pin เป็น `v0.1.0` เปลี่ยนเป็น tag ที่ต้องการได้ / The commands below pin v0.1.0; choose another published stable tag when needed:
 
 ```sh
 sh "$PITSTOP_INSTALLER" --version v0.1.0
@@ -92,6 +92,6 @@ sh scripts/release.sh v0.1.0 /absolute/path/to/new-release-directory
 
 3. เมื่อพร้อมออก release ให้ maintainer สร้างและ push tag จาก commit ที่ตรวจแล้วเอง / When release is authorized, the maintainer creates and pushes the tag from the reviewed commit. Implementation of this feature does not itself push or publish.
 4. `.github/workflows/release.yml` ทดสอบบน macOS/Linux, ตรวจ source และสร้าง binary 4 ไฟล์, `install.sh`, `checksums.txt` ก่อนสร้าง **draft** GitHub Release สิทธิ์เขียน repo อยู่เฉพาะ job สร้าง draft และไม่ checkout source ใน job นั้น / The workflow tests and builds six assets, then creates a draft. Only the draft job receives contents:write; it does not check out or execute project source.
-5. ตรวจ draft, checksums, tag/commit, native smoke และ release notes แล้วค่อย publish ผ่าน GitHub UI ก่อนแจก installer link / Inspect the draft, checksums, tag/commit, native smoke and notes; publish through GitHub before distributing the install link.
+5. ตรวจ draft, checksums, tag/commit, native smoke และ release notes แล้วค่อย publish ผ่าน GitHub UI หรือ CLI ก่อนแจก installer link / Inspect the draft, checksums, tag/commit, native smoke and notes; publish through GitHub UI or CLI before distributing the install link.
 
 รัน workflow ซ้ำบน tag ที่มี release แล้วจะล้มเหลวแทนการเขียนทับ assets เดิม Homebrew, Windows, signed releases, notarization, self-update และการทดสอบ runtime ทุกสถาปัตยกรรมยังไม่รวม / Rerunning a tag with an existing release fails rather than overwriting assets. Homebrew, Windows, signing, notarization, self-update and complete native coverage are deferred.
