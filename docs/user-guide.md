@@ -250,8 +250,40 @@ Private registry ใช้การ login ของ Docker CLI บน host ก�
 | `pitstop list` | แสดง checks ทั้งหมดพร้อม selected/excluded จาก config; ไม่ต้องเปิด Docker | `--json` |
 | `pitstop run` | รัน checks ตาม selection | `--job`, `--timeout`, `--arch`, `--json` |
 | `pitstop version` | แสดง version และ build information เมื่อมี | `--json` |
+| `pitstop skill` | จัดการ agent skills ที่ติดตั้ง | ใช้ subcommand `install` |
 | `pitstop skill install` | ติดตั้ง portable Pitstop config skill ให้ agent | `--agent`, `--scope`, `--dry-run`, `--force`, `--json` |
 | `pitstop completion <shell>` | สร้าง shell completion script | `bash`, `zsh`, `fish`, `powershell`; แต่ละตัวมี `--no-descriptions` |
+
+รูปแบบ help ที่ใช้ได้:
+
+```sh
+pitstop --help
+pitstop -h
+pitstop help
+pitstop help run
+pitstop run --help
+pitstop run -h
+pitstop skill --help
+```
+
+ตารางนี้ใช้ชนิดและค่าเริ่มต้นเดียวกับ Cobra help; flag แบบ boolean เริ่มต้นเป็น `false`:
+
+| Flag | ชนิด | ค่าเริ่มต้น | ใช้กับ/ความหมาย |
+| --- | --- | --- | --- |
+| `--repo` | `string` | `"."` | global ทุกคำสั่ง; resolve เป็น Git root |
+| `--help`, `-h` | `bool` | `false` | global help ของคำสั่งปัจจุบัน |
+| `--json` | `bool` | `false` | `init`, `validate`, `doctor`, `list`, `run`, `version`, `skill install` |
+| `--dry-run` | `bool` | `false` | `init`, `skill install`; preview โดยไม่เขียน |
+| `--force` | `bool` | `false` | `skill install`; แทนที่ได้เฉพาะ bundle ที่เป็นของ Pitstop |
+| `--no-descriptions` | `bool` | `false` | completion ของ `bash`, `zsh`, `fish`, `powershell` |
+| `--agent` | `string` | ค่าว่าง (ต้องระบุ) | `skill install`; `codex` หรือ `claude` |
+| `--scope` | `string` | ค่าว่าง (ต้องระบุ) | `skill install`; `project` หรือ `user` |
+| `--preset` | `string` | `"base"` | `init`; เลือก starter preset |
+| `--image` | `string` | ค่าว่าง | `init`; แทน runner image; `custom` ต้องระบุ |
+| `--command` | `stringArray` | ไม่มีค่า | `init`; คำสั่ง verify ที่ส่งซ้ำได้และแทนที่ steps เดิม |
+| `--arch` | `string` | ค่าว่าง | `init`, `validate`, `run`; init เดาจาก host ส่วน validate/run ใช้ค่าใน config เมื่อไม่ override |
+| `--job` | `strings` | ไม่มีค่า | `validate`, `run`; ส่งซ้ำหรือคั่น comma ได้ และใช้ `jobs` ใน config เมื่อไม่ระบุ |
+| `--timeout` | `duration` | `20m0s` | `run`; timeout ต่อ check ต้องมากกว่า 0 |
 
 ```sh
 pitstop help run
@@ -265,10 +297,12 @@ pitstop run --repo "/path/to/project" --arch linux/amd64
 pitstop run --repo "/path/to/project" --json > result.json 2> progress.log
 pitstop version --json
 pitstop skill install --agent codex --scope project --repo "/path/to/project" --dry-run --json
-pitstop completion bash --no-descriptions > ~/.local/share/bash-completion/completions/pitstop
+pitstop completion bash --no-descriptions > pitstop.bash
 ```
 
 ทุกคำสั่งและ subcommand มี `-h`/`--help`; `pitstop completion` มี subcommands `bash`, `zsh`, `fish` และ `powershell` ซึ่งแต่ละตัวมีวิธีโหลด script ของ shell นั้นเองตาม help
+
+ตัวอย่าง completion เขียนหรือแทนที่ไฟล์ `pitstop.bash` ใน directory ปัจจุบัน ตรวจ path และสำรองไฟล์เดิมก่อนใช้ หากต้องติดตั้งถาวร ให้สร้าง directory ปลายทางตามวิธีใน `pitstop completion <shell> --help` ก่อน redirect output
 
 ### รายละเอียดคำสั่งที่ใช้บ่อย
 
@@ -278,7 +312,7 @@ pitstop completion bash --no-descriptions > ~/.local/share/bash-completion/compl
 
 `validate` ใช้ parser เดียวกับ config และรองรับ `--job` กับ `--arch` เป็น effective-config ชั่วคราวโดยไม่แก้ไฟล์ ไม่ใช้ Docker ไม่ pull image ไม่เขียน cache และไม่รัน project command `--job` ต้องเป็น ID ที่อยู่ใน `jobs` และไม่ซ้ำ; selection หรือ architecture ที่ผิดคืน exit `2` พร้อม `CONFIG_INVALID`/issue
 
-`doctor` ตรวจ repository, config, Git/Docker และความพร้อมของ image โดยไม่ pull image และไม่รัน project commands `list` อ่าน config แล้วแสดงทุก check ว่า `selected` หรือ `excluded` โดยไม่ต้องเปิด Docker ทั้งสองคำสั่งรองรับเฉพาะ `--json` นอกเหนือจาก help
+`doctor` ตรวจ repository, config, Git/Docker และความพร้อมของ image โดยไม่ pull image และไม่รัน project commands `list` อ่าน config แล้วแสดงทุก check ว่า `selected` หรือ `excluded` โดยไม่ต้องเปิด Docker ทั้งสองคำสั่งมี local flag เฉพาะ `--json` (และยังมี global `--repo` กับ help)
 
 `version` แบบ human แสดง `pitstop <version>` ส่วน `--json` คืน envelope ที่มี `version` และมี `commit`/`buildTime` เมื่อ binary ถูก build พร้อม metadata
 

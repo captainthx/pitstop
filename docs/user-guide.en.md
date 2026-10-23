@@ -250,8 +250,40 @@ Log in to private registries with the host Docker CLI before running. Host crede
 | `pitstop list` | List selected/excluded checks from config; does not require Docker | `--json` |
 | `pitstop run` | Execute selected checks | `--job`, `--timeout`, `--arch`, `--json` |
 | `pitstop version` | Version and build information when available | `--json` |
+| `pitstop skill` | Manage installed agent skills | Use the `install` subcommand |
 | `pitstop skill install` | Install the portable Pitstop config skill for an agent | `--agent`, `--scope`, `--dry-run`, `--force`, `--json` |
 | `pitstop completion <shell>` | Generate a shell completion script | `bash`, `zsh`, `fish`, `powershell`; each has `--no-descriptions` |
+
+Help forms:
+
+```sh
+pitstop --help
+pitstop -h
+pitstop help
+pitstop help run
+pitstop run --help
+pitstop run -h
+pitstop skill --help
+```
+
+This table uses the types and defaults shown by Cobra help. Boolean flags default to `false`:
+
+| Flag | Type | Default | Applies to / meaning |
+| --- | --- | --- | --- |
+| `--repo` | `string` | `"."` | global on every command; resolves to the Git root |
+| `--help`, `-h` | `bool` | `false` | help for the current command |
+| `--json` | `bool` | `false` | `init`, `validate`, `doctor`, `list`, `run`, `version`, `skill install` |
+| `--dry-run` | `bool` | `false` | `init`, `skill install`; preview without writing |
+| `--force` | `bool` | `false` | `skill install`; replaces only an owned Pitstop bundle |
+| `--no-descriptions` | `bool` | `false` | `bash`, `zsh`, `fish`, `powershell` completion |
+| `--agent` | `string` | empty (required) | `skill install`; `codex` or `claude` |
+| `--scope` | `string` | empty (required) | `skill install`; `project` or `user` |
+| `--preset` | `string` | `"base"` | `init`; starter preset |
+| `--image` | `string` | empty | `init`; replaces the runner image; required for `custom` |
+| `--command` | `stringArray` | none | `init`; repeatable verify commands that replace the preset steps |
+| `--arch` | `string` | empty | `init`, `validate`, `run`; init derives host architecture, while validate/run use config when omitted |
+| `--job` | `strings` | none | `validate`, `run`; repeat or comma-separate IDs, falling back to configured `jobs` |
+| `--timeout` | `duration` | `20m0s` | `run`; positive timeout per check |
 
 ```sh
 pitstop help run
@@ -265,10 +297,12 @@ pitstop run --repo "/path/to/project" --arch linux/amd64
 pitstop run --repo "/path/to/project" --json > result.json 2> progress.log
 pitstop version --json
 pitstop skill install --agent codex --scope project --repo "/path/to/project" --dry-run --json
-pitstop completion bash --no-descriptions > ~/.local/share/bash-completion/completions/pitstop
+pitstop completion bash --no-descriptions > pitstop.bash
 ```
 
 Every command and subcommand supports `-h`/`--help`. `pitstop completion` has `bash`, `zsh`, `fish` and `powershell` subcommands; each help page gives the loading method for that shell.
+
+The completion example writes or replaces `pitstop.bash` in the current directory. Check the path and back up any existing file before using it. For a persistent installation, create the destination directory described by `pitstop completion <shell> --help` before redirecting output.
 
 ### Common command details
 
@@ -278,7 +312,7 @@ Every command and subcommand supports `-h`/`--help`. `pitstop completion` has `b
 
 `validate` uses the same config parser and accepts `--job` and `--arch` as temporary effective-config overrides without editing the file. It does not use Docker, pull images, write cache data or run project commands. `--job` IDs must be in configured `jobs` and must be unique; invalid selection or architecture returns exit `2` with `CONFIG_INVALID`/an issue.
 
-`doctor` checks the repository, config, Git/Docker and image readiness without pulling images or running project commands. `list` reads the config and marks every check `selected` or `excluded` without requiring Docker. Apart from help, both commands support only `--json`.
+`doctor` checks the repository, config, Git/Docker and image readiness without pulling images or running project commands. `list` reads the config and marks every check `selected` or `excluded` without requiring Docker. Their only local flag is `--json`; the global `--repo` and help flags remain available.
 
 Human `version` output is `pitstop <version>`. With `--json`, the envelope contains `version` and includes `commit`/`buildTime` when the binary was built with those metadata values.
 
