@@ -29,11 +29,14 @@ Install a published [GitHub Release](https://github.com/captainthx/pitstop/relea
 
 Installation options:
 
+- [Install with curl](#install-with-curl) — copy the commands below; no Go or GitHub CLI required.
 - [Download the latest installer (install.sh)](https://github.com/captainthx/pitstop/releases/latest/download/install.sh) — no Go or GitHub CLI required; review the script and run it with `sh`.
 - [Install with GitHub CLI](docs/install.md#authenticated-github-cli-route).
 - [Build from source](#build-from-source).
 
-Download over HTTPS without signing in or installing GitHub CLI. Review the script before running it; stop if downloading fails:
+### Install with curl
+
+Copy these commands into your terminal to download the installer with curl. Review the script before running it; stop if downloading fails:
 
 ```sh
 PITSTOP_INSTALLER="$(mktemp "${TMPDIR:-/tmp}/pitstop-installer.XXXXXXXX")"

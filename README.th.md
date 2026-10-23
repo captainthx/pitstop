@@ -29,11 +29,14 @@ CLI นี้รันคำสั่งใน `.pitstop.json` โดยตร�
 
 ตัวเลือกการติดตั้ง:
 
+- [ติดตั้งผ่าน curl](#ติดตั้งผ่าน-curl) — คัดลอกคำสั่งด้านล่างไปรัน ไม่ต้องมี Go หรือ GitHub CLI
 - [ดาวน์โหลดตัวติดตั้งเวอร์ชันล่าสุด (install.sh)](https://github.com/captainthx/pitstop/releases/latest/download/install.sh) — ไม่ต้องมี Go หรือ GitHub CLI อ่าน script แล้วรันด้วย `sh`
 - [ติดตั้งผ่าน GitHub CLI](docs/install.md#authenticated-github-cli-route)
 - [Build จาก source](#build-from-source)
 
-ดาวน์โหลดผ่านลิงก์ได้โดยไม่ต้องล็อกอินหรือมี GitHub CLI อ่าน script ก่อนรัน และหยุดหากดาวน์โหลดล้มเหลว:
+### ติดตั้งผ่าน curl
+
+คัดลอกคำสั่งนี้ไปรันใน terminal เพื่อดาวน์โหลดตัวติดตั้งผ่าน curl อ่าน script ก่อนรัน และหยุดหากดาวน์โหลดล้มเหลว:
 
 ```sh
 PITSTOP_INSTALLER="$(mktemp "${TMPDIR:-/tmp}/pitstop-installer.XXXXXXXX")"
