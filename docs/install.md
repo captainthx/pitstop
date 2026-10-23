@@ -6,38 +6,13 @@
 
 ## ติดตั้งจากลิงก์ / Install from a link
 
-รองรับ macOS และ Linux บน arm64/amd64 ต้องมีเครื่องมือ SHA-256 (`sha256sum` หรือ `shasum`) และไม่ต้องมี Go สำหรับ binary สำเร็จรูป การรัน checks ยังต้องมี Git กับ Docker / Supports macOS/Linux arm64/amd64, requires a SHA-256 utility, and does not require Go for prebuilt binaries. Checks still require Git and Docker.
+รองรับ macOS และ Linux บน arm64/amd64 ต้องมี curl และเครื่องมือ SHA-256 (`sha256sum` หรือ `shasum`) และไม่ต้องมี Go สำหรับ binary สำเร็จรูป การรัน checks ยังต้องมี Git กับ Docker / Supports macOS/Linux arm64/amd64, requires curl and a SHA-256 utility, and does not require Go for prebuilt binaries. Checks still require Git and Docker.
 
-**Repository นี้เป็น private / This repository is private.** ใช้ GitHub CLI ที่ล็อกอินด้วยบัญชีที่เข้าถึง repo ได้ การออก release ไม่เปลี่ยน visibility / Use GitHub CLI authenticated with repository access. Publishing a release does not change repository visibility.
-
-1. ล็อกอิน GitHub CLI และดาวน์โหลด installer ถ้า download ล้มเหลวให้หยุด / Authenticate GitHub CLI and download the installer; stop on failure:
-
-```sh
-gh auth login --hostname github.com
-PITSTOP_INSTALLER="$(mktemp "${TMPDIR:-/tmp}/pitstop-installer.XXXXXXXX")"
-gh release download --repo captainthx/pitstop --pattern install.sh \
-  --output "$PITSTOP_INSTALLER" --clobber
-```
-
-2. อ่าน script ก่อนรัน / Review before executing:
-
-```sh
-cat "$PITSTOP_INSTALLER"
-```
-
-3. ติดตั้งผ่าน session ของ gh แล้วตรวจเวอร์ชัน / Install using the gh session and check:
-
-```sh
-sh "$PITSTOP_INSTALLER" --github-auth
-export PATH="$HOME/.local/bin:$PATH"
-pitstop version
-```
-
-ไม่ต้องคัดลอก token มาใส่ flag ตัวติดตั้งใช้ `gh` กับ host/repo ที่กำหนดตายตัว และปิด interactive prompt ของคำสั่งดาวน์โหลด / Do not pass a token as an installer flag. The installer uses gh against the fixed GitHub host/repository with interactive prompts disabled. Authenticated network handling follows gh defaults; the explicit curl timeouts below apply only to the public route.
+**Repository เป็น public / This repository is public.** ดาวน์โหลด installer และ binary ผ่าน HTTPS ได้โดยไม่ต้องมีบัญชีหรือ GitHub CLI / Installer and binary downloads require neither an account nor GitHub CLI.
 
 ### Public repository HTTPS route
 
-สำหรับ public repository เท่านั้น ใช้ curl แทน gh ได้ / For a public repository, curl can replace gh:
+1. ดาวน์โหลดไปยังไฟล์ชั่วคราว ถ้า download ล้มเหลวให้หยุด / Download to a temporary file; stop on failure:
 
 ```sh
 PITSTOP_INSTALLER="$(mktemp "${TMPDIR:-/tmp}/pitstop-installer.XXXXXXXX")"
@@ -47,7 +22,33 @@ curl --disable --fail --show-error --location \
   https://github.com/captainthx/pitstop/releases/latest/download/install.sh
 ```
 
-อ่าน script แล้วรัน `sh "$PITSTOP_INSTALLER"` โดยไม่ต้องใส่ `--github-auth` / Review it, then run without --github-auth.
+2. อ่าน script ก่อนรัน / Review before executing:
+
+```sh
+cat "$PITSTOP_INSTALLER"
+```
+
+3. ติดตั้งแล้วตรวจเวอร์ชัน / Install and check:
+
+```sh
+sh "$PITSTOP_INSTALLER"
+export PATH="$HOME/.local/bin:$PATH"
+pitstop version
+```
+
+### Authenticated GitHub CLI route
+
+GitHub CLI ยังใช้เป็นทางเลือกได้ โดยล็อกอินก่อนดาวน์โหลด / GitHub CLI remains an optional authenticated alternative:
+
+```sh
+gh auth login --hostname github.com
+PITSTOP_INSTALLER="$(mktemp "${TMPDIR:-/tmp}/pitstop-installer.XXXXXXXX")"
+gh release download --repo captainthx/pitstop --pattern install.sh \
+  --output "$PITSTOP_INSTALLER" --clobber
+cat "$PITSTOP_INSTALLER"
+```
+
+หลังอ่านแล้วใช้ `sh "$PITSTOP_INSTALLER" --github-auth` ตัวติดตั้งใช้ session ของ gh กับ host/repo ที่กำหนดตายตัว ไม่รับ token เป็น flag / After review, run with --github-auth. Credentials stay in gh; the installer fixes the host/repository and does not accept tokens as flags. Authenticated network handling follows gh defaults; explicit curl timeouts apply only to the HTTPS route.
 
 Installer จะเลือกแพลตฟอร์มและ resolve latest เพียงครั้งเดียว จากนั้นดาวน์โหลด binary และ checksum จาก tag เดียวกัน ตรวจ SHA-256 และเวอร์ชัน ก่อนย้าย binary เข้า `~/.local/bin/pitstop` ไม่เรียก sudo และไม่แก้ shell profile / The installer resolves latest once, fetches assets from that pinned tag, checks SHA-256 and executable version, then installs to `~/.local/bin/pitstop`. It never invokes sudo or edits shell profiles.
 
@@ -58,19 +59,19 @@ Installer จะเลือกแพลตฟอร์มและ resolve late
 ดู tag ที่เผยแพร่จริงใน [Releases](https://github.com/captainthx/pitstop/releases) ตัวอย่างด้านล่าง pin เป็น `v0.1.0` เปลี่ยนเป็น tag ที่ต้องการได้ / The commands below pin v0.1.0; choose another published stable tag when needed:
 
 ```sh
-sh "$PITSTOP_INSTALLER" --github-auth --version v0.1.0
-sh "$PITSTOP_INSTALLER" --github-auth --version v0.1.0 --bin-dir "$HOME/tools/bin"
+sh "$PITSTOP_INSTALLER" --version v0.1.0
+sh "$PITSTOP_INSTALLER" --version v0.1.0 --bin-dir "$HOME/tools/bin"
 sh "$PITSTOP_INSTALLER" --help
 ```
 
-รองรับ stable tag รูปแบบ `vMAJOR.MINOR.PATCH` เท่านั้น หากใช้ gh ให้ระบุ tag ในคำสั่ง `gh release download v0.1.0 ...` เพื่อ pin ตัว installer ด้วย หากใช้ public HTTPS ให้เปลี่ยน URL ดาวน์โหลดจาก `/releases/latest/download/install.sh` เป็น `/releases/download/v0.1.0/install.sh` ตาม tag ที่เลือก / Only stable vMAJOR.MINOR.PATCH tags are accepted. Pin the installer itself with `gh release download v0.1.0 ...`, or use the matching versioned public URL. For a public curl installation, omit --github-auth in the commands below.
+รองรับ stable tag รูปแบบ `vMAJOR.MINOR.PATCH` เท่านั้น หากใช้ gh ให้ระบุ tag ในคำสั่ง `gh release download v0.1.0 ...` เพื่อ pin ตัว installer ด้วย หากใช้ public HTTPS ให้เปลี่ยน URL ดาวน์โหลดจาก `/releases/latest/download/install.sh` เป็น `/releases/download/v0.1.0/install.sh` ตาม tag ที่เลือก / Only stable vMAJOR.MINOR.PATCH tags are accepted. Pin the installer itself with `gh release download v0.1.0 ...`, or use the matching versioned public URL. Add --github-auth only when choosing the optional GitHub CLI route.
 
 ## อัปเกรด / Upgrade
 
 ดาวน์โหลดและอ่าน installer ใหม่ตามขั้นตอนด้านบน แล้วใช้ `--force` เพื่ออนุญาตแทนที่ไฟล์เดิมอย่างชัดเจน / Download and review the installer again, then explicitly allow replacement:
 
 ```sh
-sh "$PITSTOP_INSTALLER" --github-auth --force
+sh "$PITSTOP_INSTALLER" --force
 pitstop version
 ```
 

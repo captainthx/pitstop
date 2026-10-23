@@ -2,6 +2,8 @@
 
 Date: 2026-10-23, Asia/Bangkok. User explicitly authorized merging main and publishing v0.1.0.
 
+**Current visibility: public.** After the initial private publication, the user explicitly authorized making the repository public. Anonymous HTTPS installation is now verified; the initial private-publication details below remain historical evidence.
+
 ## Integration and private access
 
 - Fast-forwarded main to the reviewed config-agent/release work and pushed without force. Main had no branch protection and no competing remote changes after fetch.
@@ -55,6 +57,22 @@ Sources: [runner image software](https://github.com/actions/runner-images/blob/u
 - Executed the downloaded Linux arm64 release binary inside Alpine with a read-only root, no network, a read-only asset mount and an executable /tmp tmpfs: version JSON matched the same release commit.
 - Test installations used temporary custom directories. No global CLI/skill or shell profile was modified. Reports produced by smoke are retained under the ordinary Pitstop cache.
 
-## Remaining limits
+## Limits at initial private publication
 
 The release remains private: anonymous HTTPS download is unavailable; users need repository access and an authenticated GitHub CLI session. No visibility changes were authorized or made. Public curl behavior remains covered by hermetic tests, not a live public release. Developer ID signing/notarization and publisher-signed checksums/provenance remain absent. Native macOS amd64 was not exercised. GitHub's artifact v4 actions emitted Node 20 metadata deprecation warnings while successfully running under Node 24; future action-version maintenance can remove those warnings. Historical local-only limits remain in the original implementation evidence; this document supersedes them only for the checks listed above.
+
+
+## Public visibility and anonymous installation
+
+The user explicitly requested public visibility and a repository description update. Applied both without changing release assets or tags. The current description is:
+
+> Run lint, test, and build checks from your working tree in isolated Docker containers, with logs and JSON reports.
+
+- Authenticated repository metadata and an anonymous HTTPS request to `https://api.github.com/repos/captainthx/pitstop` both confirm public visibility and the exact description above.
+- Anonymous curl downloaded `https://github.com/captainthx/pitstop/releases/latest/download/install.sh`. Its bytes matched the committed/released installer.
+- Ran the installer using a fresh empty HOME, empty GH_TOKEN/GITHUB_TOKEN, an empty GH_CONFIG_DIR location and `PATH=/usr/bin:/bin:/usr/sbin:/sbin`, which excludes GitHub CLI on this host. Default curl/shasum installation succeeded into a temporary custom bin directory.
+- The installed executable returned version `0.1.0` and commit `d868e15f1168abaff0265c5326c2412432f7678b`, matching the unchanged release tag.
+- Updated both READMEs, installation guide, both user guides, docs index, roadmap and v0.1.0 release notes to lead with anonymous HTTPS. Authenticated GitHub CLI remains optional.
+- Earlier statements that anonymous downloads require private repository access are superseded by this public verification. No new binary release was necessary; v0.1.0 already supported the public curl route.
+
+This follow-up changes repository visibility, description and documentation only. Production code and release checksums remain unchanged. Full Go tests were not repeated for these documentation-only edits; the actual anonymous install is the relevant check. Existing macOS notarization and publisher-signature limitations remain.

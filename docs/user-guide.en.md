@@ -6,7 +6,7 @@ This guide describes Docker checks configured with `.pitstop.json` schema versio
 
 Status 2026-10-09: the current checkout provides `init`, `validate`, and `skill install` alongside `doctor`, `list`, `run`, and `version`. The [AI-agent guide](ai-agent.en.md) covers the portable skill. The [config-agent trial evidence](evidence/config-agent-trials/README.md) records mapping and prerequisite behavior from 23 evaluator attempts; it does not establish runtime or CI parity. See the [roadmap](roadmap.md) for deferred scope and the limits of the current evidence.
 
-The checkout also includes a [release installer](install.md) for macOS/Linux arm64/amd64. Install a published release or build from source. Private prebuilt installs need authenticated GitHub CLI and a SHA-256 utility, not Go; public installs can use curl.
+The checkout also includes a [release installer](install.md) for macOS/Linux arm64/amd64. Install a published release or build from source. Prebuilt installation uses curl and a SHA-256 utility without Go or GitHub CLI. Authenticated GitHub CLI remains optional.
 
 ## Prerequisites
 

@@ -27,23 +27,23 @@ The CLI executes commands defined in `.pitstop.json`. See the [supported scope](
 
 Install a published [GitHub Release](https://github.com/captainthx/pitstop/releases) on macOS/Linux arm64/amd64 without Go. The installer selects the latest stable release; source builds remain available below.
 
-This repository is private. Install [GitHub CLI](https://cli.github.com/) and sign in with an account that can access it. Download to a new file, review it, then run it (stop if downloading fails):
+Download over HTTPS without signing in or installing GitHub CLI. Review the script before running it; stop if downloading fails:
 
 ```sh
-gh auth login --hostname github.com
 PITSTOP_INSTALLER="$(mktemp "${TMPDIR:-/tmp}/pitstop-installer.XXXXXXXX")"
-gh release download --repo captainthx/pitstop --pattern install.sh \
-  --output "$PITSTOP_INSTALLER" --clobber
+curl --disable --fail --show-error --location --proto '=https' --proto-redir '=https' \
+  --connect-timeout 15 --max-time 180 --output "$PITSTOP_INSTALLER" \
+  https://github.com/captainthx/pitstop/releases/latest/download/install.sh
 cat "$PITSTOP_INSTALLER"
 ```
 
 ```sh
-sh "$PITSTOP_INSTALLER" --github-auth
+sh "$PITSTOP_INSTALLER"
 export PATH="$HOME/.local/bin:$PATH"
 pitstop version
 ```
 
-The authenticated route uses your existing gh session; credentials are not passed as installer arguments. Public repositories can also use the [HTTPS curl route](docs/install.md#public-repository-https-route).
+GitHub CLI remains an optional alternative; see the [installation guide](docs/install.md#authenticated-github-cli-route).
 
 The installer checks the binary checksum and version before replacement. Existing files require `--force`; no sudo or shell profile edits. See [installation, upgrades, removal and release trust limits](docs/install.md). Git and Docker are still required for checks. Checksums do not protect against a compromised release publisher; macOS binaries are not notarized.
 
