@@ -239,24 +239,52 @@ Log in to private registries with the host Docker CLI before running. Host crede
 
 ## Commands and flags
 
-`--repo` defaults to `.` and resolves to the Git root. Configuration is read there. Quote paths containing spaces.
+`--repo string` is a persistent global flag on every command. It defaults to `.` and resolves to the Git root; Pitstop reads `.pitstop.json` there and does not search elsewhere. Quote paths containing spaces. `skill install` accepts `--repo` only with `--scope project`; for `--scope user`, do not pass `--repo` explicitly because it is rejected.
 
 | Command | Purpose | Additional flags |
 | --- | --- | --- |
+| `pitstop help [command]` | Show help for a command | `-h`, `--help` |
+| `pitstop init` | Create a starter `.pitstop.json` | `--preset`, `--image`, repeatable `--command`, `--arch`, `--dry-run`, `--json` |
+| `pitstop validate` | Validate config without running checks | `--job`, `--arch`, `--json` |
 | `pitstop doctor` | Probe repository/config, Git/Docker and image readiness | `--json` |
 | `pitstop list` | List selected/excluded checks from config; does not require Docker | `--json` |
 | `pitstop run` | Execute selected checks | `--job`, `--timeout`, `--arch`, `--json` |
 | `pitstop version` | Version and build information when available | `--json` |
-| `pitstop -h` | Help | Every command supports `-h`/`--help` |
+| `pitstop skill install` | Install the portable Pitstop config skill for an agent | `--agent`, `--scope`, `--dry-run`, `--force`, `--json` |
+| `pitstop completion <shell>` | Generate a shell completion script | `bash`, `zsh`, `fish`, `powershell`; each has `--no-descriptions` |
 
 ```sh
+pitstop help run
+pitstop init --repo "/path/to/project" --preset node-npm --dry-run --json
+pitstop validate --repo "/path/to/project" --job lint --arch linux/amd64 --json
 pitstop doctor --repo "/path/to/project"
 pitstop list --repo "/path/to/project" --json
 pitstop run --repo "/path/to/project" --job lint --job test
 pitstop run --repo "/path/to/project" --job lint,test --timeout 10m
 pitstop run --repo "/path/to/project" --arch linux/amd64
 pitstop run --repo "/path/to/project" --json > result.json 2> progress.log
+pitstop version --json
+pitstop skill install --agent codex --scope project --repo "/path/to/project" --dry-run --json
+pitstop completion bash --no-descriptions > ~/.local/share/bash-completion/completions/pitstop
 ```
+
+Every command and subcommand supports `-h`/`--help`. `pitstop completion` has `bash`, `zsh`, `fish` and `powershell` subcommands; each help page gives the loading method for that shell.
+
+### Common command details
+
+`init` supports these presets: `base`, `node-npm`, `node-pnpm`, `node-yarn-classic`, `node-yarn-berry`, `go`, `python-pip`, `python-uv`, `java-maven`, `java-gradle`, `dotnet`, `rust`, `php-composer` and `ruby-bundler`. The default is `base`, which creates a starter with an explicit failure placeholder to edit before running. `custom` requires `--image` and at least one `--command`. `--command` is a StringArray: repeat it, and the supplied commands **replace** the preset's verify steps. `--image` replaces the runner image.
+
+`init --arch` accepts only `linux/arm64` or `linux/amd64`. When omitted, it derives the architecture from the host runtime (`arm64` or `amd64`) and does not detect a remote Docker daemon's architecture. A real write creates `.pitstop.json` only when it does not already exist: an existing file is preserved and returns `CONFIG_EXISTS`; `--dry-run` shows the generated config without writing. Cancellation or a write error can leave a partial file, so inspect `.pitstop.json` before retrying.
+
+`validate` uses the same config parser and accepts `--job` and `--arch` as temporary effective-config overrides without editing the file. It does not use Docker, pull images, write cache data or run project commands. `--job` IDs must be in configured `jobs` and must be unique; invalid selection or architecture returns exit `2` with `CONFIG_INVALID`/an issue.
+
+`doctor` checks the repository, config, Git/Docker and image readiness without pulling images or running project commands. `list` reads the config and marks every check `selected` or `excluded` without requiring Docker. Apart from help, both commands support only `--json`.
+
+Human `version` output is `pitstop <version>`. With `--json`, the envelope contains `version` and includes `commit`/`buildTime` when the binary was built with those metadata values.
+
+`skill install` installs agent skill files and is separate from installing the CLI. `--agent` must be `codex` or `claude`; `--scope` must be `project` or `user`. `project` resolves the Git root and accepts `--repo`; `user` uses the user's home and rejects an explicit `--repo`. `--dry-run` writes nothing. `--force` replaces only an owned, complete Pitstop bundle whose manifest verifies ownership; an unrelated or user-modified bundle is blocked to preserve existing files.
+
+`completion bash`, `zsh`, `fish` and `powershell` generate a script for the named shell. `--no-descriptions` disables completion descriptions. PowerShell here means a generated completion script only; this subcommand does not claim native Windows support because the CLI uses Unix file locking and current validation does not cover Windows.
 
 Repeat `--job` or separate IDs with commas; IDs must be unique and in the configured selection. `--arch` overrides this run without editing config. `--timeout` must be positive and covers each check's create/copy/start/execution phases; default 20 minutes. Image preparation and cleanup have separate budgets.
 

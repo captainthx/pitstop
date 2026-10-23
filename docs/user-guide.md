@@ -239,24 +239,52 @@ Private registry ใช้การ login ของ Docker CLI บน host ก�
 
 ## คำสั่งและ flags
 
-`--repo` ค่าเริ่มต้น `.` และ resolve เป็น Git root; ไม่ได้ค้นหา config ที่อื่น ใช้ quotes เมื่อ path มีช่องว่าง
+`--repo string` เป็น persistent global flag ของทุกคำสั่ง ค่าเริ่มต้น `.` และ resolve เป็น Git root; Pitstop อ่าน `.pitstop.json` จาก root นี้และไม่ค้นหา config ที่อื่น ใช้ quotes เมื่อ path มีช่องว่าง คำสั่ง `skill install` ใช้ `--repo` เฉพาะ `--scope project`; ถ้าเป็น `--scope user` อย่าส่ง `--repo` แบบ explicit เพราะจะถูกปฏิเสธ
 
 | คำสั่ง | หน้าที่ | Flags เพิ่มเติม |
 | --- | --- | --- |
+| `pitstop help [command]` | แสดง help ของคำสั่งที่ระบุ | `-h`, `--help` |
+| `pitstop init` | สร้าง starter `.pitstop.json` | `--preset`, `--image`, `--command` (ซ้ำได้), `--arch`, `--dry-run`, `--json` |
+| `pitstop validate` | ตรวจ config โดยไม่รัน checks | `--job`, `--arch`, `--json` |
 | `pitstop doctor` | ตรวจ repository/config, Git/Docker และ image readiness | `--json` |
 | `pitstop list` | แสดง checks ทั้งหมดพร้อม selected/excluded จาก config; ไม่ต้องเปิด Docker | `--json` |
 | `pitstop run` | รัน checks ตาม selection | `--job`, `--timeout`, `--arch`, `--json` |
 | `pitstop version` | แสดง version และ build information เมื่อมี | `--json` |
-| `pitstop -h` | แสดง help | ทุกคำสั่งรองรับ `-h`/`--help` |
+| `pitstop skill install` | ติดตั้ง portable Pitstop config skill ให้ agent | `--agent`, `--scope`, `--dry-run`, `--force`, `--json` |
+| `pitstop completion <shell>` | สร้าง shell completion script | `bash`, `zsh`, `fish`, `powershell`; แต่ละตัวมี `--no-descriptions` |
 
 ```sh
+pitstop help run
+pitstop init --repo "/path/to/project" --preset node-npm --dry-run --json
+pitstop validate --repo "/path/to/project" --job lint --arch linux/amd64 --json
 pitstop doctor --repo "/path/to/project"
 pitstop list --repo "/path/to/project" --json
 pitstop run --repo "/path/to/project" --job lint --job test
 pitstop run --repo "/path/to/project" --job lint,test --timeout 10m
 pitstop run --repo "/path/to/project" --arch linux/amd64
 pitstop run --repo "/path/to/project" --json > result.json 2> progress.log
+pitstop version --json
+pitstop skill install --agent codex --scope project --repo "/path/to/project" --dry-run --json
+pitstop completion bash --no-descriptions > ~/.local/share/bash-completion/completions/pitstop
 ```
+
+ทุกคำสั่งและ subcommand มี `-h`/`--help`; `pitstop completion` มี subcommands `bash`, `zsh`, `fish` และ `powershell` ซึ่งแต่ละตัวมีวิธีโหลด script ของ shell นั้นเองตาม help
+
+### รายละเอียดคำสั่งที่ใช้บ่อย
+
+`init` ใช้ preset ต่อไปนี้: `base`, `node-npm`, `node-pnpm`, `node-yarn-classic`, `node-yarn-berry`, `go`, `python-pip`, `python-uv`, `java-maven`, `java-gradle`, `dotnet`, `rust`, `php-composer` และ `ruby-bundler` ค่าเริ่มต้นคือ `base` โดย `base` จะสร้าง starter ที่มี failure placeholder ให้แก้ก่อน run `custom` ต้องส่ง `--image` และ `--command` อย่างน้อยหนึ่งครั้ง `--command` เป็น StringArray: ส่งซ้ำได้และคำสั่งที่ส่งจะ **แทนที่** verify steps ของ preset ส่วน `--image` แทน runner image
+
+`init --arch` รับเฉพาะ `linux/arm64` หรือ `linux/amd64` ถ้าไม่ระบุจะเดาจาก host runtime (`arm64`/`amd64`) ไม่ได้ตรวจ architecture ของ Docker daemon ระยะไกล การเขียนจริงสร้าง `.pitstop.json` ใหม่เท่านั้น: ถ้ามีอยู่แล้วจะคงไฟล์เดิมและคืน `CONFIG_EXISTS`; `--dry-run` แสดง config ที่จะสร้างและไม่เขียนไฟล์ การยกเลิกหรือ write error อาจเหลือไฟล์บางส่วน ให้ตรวจ `.pitstop.json` ก่อน retry
+
+`validate` ใช้ parser เดียวกับ config และรองรับ `--job` กับ `--arch` เป็น effective-config ชั่วคราวโดยไม่แก้ไฟล์ ไม่ใช้ Docker ไม่ pull image ไม่เขียน cache และไม่รัน project command `--job` ต้องเป็น ID ที่อยู่ใน `jobs` และไม่ซ้ำ; selection หรือ architecture ที่ผิดคืน exit `2` พร้อม `CONFIG_INVALID`/issue
+
+`doctor` ตรวจ repository, config, Git/Docker และความพร้อมของ image โดยไม่ pull image และไม่รัน project commands `list` อ่าน config แล้วแสดงทุก check ว่า `selected` หรือ `excluded` โดยไม่ต้องเปิด Docker ทั้งสองคำสั่งรองรับเฉพาะ `--json` นอกเหนือจาก help
+
+`version` แบบ human แสดง `pitstop <version>` ส่วน `--json` คืน envelope ที่มี `version` และมี `commit`/`buildTime` เมื่อ binary ถูก build พร้อม metadata
+
+`skill install` เป็นการติดตั้งไฟล์ skill ให้ agent แยกจากการติดตั้ง CLI: `--agent` ต้องเป็น `codex` หรือ `claude`, `--scope` ต้องเป็น `project` หรือ `user` `project` ใช้ Git root และส่ง `--repo` ได้; `user` ใช้ home ของผู้ใช้และห้ามส่ง `--repo` แบบ explicit `--dry-run` ไม่เขียนไฟล์ `--force` แทนที่ได้เฉพาะ bundle ของ Pitstop ที่ manifest ยืนยัน ownership และความครบถ้วน ถ้ามี bundle อื่นหรือไฟล์ผู้ใช้ปะปนอยู่ คำสั่งจะ block เพื่อรักษาไฟล์เดิม
+
+`completion bash`, `zsh`, `fish` และ `powershell` สร้าง script สำหรับ shell ตามชื่อ โดย `--no-descriptions` ปิดคำอธิบาย completion ได้ PowerShell เป็นเพียง generated completion script; การมี subcommand นี้ไม่ได้ยืนยันการรองรับ Pitstop แบบ native Windows เพราะ CLI ยังใช้ Unix file locking และการตรวจสอบปัจจุบันยังไม่ครอบคลุม Windows
 
 `--job` ใช้แบบซ้ำหรือคั่นด้วย comma ได้ แต่ IDs ต้องไม่ซ้ำและอยู่ใน config selection `--arch` override สำหรับ run นี้ ไม่แก้ไฟล์ config `--timeout` ต้องมากกว่า 0 และนับต่อ check ตั้งแต่ create/copy/start/run ค่าเริ่มต้น 20 นาที เวลาที่ใช้เตรียม image และ cleanup อยู่นอก budget นี้
 
