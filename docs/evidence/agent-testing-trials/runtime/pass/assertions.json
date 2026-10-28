@@ -1,0 +1,21 @@
+{
+  "runId": "1793155532036886000",
+  "case": "pass",
+  "exitCode": 0,
+  "expectedExitCode": 0,
+  "jobs": [
+    {
+      "id": "quality_gate",
+      "status": "passed",
+      "reasonCode": null
+    }
+  ],
+  "error": null,
+  "warnings": [],
+  "inspectedReportFiles": [
+    "quality_gate.stdout",
+    "report.json",
+    "quality_gate.stderr",
+    "evidence-quality_gate/step-0.exit"
+  ]
+}

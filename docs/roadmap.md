@@ -14,6 +14,8 @@ The commands and portable bundle are present in the current checkout. The embedd
 
 Release installation now has a macOS/Linux arm64/amd64 build script, checksum-validating installer and draft-only workflow in this checkout. See [installation/release guidance](install.md) and [verification evidence](evidence/release-install.md). [v0.1.0 is published](https://github.com/captainthx/pitstop/releases/tag/v0.1.0), with [remote CI and live installation evidence](evidence/release-v0.1.0.md). The repository is public; anonymous HTTPS installation is available.
 
+Agent testing workflow bundle v2 is implemented and checked against the exact released-v0.1.0 bundle. [New evidence](evidence/agent-testing-trials/README.md) records three direct-read config-path trials, one genuine failing-test agent trial, and six real-Docker runtime scenarios. These are small Alpine fixtures, not automatic discovery, all-toolchain coverage or CI parity. Binary publication of bundle v2 remains pending a separately authorized release. / หลักฐานใหม่นี้แยกจาก 23 mapping/prerequisite trials เดิม และยังไม่ได้เผยแพร่ binary รุ่นใหม่
+
 ## งานที่ยังไม่รวมในรอบนี้ / Deferred scope
 
 รายการต่อไปนี้เก็บไว้พิจารณาเมื่อมี use case จริง ไม่ทำโดยอนุมานจากแผน config/skill และไม่รับประกันลำดับหรือวันที่ส่ง

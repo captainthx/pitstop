@@ -1,0 +1,20 @@
+{
+  "runId": "1793155536331325000",
+  "case": "cancellation",
+  "exitCode": 130,
+  "expectedExitCode": 130,
+  "jobs": [
+    {
+      "id": "quality_gate",
+      "status": "skipped",
+      "reasonCode": "CANCELLED"
+    }
+  ],
+  "error": null,
+  "warnings": [],
+  "inspectedReportFiles": [
+    "quality_gate.stdout",
+    "report.json",
+    "quality_gate.stderr"
+  ]
+}

@@ -1,0 +1,123 @@
+{
+  "binarySha256": "6e85c8f20a4b087624d45fab6493fdf78041351518e19f0fa2cd4ec86bd2798c",
+  "platform": "linux/arm64",
+  "runtime": "real Docker",
+  "cases": [
+    {
+      "runId": "1793155532036886000",
+      "case": "pass",
+      "exitCode": 0,
+      "expectedExitCode": 0,
+      "jobs": [
+        {
+          "id": "quality_gate",
+          "status": "passed",
+          "reasonCode": null
+        }
+      ],
+      "error": null,
+      "warnings": [],
+      "inspectedReportFiles": [
+        "quality_gate.stdout",
+        "report.json",
+        "quality_gate.stderr",
+        "evidence-quality_gate/step-0.exit"
+      ]
+    },
+    {
+      "runId": "1793155533002296000",
+      "case": "test-failure",
+      "exitCode": 1,
+      "expectedExitCode": 1,
+      "jobs": [
+        {
+          "id": "quality_gate",
+          "status": "failed",
+          "reasonCode": null
+        }
+      ],
+      "error": null,
+      "warnings": [],
+      "inspectedReportFiles": [
+        "quality_gate.stdout",
+        "report.json",
+        "quality_gate.stderr",
+        "evidence-quality_gate/step-0.exit"
+      ]
+    },
+    {
+      "runId": "1793155533752596000",
+      "case": "missing-tool",
+      "exitCode": 1,
+      "expectedExitCode": 1,
+      "jobs": [
+        {
+          "id": "quality_gate",
+          "status": "failed",
+          "reasonCode": null
+        }
+      ],
+      "error": null,
+      "warnings": [],
+      "inspectedReportFiles": [
+        "quality_gate.stdout",
+        "report.json",
+        "quality_gate.stderr",
+        "evidence-quality_gate/step-0.exit"
+      ]
+    },
+    {
+      "runId": null,
+      "case": "docker-unavailable",
+      "exitCode": 2,
+      "expectedExitCode": 2,
+      "jobs": [],
+      "error": {
+        "code": "DOCKER_UNAVAILABLE",
+        "message": "DOCKER_UNAVAILABLE: Docker daemon is unavailable at resolved endpoint: exit status 1"
+      },
+      "warnings": [],
+      "inspectedReportFiles": []
+    },
+    {
+      "runId": "1793155534701985000",
+      "case": "timeout",
+      "exitCode": 1,
+      "expectedExitCode": 1,
+      "jobs": [
+        {
+          "id": "quality_gate",
+          "status": "failed",
+          "reasonCode": "TIMEOUT"
+        }
+      ],
+      "error": null,
+      "warnings": [],
+      "inspectedReportFiles": [
+        "quality_gate.stdout",
+        "report.json",
+        "quality_gate.stderr"
+      ]
+    },
+    {
+      "runId": "1793155536331325000",
+      "case": "cancellation",
+      "exitCode": 130,
+      "expectedExitCode": 130,
+      "jobs": [
+        {
+          "id": "quality_gate",
+          "status": "skipped",
+          "reasonCode": "CANCELLED"
+        }
+      ],
+      "error": null,
+      "warnings": [],
+      "inspectedReportFiles": [
+        "quality_gate.stdout",
+        "report.json",
+        "quality_gate.stderr"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "command": "run",
+  "exitCode": 1,
+  "result": {
+    "runId": "1793155533002296000",
+    "repo": "/private/var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T/pitstop-agent-testing-k6gyr9xk/runtime/test-failure/repo",
+    "source": {
+      "head": "ebb4cce1cc5c0b0f0c87b8d61a07120ef5424db3",
+      "snapshotSha256": "9a3a1ee0b70b225ff9aa3ebbe87852f50bf82caf446da4b3de14ee4f94cc0f84",
+      "dirty": false,
+      "excludedPaths": [],
+      "checkoutMode": "local-source-copy"
+    },
+    "engine": {
+      "name": "docker",
+      "version": "29.8.2",
+      "architecture": "linux/arm64",
+      "image": "alpine:3.22",
+      "imageId": "sha256:2e1a7aa4cbc4e9e5222bb4c24a839aa1a6170ea5492d644777ce7b178824e44f",
+      "imageDigest": "sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8"
+    },
+    "jobs": [
+      {
+        "id": "quality_gate",
+        "status": "failed",
+        "provenance": "engine_exit",
+        "durationMs": 329,
+        "engineExitCode": 7,
+        "failureCategory": "unknown",
+        "reasonCode": null,
+        "reason": "check step exited with code 7",
+        "steps": [
+          {
+            "id": "assert_answer",
+            "name": "assert_answer",
+            "status": "failed",
+            "durationMs": null,
+            "evidenceRef": "/private/var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T/pitstop-agent-testing-k6gyr9xk/runtime/test-failure/home/Library/Caches/pitstop/runs/1793155533002296000/evidence-quality_gate/step-0.exit"
+          }
+        ],
+        "logPath": "/private/var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T/pitstop-agent-testing-k6gyr9xk/runtime/test-failure/home/Library/Caches/pitstop/runs/1793155533002296000/quality_gate.stdout"
+      }
+    ],
+    "selectedCoverage": "complete",
+    "workflowCoverage": "not_applicable",
+    "adjustments": [],
+    "warnings": [],
+    "durationMs": 573,
+    "reportPath": "/private/var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T/pitstop-agent-testing-k6gyr9xk/runtime/test-failure/home/Library/Caches/pitstop/runs/1793155533002296000/report.json"
+  }
+}

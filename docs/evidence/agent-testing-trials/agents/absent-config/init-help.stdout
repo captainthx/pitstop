@@ -1,0 +1,16 @@
+Create a starter .pitstop.json configuration
+
+Usage:
+  pitstop init [flags]
+
+Flags:
+      --arch string           container architecture (linux/arm64 or linux/amd64)
+      --command stringArray   replace verify steps with a shell command (repeatable)
+      --dry-run               preview the generated configuration without writing it
+  -h, --help                  help for init
+      --image string          replace the runner image
+      --json                  JSON output
+      --preset string         starter preset (base, node-npm, node-pnpm, node-yarn-classic, node-yarn-berry, go, python-pip, python-uv, java-maven, java-gradle, dotnet, rust, php-composer, ruby-bundler, custom) (default "base")
+
+Global Flags:
+      --repo string   target repository path (default ".")

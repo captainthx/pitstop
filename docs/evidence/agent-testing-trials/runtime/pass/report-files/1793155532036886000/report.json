@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "command": "run",
+  "exitCode": 0,
+  "result": {
+    "runId": "1793155532036886000",
+    "repo": "/private/var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T/pitstop-agent-testing-k6gyr9xk/runtime/pass/repo",
+    "source": {
+      "head": "39f2874118dfa5c0344b41e1f7b2803e60d72032",
+      "snapshotSha256": "6f92ebb616ad0280797c7fa448f9fb48a2c3439448fe14a7d46bd8092c7822ef",
+      "dirty": false,
+      "excludedPaths": [],
+      "checkoutMode": "local-source-copy"
+    },
+    "engine": {
+      "name": "docker",
+      "version": "29.8.2",
+      "architecture": "linux/arm64",
+      "image": "alpine:3.22",
+      "imageId": "sha256:2e1a7aa4cbc4e9e5222bb4c24a839aa1a6170ea5492d644777ce7b178824e44f",
+      "imageDigest": "sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8"
+    },
+    "jobs": [
+      {
+        "id": "quality_gate",
+        "status": "passed",
+        "provenance": "engine_exit",
+        "durationMs": 443,
+        "engineExitCode": 0,
+        "failureCategory": null,
+        "reasonCode": null,
+        "reason": null,
+        "steps": [
+          {
+            "id": "assert_answer",
+            "name": "assert_answer",
+            "status": "passed",
+            "durationMs": null,
+            "evidenceRef": "/private/var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T/pitstop-agent-testing-k6gyr9xk/runtime/pass/home/Library/Caches/pitstop/runs/1793155532036886000/evidence-quality_gate/step-0.exit"
+          }
+        ],
+        "logPath": "/private/var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T/pitstop-agent-testing-k6gyr9xk/runtime/pass/home/Library/Caches/pitstop/runs/1793155532036886000/quality_gate.stdout"
+      }
+    ],
+    "selectedCoverage": "complete",
+    "workflowCoverage": "not_applicable",
+    "adjustments": [],
+    "warnings": [],
+    "durationMs": 791,
+    "reportPath": "/private/var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T/pitstop-agent-testing-k6gyr9xk/runtime/pass/home/Library/Caches/pitstop/runs/1793155532036886000/report.json"
+  }
+}

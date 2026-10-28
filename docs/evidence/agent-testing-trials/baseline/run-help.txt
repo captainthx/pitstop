@@ -1,0 +1,20 @@
+Run configured checks from the current working-tree snapshot. Each selected check gets a fresh container; steps within a check share /workspace. The timeout applies per check and Ctrl+C cancels the run.
+
+Usage:
+  pitstop run [flags]
+
+Examples:
+  pitstop run --repo /path/to/repo
+  pitstop run --repo /path/to/repo --job verify
+  pitstop run --repo /path/to/repo --timeout 10m
+  pitstop run --repo /path/to/repo --json > result.json 2> progress.log
+
+Flags:
+      --arch string        override configured container architecture (linux/arm64 or linux/amd64)
+  -h, --help               help for run
+      --job strings        configured check ID (repeatable or comma-separated)
+      --json               JSON output
+      --timeout duration   per-check timeout (default 20m0s)
+
+Global Flags:
+      --repo string   target repository path (default ".")

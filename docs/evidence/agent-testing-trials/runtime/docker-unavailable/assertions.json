@@ -1,0 +1,13 @@
+{
+  "runId": null,
+  "case": "docker-unavailable",
+  "exitCode": 2,
+  "expectedExitCode": 2,
+  "jobs": [],
+  "error": {
+    "code": "DOCKER_UNAVAILABLE",
+    "message": "DOCKER_UNAVAILABLE: Docker daemon is unavailable at resolved endpoint: exit status 1"
+  },
+  "warnings": [],
+  "inspectedReportFiles": []
+}

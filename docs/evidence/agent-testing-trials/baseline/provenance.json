@@ -1,0 +1,10 @@
+{
+  "date": "2026-10-28",
+  "agentRole": "luna_worker",
+  "agentName": "baseline_testing_trial",
+  "delivery": "explicit direct read; no discovery tested",
+  "binarySha256": "c0ce2920c50256b5353edb94701b3eeff809232043a73496c2d6f454bd0387c9",
+  "bundleManifestSha256": "8a903c994e2a571818dba7cb47d0ca7790a8efa3f3b2425e173a3e984e28a8a2",
+  "runtime": "real Docker linux/arm64",
+  "baselineOutcome": "runtime passed; separate report/log inspection missing"
+}

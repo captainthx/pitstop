@@ -1,0 +1,20 @@
+{
+  "runId": "1793155534701985000",
+  "case": "timeout",
+  "exitCode": 1,
+  "expectedExitCode": 1,
+  "jobs": [
+    {
+      "id": "quality_gate",
+      "status": "failed",
+      "reasonCode": "TIMEOUT"
+    }
+  ],
+  "error": null,
+  "warnings": [],
+  "inspectedReportFiles": [
+    "quality_gate.stdout",
+    "report.json",
+    "quality_gate.stderr"
+  ]
+}

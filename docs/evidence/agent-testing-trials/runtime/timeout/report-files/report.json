@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "command": "run",
+  "exitCode": 1,
+  "result": {
+    "runId": "1793155534701985000",
+    "repo": "/private/var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T/pitstop-agent-testing-k6gyr9xk/runtime/timeout/repo",
+    "source": {
+      "head": "3f6e220133e54910ad087bedee2f4100831eeb1f",
+      "snapshotSha256": "87bba21719069bbb0f4f148863c6419441a81d6ff9bd2d20f13ca4dbd19c9e65",
+      "dirty": false,
+      "excludedPaths": [],
+      "checkoutMode": "local-source-copy"
+    },
+    "engine": {
+      "name": "docker",
+      "version": "29.8.2",
+      "architecture": "linux/arm64",
+      "image": "alpine:3.22",
+      "imageId": "sha256:2e1a7aa4cbc4e9e5222bb4c24a839aa1a6170ea5492d644777ce7b178824e44f",
+      "imageDigest": "sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8"
+    },
+    "jobs": [
+      {
+        "id": "quality_gate",
+        "status": "failed",
+        "provenance": "engine_exit",
+        "durationMs": 1127,
+        "engineExitCode": 143,
+        "failureCategory": "engine",
+        "reasonCode": "TIMEOUT",
+        "reason": "container check timed out",
+        "steps": [
+          {
+            "id": "assert_answer",
+            "name": "assert_answer",
+            "status": "skipped",
+            "durationMs": null,
+            "evidenceRef": "/private/var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T/pitstop-agent-testing-k6gyr9xk/runtime/timeout/home/Library/Caches/pitstop/runs/1793155534701985000/evidence-quality_gate/step-0.exit"
+          }
+        ],
+        "logPath": "/private/var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T/pitstop-agent-testing-k6gyr9xk/runtime/timeout/home/Library/Caches/pitstop/runs/1793155534701985000/quality_gate.stdout"
+      }
+    ],
+    "selectedCoverage": "partial",
+    "workflowCoverage": "not_applicable",
+    "adjustments": [],
+    "warnings": [],
+    "durationMs": 1423,
+    "reportPath": "/private/var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T/pitstop-agent-testing-k6gyr9xk/runtime/timeout/home/Library/Caches/pitstop/runs/1793155534701985000/report.json"
+  }
+}

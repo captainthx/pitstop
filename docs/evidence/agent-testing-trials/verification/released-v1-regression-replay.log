@@ -1,0 +1,5 @@
+--- FAIL: TestInstallForceUpgradesReleasedV010BundleToCurrent (0.28s)
+    install_test.go:459: candidate bundle version="1", want 2
+FAIL
+FAIL	pitstop/internal/skill	0.631s
+FAIL

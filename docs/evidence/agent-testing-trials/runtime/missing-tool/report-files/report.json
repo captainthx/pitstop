@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "command": "run",
+  "exitCode": 1,
+  "result": {
+    "runId": "1793155533752596000",
+    "repo": "/private/var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T/pitstop-agent-testing-k6gyr9xk/runtime/missing-tool/repo",
+    "source": {
+      "head": "420807a965db40800667e5d40cf9a21d17be4eb4",
+      "snapshotSha256": "eb9dd8363a8f77a4f0166139fef6363f61a0568e10d0737907bed382a919075a",
+      "dirty": false,
+      "excludedPaths": [],
+      "checkoutMode": "local-source-copy"
+    },
+    "engine": {
+      "name": "docker",
+      "version": "29.8.2",
+      "architecture": "linux/arm64",
+      "image": "alpine:3.22",
+      "imageId": "sha256:2e1a7aa4cbc4e9e5222bb4c24a839aa1a6170ea5492d644777ce7b178824e44f",
+      "imageDigest": "sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8"
+    },
+    "jobs": [
+      {
+        "id": "quality_gate",
+        "status": "failed",
+        "provenance": "engine_exit",
+        "durationMs": 311,
+        "engineExitCode": 127,
+        "failureCategory": "unknown",
+        "reasonCode": null,
+        "reason": "check step exited with code 127",
+        "steps": [
+          {
+            "id": "assert_answer",
+            "name": "assert_answer",
+            "status": "failed",
+            "durationMs": null,
+            "evidenceRef": "/private/var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T/pitstop-agent-testing-k6gyr9xk/runtime/missing-tool/home/Library/Caches/pitstop/runs/1793155533752596000/evidence-quality_gate/step-0.exit"
+          }
+        ],
+        "logPath": "/private/var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T/pitstop-agent-testing-k6gyr9xk/runtime/missing-tool/home/Library/Caches/pitstop/runs/1793155533752596000/quality_gate.stdout"
+      }
+    ],
+    "selectedCoverage": "complete",
+    "workflowCoverage": "not_applicable",
+    "adjustments": [],
+    "warnings": [],
+    "durationMs": 554,
+    "reportPath": "/private/var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T/pitstop-agent-testing-k6gyr9xk/runtime/missing-tool/home/Library/Caches/pitstop/runs/1793155533752596000/report.json"
+  }
+}

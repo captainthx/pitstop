@@ -1,0 +1,11 @@
+[
+  "/private/var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T/pitstop-agent-testing-k6gyr9xk/bin/pitstop-v2",
+  "run",
+  "--repo",
+  "/private/var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T/pitstop-agent-testing-k6gyr9xk/runtime/cancellation/repo",
+  "--job",
+  "quality_gate",
+  "--timeout",
+  "1m",
+  "--json"
+]

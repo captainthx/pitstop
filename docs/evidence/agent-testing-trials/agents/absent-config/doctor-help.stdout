@@ -1,0 +1,11 @@
+Check Git, config, Docker, and image readiness
+
+Usage:
+  pitstop doctor [flags]
+
+Flags:
+  -h, --help   help for doctor
+      --json   JSON output
+
+Global Flags:
+      --repo string   target repository path (default ".")

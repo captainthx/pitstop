@@ -1,0 +1,13 @@
+Validate the repository configuration without running checks
+
+Usage:
+  pitstop validate [flags]
+
+Flags:
+      --arch string   override configured container architecture (linux/arm64 or linux/amd64)
+  -h, --help          help for validate
+      --job strings   configured check ID (repeatable or comma-separated)
+      --json          JSON output
+
+Global Flags:
+      --repo string   target repository path (default ".")

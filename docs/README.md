@@ -33,6 +33,13 @@ Updated 2026-10-28: `init`, `validate`, `list`, `doctor`, `run` and `skill insta
 
 หลักฐาน agent trial อยู่ใน [ดัชนีหลักฐาน config-agent](evidence/config-agent-trials/README.md); runtime/toolchain verification ต้องมีหลักฐานการรันจริงแยกต่างหาก / Agent-trial evidence is in the [config-agent evidence index](evidence/config-agent-trials/README.md); runtime/toolchain verification requires separate actual-run evidence.
 
+## Agent testing workflow — 2026-10-28
+
+README และคู่มือคำสั่งไทย/อังกฤษจัดใหม่แล้ว source builds ฝัง skill bundle v2 สำหรับ `validate` → `list` → `doctor` → `run` และอ่าน report/logs ก่อนสรุป ส่วน released v0.1.0 ยังคง bundle v1 / Fresh source builds embed workflow bundle v2; released v0.1.0 remains unchanged.
+
+- [Sequential implementation plan and completion status](superpowers/plans/2026-10-23-agent-testing-workflow.md)
+- [Direct-read agent trials, real Docker failure cases and bundle-upgrade verification](evidence/agent-testing-trials/README.md)
+
 ## เอกสารประวัติ / Historical documents
 
 `design/`, แผนก่อน Docker checks และหลักฐานอื่นใน `evidence/` บันทึกระบบก่อนหน้า อาจมีชื่อเครื่องมือ, config schema หรือคำสั่งที่เลิกใช้แล้ว ใช้เพื่อดูที่มาของงานเท่านั้น ให้ใช้คู่มือด้านบนสำหรับการติดตั้งและใช้งานปัจจุบัน

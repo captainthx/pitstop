@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "command": "run",
+  "exitCode": 0,
+  "result": {
+    "runId": "1793155585877281000",
+    "repo": "/private/var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T/pitstop-agent-testing-k6gyr9xk/agent-trials/broken-config/repo",
+    "source": {
+      "head": "bea3c43c5e5d5caf1fbb85a807dcc0f1f2c89c42",
+      "snapshotSha256": "6f92ebb616ad0280797c7fa448f9fb48a2c3439448fe14a7d46bd8092c7822ef",
+      "dirty": true,
+      "excludedPaths": [],
+      "checkoutMode": "local-source-copy"
+    },
+    "engine": {
+      "name": "docker",
+      "version": "29.8.2",
+      "architecture": "linux/arm64",
+      "image": "alpine:3.22",
+      "imageId": "sha256:2e1a7aa4cbc4e9e5222bb4c24a839aa1a6170ea5492d644777ce7b178824e44f",
+      "imageDigest": "sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8"
+    },
+    "jobs": [
+      {
+        "id": "quality_gate",
+        "status": "passed",
+        "provenance": "engine_exit",
+        "durationMs": 328,
+        "engineExitCode": 0,
+        "failureCategory": null,
+        "reasonCode": null,
+        "reason": null,
+        "steps": [
+          {
+            "id": "assert_answer",
+            "name": "assert_answer",
+            "status": "passed",
+            "durationMs": null,
+            "evidenceRef": "/var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T/pitstop-agent-testing-k6gyr9xk/agent-trials/broken-config/home/Library/Caches/pitstop/runs/1793155585877281000/evidence-quality_gate/step-0.exit"
+          }
+        ],
+        "logPath": "/var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T/pitstop-agent-testing-k6gyr9xk/agent-trials/broken-config/home/Library/Caches/pitstop/runs/1793155585877281000/quality_gate.stdout"
+      }
+    ],
+    "selectedCoverage": "complete",
+    "workflowCoverage": "not_applicable",
+    "adjustments": [],
+    "warnings": [],
+    "durationMs": 576,
+    "reportPath": "/var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T/pitstop-agent-testing-k6gyr9xk/agent-trials/broken-config/home/Library/Caches/pitstop/runs/1793155585877281000/report.json"
+  }
+}

@@ -1,0 +1,11 @@
+List configured checks and selection
+
+Usage:
+  pitstop list [flags]
+
+Flags:
+  -h, --help   help for list
+      --json   JSON output
+
+Global Flags:
+      --repo string   target repository path (default ".")

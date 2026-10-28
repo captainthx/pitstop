@@ -1,0 +1,9 @@
+go: downloading go1.26.5 (darwin/arm64)
+offline config-agent smoke passed: init/validate/custom/skill and all embedded examples/mappings
+runtime toolchain smoke skipped (PITSTOP_CONFIG_AGENT_RUNTIME=0); Docker evidence is unverified
+rm: /var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T//pitstop-config-agent.K3dTJS/home/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.5.darwin-arm64/LICENSE: Permission denied
+rm: /var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T//pitstop-config-agent.K3dTJS/home/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.5.darwin-arm64/PATENTS: Permission denied
+rm: /var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T//pitstop-config-agent.K3dTJS/home/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.5.darwin-arm64/bin/go: Permission denied
+rm: /var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T//pitstop-config-agent.K3dTJS/home/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.5.darwin-arm64/bin/gofmt: Permission denied
+[Remaining repeated permission errors omitted; full temporary log had 12880 lines.]
+The assertions passed, but cleanup exit was 1: pinned GOTOOLCHAIN downloaded a read-only toolchain into isolated HOME. Retry uses the already installed Go 1.26.5 bin directory in PATH with GOTOOLCHAIN=local.

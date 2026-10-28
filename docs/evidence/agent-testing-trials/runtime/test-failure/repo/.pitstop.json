@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "runner": {
+    "image": "alpine:3.22",
+    "architecture": "linux/arm64"
+  },
+  "jobs": [
+    "quality_gate"
+  ],
+  "checks": [
+    {
+      "id": "quality_gate",
+      "steps": [
+        {
+          "id": "assert_answer",
+          "run": "sh check.sh"
+        }
+      ]
+    }
+  ]
+}
