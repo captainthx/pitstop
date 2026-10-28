@@ -1,0 +1,5 @@
+--- FAIL: TestChildSkillActionsRejectMalformedAndFailedEnvelopes (0.39s)
+    update_test.go:244: non-cancelled failed child was reported updated
+FAIL
+FAIL	pitstop/internal/update	0.869s
+FAIL

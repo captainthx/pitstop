@@ -33,6 +33,8 @@ pitstop version
 
 [ลิงก์ `install.sh` โดยตรง](https://github.com/captainthx/pitstop/releases/latest/download/install.sh) ใช้ script เดียวกัน ส่วน [ติดตั้งผ่าน GitHub CLI](docs/install.md#authenticated-github-cli-route) และ [build จาก source](#build-from-source) เป็นทางเลือก ดูรายละเอียดติดตั้ง อัปเกรด และขอบเขตความเชื่อถือใน [docs/install.md](docs/install.md) ตัวติดตั้งตรวจ checksum/เวอร์ชันก่อนแทนที่ ไม่ใช้ sudo ไม่แก้ shell profile และต้องใช้ `--force` เมื่อจะแทนที่ binary เดิม
 
+อัปเดตครั้งถัดไปด้วย `pitstop update` เพื่อเช็ก stable ล่าสุดและอัปเดต CLI พร้อม skills ของ user/โปรเจกต์ปัจจุบันที่ติดตั้งไว้ คำสั่งนี้มีใน source build ปัจจุบัน แต่ยังไม่มีใน binary v0.1.0; การอัปเกรดครั้งแรกจากรุ่นนั้นยังใช้ installer ดู[วิธีอัปเดตและขอบเขต](docs/install.md#อัปเกรด--upgrade)
+
 ### Build from source
 
 ใช้ Git และ Go **1.26.5** ตาม `go.mod`:
@@ -90,6 +92,7 @@ pitstop run --repo "$TARGET_REPO" --json > result.json 2> progress.log
 | `pitstop doctor` | ตรวจ repository, config, Git/Docker และ image; รองรับ `--json` |
 | `pitstop list` | แสดง checks และ selection; รองรับ `--json` |
 | `pitstop run` | รัน checks ที่เลือก; รองรับ `--job`, `--timeout`, `--arch`, `--json` |
+| `pitstop update` | ตรวจ stable ล่าสุด แล้วอัปเดต CLI และ skills ที่ติดตั้งอยู่; รองรับ `--version`, `--json` |
 | `pitstop version` | แสดง version/build metadata; รองรับ `--json` |
 | `pitstop skill` | จัดการ agent skills ที่ติดตั้ง |
 | `pitstop skill install` | ติดตั้ง config skill แบบ optional; รองรับ `--agent`, `--scope`, `--dry-run`, `--force`, `--json` |

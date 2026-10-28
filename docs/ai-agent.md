@@ -28,6 +28,8 @@ Claude ใช้คำสั่งเดียวกันโดยเปลี�
 
 เอกสาร canonical คือ [SKILL.md](../internal/agentassets/bundle/SKILL.md), [config-reference.md](../internal/agentassets/bundle/references/config-reference.md), [examples.md](../internal/agentassets/bundle/references/examples.md) และ [workflow-mapping.md](../internal/agentassets/bundle/references/workflow-mapping.md) bundle ที่ติดตั้งมี resource เดียวกันและใช้ relative links
 
+เมื่อผู้ใช้ขออัปเกรดอย่างชัดแจ้ง ใช้ `pitstop update` เพื่ออัปเดต CLI และ user/selected-project skills ที่ติดตั้งอยู่ โดย binary รุ่นใหม่จะติดตั้ง bundle ของตัวเอง แยกจากคำขอทดสอบทั่วไปซึ่งไม่อนุญาตให้อัปเกรด CLI อัตโนมัติ published v0.1.0 ยังไม่มีคำสั่งนี้ จึงต้องอัปเกรดครั้งแรกผ่าน installer หรือ source build ก่อน
+
 ## ขั้นตอนของ agent
 
 ให้ agent ตรวจ `pitstop version` และ help ก่อน หากไม่มี CLI ให้ใช้ public installer ที่อ่านตรวจแล้วลง `--bin-dir` ชั่วคราวใหม่ตามขั้นตอนข้างต้น และใช้ absolute binary path โดยรักษา binary เดิม จากนั้นอ่าน `.pitstop.json` เดิม, manifests, lockfiles, package scripts, workflows และ local actions โดยไม่ execute เลือก scope ที่เล็กที่สุดตามคำขอ เก็บ config เดิมที่ valid เลือก image และ tool versions จากหลักฐาน และบันทึก prerequisites กับ omissions ถ้าไม่มี config ให้ใช้ `init --dry-run` เป็น preview และเขียนเฉพาะ config ที่มีหลักฐาน จากนั้นร่างหรือแก้ schema-v2 JSON แล้วรัน:

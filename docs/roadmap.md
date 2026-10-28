@@ -16,6 +16,8 @@ Release installation now has a macOS/Linux arm64/amd64 build script, checksum-va
 
 Agent testing workflow bundle v2 is implemented and checked against the exact released-v0.1.0 bundle. [New evidence](evidence/agent-testing-trials/README.md) records three direct-read config-path trials, one genuine failing-test agent trial, and six real-Docker runtime scenarios. These are small Alpine fixtures, not automatic discovery, all-toolchain coverage or CI parity. Binary publication of bundle v2 remains pending a separately authorized release. / หลักฐานใหม่นี้แยกจาก 23 mapping/prerequisite trials เดิม และยังไม่ได้เผยแพร่ binary รุ่นใหม่
 
+Explicit CLI/skill self-update is implemented in source as `pitstop update`; see [scope and verification](evidence/self-update/README.md). It updates only existing known user/current-project skills and preserves modified/unknown destinations. It is not an automatic upgrade during project testing and does not publish a release. / คำสั่งอัปเดตแบบชัดแจ้งมีใน source แล้ว ส่วน published v0.1.0 ยังต้องอัปเกรดครั้งแรกผ่าน installer หรือ source build
+
 ## งานที่ยังไม่รวมในรอบนี้ / Deferred scope
 
 รายการต่อไปนี้เก็บไว้พิจารณาเมื่อมี use case จริง ไม่ทำโดยอนุมานจากแผน config/skill และไม่รับประกันลำดับหรือวันที่ส่ง
@@ -39,7 +41,7 @@ Agent testing workflow bundle v2 is implemented and checked against the exact re
 | Self-hosted runner registration / upload source | เมื่อมีความต้องการใช้ GitHub runner จริง ต้องกำหนด authentication, source handling และ execution trust separately. |
 | Native Windows / broader platforms | เมื่อมี demand ให้แก้ Unix locking/file safety and verify on target OS; do not advertise unsupported portability. |
 | Docker engine / snapshot / cleanup refactors | แผน config/agent ไม่เปลี่ยน algorithms เหล่านี้ งานปรับโครงสร้างต้องมีปัญหาและหลักฐานแยก; reuse the existing backend for this release. |
-| Distribution extensions | v0.1.0 is published; future releases follow the documented maintainer process. Homebrew, Windows, signed checksums/provenance, Developer ID/notarization, self-update and full native target coverage need separate verification and scope. |
+| Distribution extensions | v0.1.0 is published; future releases follow the documented maintainer process. Homebrew, Windows, signed checksums/provenance, Developer ID/notarization, full native target coverage need separate verification and scope. |
 
 ## หลักการอัปเดต / Maintenance
 

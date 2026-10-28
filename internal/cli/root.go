@@ -57,7 +57,7 @@ func ExecuteContext(ctx context.Context, args []string, stdout, stderr io.Writer
 			name := command(args)
 			if cmd != nil {
 				switch cmd.Name() {
-				case "run", "doctor", "list", "version", "validate", "init":
+				case "run", "doctor", "list", "version", "validate", "init", "update":
 					name = cmd.Name()
 				case "install":
 					if cmd.Parent() != nil && cmd.Parent().Name() == "skill" {
@@ -77,7 +77,7 @@ func ExecuteContext(ctx context.Context, args []string, stdout, stderr io.Writer
 	return 0
 }
 func command(args []string) string {
-	valueFlags := map[string]bool{"--repo": true, "--job": true, "--arch": true, "--timeout": true, "--command": true, "--preset": true, "--image": true, "--agent": true, "--scope": true}
+	valueFlags := map[string]bool{"--repo": true, "--job": true, "--arch": true, "--timeout": true, "--command": true, "--preset": true, "--image": true, "--agent": true, "--scope": true, "--version": true}
 	for i := 0; i < len(args); i++ {
 		a := args[i]
 		if a == "--" {
@@ -94,7 +94,7 @@ func command(args []string) string {
 			continue
 		}
 		switch a {
-		case "run", "doctor", "list", "version", "validate", "init":
+		case "run", "doctor", "list", "version", "validate", "init", "update":
 			return a
 		case "skill":
 			if i+1 < len(args) && args[i+1] == "install" {
@@ -116,7 +116,7 @@ func splitFlag(arg string) (string, bool) {
 }
 
 func jsonMode(args []string) bool {
-	valueFlags := map[string]bool{"--repo": true, "--job": true, "--arch": true, "--timeout": true, "--command": true, "--preset": true, "--image": true, "--agent": true, "--scope": true}
+	valueFlags := map[string]bool{"--repo": true, "--job": true, "--arch": true, "--timeout": true, "--command": true, "--preset": true, "--image": true, "--agent": true, "--scope": true, "--version": true}
 	mode := false
 	for i := 0; i < len(args); i++ {
 		a := args[i]
@@ -159,7 +159,7 @@ func newRoot(ctx context.Context, stdout, stderr io.Writer) *cobra.Command {
 	root.SetErr(stderr)
 	var repo string
 	root.PersistentFlags().StringVar(&repo, "repo", ".", "target repository path")
-	root.AddCommand(versionCmd(stdout), doctorCmd(stdout, &repo), listCmd(stdout, &repo), runCmd(ctx, stdout, stderr, &repo), validateCmd(stdout, &repo), initCmd(stdout, &repo), skillCmd(stdout, &repo))
+	root.AddCommand(versionCmd(stdout), doctorCmd(stdout, &repo), listCmd(stdout, &repo), runCmd(ctx, stdout, stderr, &repo), validateCmd(stdout, &repo), initCmd(stdout, &repo), skillCmd(stdout, &repo), updateCmd(stdout, stderr, &repo))
 	return root
 }
 func versionCmd(out io.Writer) *cobra.Command {

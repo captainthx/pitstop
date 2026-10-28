@@ -1,0 +1,114 @@
+=== RUN   TestParseStableVersion
+--- PASS: TestParseStableVersion (0.00s)
+=== RUN   TestParseStableVersionRejectsMalformed
+--- PASS: TestParseStableVersionRejectsMalformed (0.00s)
+=== RUN   TestAcquireLockIsNonblockingAndPersistent
+--- PASS: TestAcquireLockIsNonblockingAndPersistent (0.00s)
+=== RUN   TestAcquireLockRejectsFIFOWithoutBlocking
+--- PASS: TestAcquireLockRejectsFIFOWithoutBlocking (0.00s)
+=== RUN   TestChildCancellationKillsProcessGroupPromptly
+--- PASS: TestChildCancellationKillsProcessGroupPromptly (0.10s)
+=== RUN   TestExecuteSameVersionRefreshUsesCurrentExecutable
+--- PASS: TestExecuteSameVersionRefreshUsesCurrentExecutable (0.32s)
+=== RUN   TestExecutePreflightBlocksBeforeReplacement
+--- PASS: TestExecutePreflightBlocksBeforeReplacement (0.35s)
+=== RUN   TestExecutePublishesNewChildToAllExistingSkillScopes
+--- PASS: TestExecutePublishesNewChildToAllExistingSkillScopes (2.51s)
+=== RUN   TestInventorySkipsAbsentSkillDestinations
+--- PASS: TestInventorySkipsAbsentSkillDestinations (0.01s)
+=== RUN   TestChildSkillActionsRejectMalformedAndFailedEnvelopes
+--- PASS: TestChildSkillActionsRejectMalformedAndFailedEnvelopes (0.38s)
+=== RUN   TestInstallTargetStartFailureIsClassifiedBeforeMutation
+--- PASS: TestInstallTargetStartFailureIsClassifiedBeforeMutation (0.00s)
+=== RUN   TestExecuteRejectsUnsafeExecutableAndExplicitRepo
+--- PASS: TestExecuteRejectsUnsafeExecutableAndExplicitRepo (0.01s)
+=== RUN   TestExecuteCancelledBeforePublicationDoesNotMarkPartial
+--- PASS: TestExecuteCancelledBeforePublicationDoesNotMarkPartial (0.00s)
+=== RUN   TestExecuteStageAndVersionFailuresPreserveExecutable
+--- PASS: TestExecuteStageAndVersionFailuresPreserveExecutable (0.90s)
+=== RUN   TestDefaultLatestDoesNotDowngradeNewerCurrent
+--- PASS: TestDefaultLatestDoesNotDowngradeNewerCurrent (0.14s)
+=== RUN   TestExecuteRejectsExecutableIdentityChangeDuringStaging
+--- PASS: TestExecuteRejectsExecutableIdentityChangeDuringStaging (0.63s)
+=== RUN   TestResolveLatestValidatesStableOfficialReleaseURL
+=== RUN   TestResolveLatestValidatesStableOfficialReleaseURL/stable
+=== RUN   TestResolveLatestValidatesStableOfficialReleaseURL/prerelease
+=== RUN   TestResolveLatestValidatesStableOfficialReleaseURL/wrong-path
+=== RUN   TestResolveLatestValidatesStableOfficialReleaseURL/http-error
+--- PASS: TestResolveLatestValidatesStableOfficialReleaseURL (0.00s)
+    --- PASS: TestResolveLatestValidatesStableOfficialReleaseURL/stable (0.00s)
+    --- PASS: TestResolveLatestValidatesStableOfficialReleaseURL/prerelease (0.00s)
+    --- PASS: TestResolveLatestValidatesStableOfficialReleaseURL/wrong-path (0.00s)
+    --- PASS: TestResolveLatestValidatesStableOfficialReleaseURL/http-error (0.00s)
+PASS
+ok  	pitstop/internal/update	5.491s
+=== RUN   TestInitCLIJSONNoHEADAndPermissions
+--- PASS: TestInitCLIJSONNoHEADAndPermissions (0.03s)
+=== RUN   TestInitCLIDryRunExistingAndBrokenSymlink
+=== RUN   TestInitCLIDryRunExistingAndBrokenSymlink/existing
+=== RUN   TestInitCLIDryRunExistingAndBrokenSymlink/broken_symlink
+--- PASS: TestInitCLIDryRunExistingAndBrokenSymlink (0.03s)
+    --- PASS: TestInitCLIDryRunExistingAndBrokenSymlink/existing (0.02s)
+    --- PASS: TestInitCLIDryRunExistingAndBrokenSymlink/broken_symlink (0.02s)
+=== RUN   TestInitCLIInputErrorsAndHelp
+--- PASS: TestInitCLIInputErrorsAndHelp (0.02s)
+=== RUN   TestInitCLICancelledBeforeWrite
+--- PASS: TestInitCLICancelledBeforeWrite (0.01s)
+=== RUN   TestInitCLICancellationDuringGitResolution
+--- PASS: TestInitCLICancellationDuringGitResolution (1.32s)
+=== RUN   TestInitCLIStdoutFailure
+--- PASS: TestInitCLIStdoutFailure (0.02s)
+=== RUN   TestInitCLIIsOfflineAndDoesNotRunCommands
+--- PASS: TestInitCLIIsOfflineAndDoesNotRunCommands (0.03s)
+=== RUN   TestValidateOfflineAndNoWrites
+--- PASS: TestValidateOfflineAndNoWrites (0.05s)
+=== RUN   TestValidateJSONFailures
+--- PASS: TestValidateJSONFailures (0.07s)
+=== RUN   TestValidateCancellationAndFlagValues
+--- PASS: TestValidateCancellationAndFlagValues (0.01s)
+=== RUN   TestSyntaxErrorsRespectCobraJSONValuesAndStringFlags
+--- PASS: TestSyntaxErrorsRespectCobraJSONValuesAndStringFlags (0.00s)
+=== RUN   TestValidateOutputFailureDoesNotWriteSecondEnvelope
+--- PASS: TestValidateOutputFailureDoesNotWriteSecondEnvelope (0.03s)
+=== RUN   TestValidateCancellationWinsOverFailedLoad
+--- PASS: TestValidateCancellationWinsOverFailedLoad (0.02s)
+=== RUN   TestExistingHumanCommandPropagatesLaterWriteFailure
+--- PASS: TestExistingHumanCommandPropagatesLaterWriteFailure (0.02s)
+=== RUN   TestValidateCommandFlagsAndEnvelope
+--- PASS: TestValidateCommandFlagsAndEnvelope (0.03s)
+=== RUN   TestValidateAcceptsSpaceAndCommandNamedRepositories
+--- PASS: TestValidateAcceptsSpaceAndCommandNamedRepositories (0.03s)
+=== RUN   TestValidateCancellationWinsOverResolveRepoFailure
+--- PASS: TestValidateCancellationWinsOverResolveRepoFailure (0.07s)
+=== RUN   TestHelpDescribesDockerChecks
+--- PASS: TestHelpDescribesDockerChecks (0.00s)
+=== RUN   TestRunRejectsRemovedActFlag
+--- PASS: TestRunRejectsRemovedActFlag (0.00s)
+=== RUN   TestVersionJSONIsOneEnvelope
+--- PASS: TestVersionJSONIsOneEnvelope (0.00s)
+=== RUN   TestListReadsChecksConfig
+--- PASS: TestListReadsChecksConfig (0.02s)
+=== RUN   TestSkillInstallProjectDryRunJSON
+--- PASS: TestSkillInstallProjectDryRunJSON (0.02s)
+=== RUN   TestSkillInstallUserRejectsExplicitRepo
+--- PASS: TestSkillInstallUserRejectsExplicitRepo (0.01s)
+=== RUN   TestSkillInstallBuiltCLIWorksOutsideSourceCheckout
+--- PASS: TestSkillInstallBuiltCLIWorksOutsideSourceCheckout (0.78s)
+=== RUN   TestSkillInstallCLIInvalidArgsAndWriterFailure
+--- PASS: TestSkillInstallCLIInvalidArgsAndWriterFailure (0.02s)
+=== RUN   TestUpdateRejectsMalformedVersionBeforeDownload
+--- PASS: TestUpdateRejectsMalformedVersionBeforeDownload (0.00s)
+=== RUN   TestUpdateRejectsEmptyExplicitVersion
+--- PASS: TestUpdateRejectsEmptyExplicitVersion (0.00s)
+PASS
+ok  	pitstop/internal/cli	2.771s
+=== RUN   TestExitPrecedence
+--- PASS: TestExitPrecedence (0.00s)
+=== RUN   TestHumanSkillInstallErrorShowsRecoveryWarning
+--- PASS: TestHumanSkillInstallErrorShowsRecoveryWarning (0.00s)
+=== RUN   TestHumanEscapesAndBoundsUntrustedPathsAndErrors
+--- PASS: TestHumanEscapesAndBoundsUntrustedPathsAndErrors (0.00s)
+=== RUN   TestEnvelopeIsOneDocument
+--- PASS: TestEnvelopeIsOneDocument (0.00s)
+PASS
+ok  	pitstop/internal/report	0.111s

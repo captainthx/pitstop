@@ -1,0 +1,2 @@
+offline config-agent smoke passed: init/validate/custom/skill and all embedded examples/mappings
+runtime toolchain smoke skipped (PITSTOP_CONFIG_AGENT_RUNTIME=0); Docker evidence is unverified

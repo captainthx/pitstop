@@ -28,6 +28,8 @@ If the CLI is missing, use the [public HTTPS installer procedure](../internal/ag
 
 The canonical skill and references are [SKILL.md](../internal/agentassets/bundle/SKILL.md), [config-reference.md](../internal/agentassets/bundle/references/config-reference.md), [examples.md](../internal/agentassets/bundle/references/examples.md), and [workflow-mapping.md](../internal/agentassets/bundle/references/workflow-mapping.md). Installed bundles contain those same resources and relative links.
 
+When the user explicitly requests an upgrade, `pitstop update` refreshes the CLI plus existing user/selected-project skills; the new executable installs its own embedded bundle. This is separate from ordinary test requests and does not authorize automatic CLI upgrades during project testing. Published v0.1.0 needs its first installer/source-build upgrade because it has no update command.
+
 ## Agent workflow
 
 Ask the agent to inspect `pitstop version` and command help first. If the CLI is missing, use the reviewed public installer in a fresh temporary `--bin-dir` as described above, and use its absolute binary path; preserve existing binaries. Then it should read the existing `.pitstop.json`, manifests, lockfiles, package scripts, workflows, and local actions without executing them. The agent should select the smallest requested scope, preserve a valid existing config, choose an image and tool versions from evidence, and record prerequisites and omissions. For an absent config, `init --dry-run` is a preview; write only an evidence-backed config. It should draft or edit schema-v2 JSON and run:

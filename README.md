@@ -33,6 +33,8 @@ pitstop version
 
 The [direct `install.sh` download](https://github.com/captainthx/pitstop/releases/latest/download/install.sh) is the same script. [GitHub CLI installation](docs/install.md#authenticated-github-cli-route) and [source builds](#build-from-source) are optional alternatives. The installer verifies checksum/version before replacement, never uses sudo or edits shell profiles, and requires `--force` to replace an existing binary. Full install, upgrade and trust guidance is in [docs/install.md](docs/install.md).
 
+Use `pitstop update` for subsequent upgrades: it checks the latest stable release and refreshes existing user/current-project skills too. This command is in current source builds, **not** published v0.1.0; that version needs its first installer upgrade. See [update behavior and scope](docs/install.md#อัปเกรด--upgrade).
+
 ### Build from source
 
 Use Git and Go **1.26.5** from `go.mod`:
@@ -90,6 +92,7 @@ pitstop run --repo "$TARGET_REPO" --json > result.json 2> progress.log
 | `pitstop doctor` | Check repository, config, Git/Docker and image readiness; supports `--json` |
 | `pitstop list` | List configured checks and selection; supports `--json` |
 | `pitstop run` | Execute selected checks; supports `--job`, `--timeout`, `--arch`, `--json` |
+| `pitstop update` | Check latest stable, then update the CLI and existing skills; supports `--version`, `--json` |
 | `pitstop version` | Show version/build metadata; supports `--json` |
 | `pitstop skill` | Manage installed agent skills |
 | `pitstop skill install` | Install the optional config skill; supports `--agent`, `--scope`, `--dry-run`, `--force`, `--json` |

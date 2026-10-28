@@ -68,6 +68,30 @@ sh "$PITSTOP_INSTALLER" --help
 
 ## อัปเกรด / Upgrade
 
+### คำสั่งเดียว / One command
+
+สำหรับ source build ปัจจุบัน หรือ binary release ที่มีคำสั่ง `update` ใช้เพียง / For a current source build or a binary release that includes `update`, run:
+
+```sh
+pitstop update
+```
+
+คำสั่งจะเช็ก stable ล่าสุดเอง ไม่ต้องระบุเวอร์ชัน อัปเดต executable ที่กำลังใช้งานในตำแหน่งจริง พร้อม Codex/Claude skills ที่ติดตั้งไว้แล้วของ user และ Git root ปัจจุบัน (หรือ `--repo` ที่เลือก) ไม่ติดตั้ง skill เพิ่มและไม่ค้น repo อื่น หาก CLI ล่าสุดแล้วจะคง binary และยัง refresh skills ต่อ / It resolves the latest stable release automatically, updates the running executable at its actual location, and refreshes existing Codex/Claude user and selected-project skills. It neither creates missing skills nor scans other repositories. An already-current CLI still refreshes skills.
+
+```sh
+pitstop update --repo /absolute/path/to/project --json
+```
+
+`--repo` ที่ไม่ระบุและ cwd นอก Git จะเลือกเฉพาะ user skills; ถ้าระบุ repo ผิดจะ fail ก่อนเปลี่ยนไฟล์ `--json` แยก JSON stdout จาก progress stderr / An implicit non-Git cwd selects user skills only; an explicit invalid repo fails before mutation. JSON output stays on stdout, progress on stderr.
+
+ตรวจ binary checksum/version และให้ binary รุ่นใหม่ preflight skills ก่อนแทน CLI หาก skill ถูกแก้เองหรือไม่รู้จักจะคงไฟล์เดิมและ block การอัปเดต ถ้าเกิดข้อผิดพลาดหลังเปลี่ยน CLI แล้วจะรายงานว่าเปลี่ยนอะไรสำเร็จและอะไรยังเหลือ ไม่อ้าง rollback ทั้งชุด / Download/checksum/version and new-binary skill preflight failures preserve the current CLI and skills. Modified/unknown skill directories block the update. A late failure reports actual partial completion; CLI and multiple skill directories are not a single atomic transaction. Exit codes: `0` complete/already current, `2` blocked/failed/partial, `130` cancelled.
+
+เลือก stable tag เองด้วย `pitstop update --version vMAJOR.MINOR.PATCH` เมื่อจงใจ pin/reinstall/downgrade เท่านั้น ไม่แก้ `.pitstop.json`, shell profiles หรือขอ sudo / Use an explicit stable `--version` only for intentional pin/reinstall/downgrade. Updating does not change project configs, shell profiles or use sudo.
+
+### อัปเกรดครั้งแรกจาก v0.1.0 หรือทำด้วยตนเอง / First v0.1.0 upgrade or manual installation
+
+Published v0.1.0 ยังไม่มี `pitstop update` ต้องใช้ installer ครั้งแรกเมื่อมี release ใหม่ที่รวมคำสั่งนี้ หรือ build จาก source ก่อน การเพิ่มคำสั่งใน source ไม่ได้เผยแพร่ release ใหม่ / Published v0.1.0 has no update command. Its first upgrade needs the existing installer after a new release is published, or a source build. Implementing this command does not publish that release.
+
 ดาวน์โหลดและอ่าน installer ใหม่ตามขั้นตอนด้านบน แล้วใช้ `--force` เพื่ออนุญาตแทนที่ไฟล์เดิมอย่างชัดเจน / Download and review the installer again, then explicitly allow replacement:
 
 ```sh
@@ -75,7 +99,7 @@ sh "$PITSTOP_INSTALLER" --force
 pitstop version
 ```
 
-หากใช้ `--bin-dir` ต้องส่งตำแหน่งเดิมทุกครั้ง ตัวติดตั้งไม่เขียนทับ symlink หรือ directory แม้ระบุ force และไม่เปลี่ยน config หรือ skill ที่เคยติดตั้ง / Repeat a custom --bin-dir on upgrades. Symlinks and non-regular destinations are refused even with force. Project configs and installed skills are not changed by CLI upgrades.
+หากใช้ `--bin-dir` ต้องส่งตำแหน่งเดิมทุกครั้ง ตัวติดตั้งไม่เขียนทับ symlink หรือ directory แม้ระบุ force และ standalone installer ไม่เปลี่ยน config หรือ skill ที่เคยติดตั้ง / Repeat a custom --bin-dir for standalone-installer upgrades. Symlinks and non-regular destinations are refused even with force. The standalone installer leaves project configs and installed skills unchanged; `pitstop update` separately refreshes existing skills.
 
 ## ลบ CLI / Remove the CLI
 
@@ -111,4 +135,4 @@ sh scripts/release.sh v0.1.0 /absolute/path/to/new-release-directory
 4. `.github/workflows/release.yml` ทดสอบบน macOS/Linux, ตรวจ source และสร้าง binary 4 ไฟล์, `install.sh`, `checksums.txt` ก่อนสร้าง **draft** GitHub Release สิทธิ์เขียน repo อยู่เฉพาะ job สร้าง draft และไม่ checkout source ใน job นั้น / The workflow tests and builds six assets, then creates a draft. Only the draft job receives contents:write; it does not check out or execute project source.
 5. ตรวจ draft, checksums, tag/commit, native smoke และ release notes แล้วค่อย publish ผ่าน GitHub UI หรือ CLI ก่อนแจก installer link / Inspect the draft, checksums, tag/commit, native smoke and notes; publish through GitHub UI or CLI before distributing the install link.
 
-รัน workflow ซ้ำบน tag ที่มี release แล้วจะล้มเหลวแทนการเขียนทับ assets เดิม Homebrew, Windows, signed releases, notarization, self-update และการทดสอบ runtime ทุกสถาปัตยกรรมยังไม่รวม / Rerunning a tag with an existing release fails rather than overwriting assets. Homebrew, Windows, signing, notarization, self-update and complete native coverage are deferred.
+รัน workflow ซ้ำบน tag ที่มี release แล้วจะล้มเหลวแทนการเขียนทับ assets เดิม Homebrew, Windows, signed releases, notarization และการทดสอบ runtime ทุกสถาปัตยกรรมยังไม่รวม / Rerunning a tag with an existing release fails rather than overwriting assets. Homebrew, Windows, signing, notarization and complete native coverage are deferred.

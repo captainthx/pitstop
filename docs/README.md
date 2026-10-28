@@ -33,6 +33,10 @@ Updated 2026-10-28: `init`, `validate`, `list`, `doctor`, `run` and `skill insta
 
 หลักฐาน agent trial อยู่ใน [ดัชนีหลักฐาน config-agent](evidence/config-agent-trials/README.md); runtime/toolchain verification ต้องมีหลักฐานการรันจริงแยกต่างหาก / Agent-trial evidence is in the [config-agent evidence index](evidence/config-agent-trials/README.md); runtime/toolchain verification requires separate actual-run evidence.
 
+## CLI and skill self-update — 2026-10-28
+
+Current source builds include `pitstop update`: resolve the latest stable version, update the running executable and refresh existing user/selected-project Codex/Claude skills. [Installation/update guide](install.md#อัปเกรด--upgrade), [approved design](superpowers/specs/2026-10-28-integration-and-update-design.md), [sequential plan](superpowers/plans/2026-10-28-integration-and-update.md), and [verification evidence](evidence/self-update/README.md). Published v0.1.0 remains unchanged and has no update command.
+
 ## Agent testing workflow — 2026-10-28
 
 README และคู่มือคำสั่งไทย/อังกฤษจัดใหม่แล้ว source builds ฝัง skill bundle v2 สำหรับ `validate` → `list` → `doctor` → `run` และอ่าน report/logs ก่อนสรุป ส่วน released v0.1.0 ยังคง bundle v1 / Fresh source builds embed workflow bundle v2; released v0.1.0 remains unchanged.

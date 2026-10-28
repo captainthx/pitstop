@@ -36,14 +36,14 @@
 
 **Interfaces:** `update.Execute(ctx context.Context, opts Options) (model.UpdateResult, error)`; options carry current version, actual executable path, repository/default-versus-explicit repo, optional target version and progress writer. Result carries executable/version/CLI status, per-existing-skill outcomes and partial state. CLI owns the JSON envelope and command exit mapping.
 
-- [ ] Write updater regression tests before implementation: staged/new binary supplies skills, all four existing known scope/agent targets, absent targets untouched, unknown/modified preflight refusal and CLI byte preservation, default same/newer version behavior, malformed versions/redirects, failed download/checksum/version, unsafe target/lock contention, cancellation and late partial completion. Keep test hooks internal and deterministic.
-- [ ] Run focused tests RED; retain output and check failures concern missing updater behavior.
-- [ ] Embed and reuse the checked-in installer; implement bounded latest-tag resolution, same-filesystem private staging, verified new-binary preflight, locked atomic replacement and actual new-process skill installation. No generic updater framework or recursive skill search.
-- [ ] Implement `pitstop update [--version vX.Y.Z] [--json]`, inheriting `--repo`. Outside implicit non-Git cwd refresh user skills only; explicit invalid repo blocks before changes. Return 0/2/130 per spec; blocked dry-run action is not success; JSON progress stays on stderr.
-- [ ] Run focused updater/CLI tests GREEN; validate actual subprocess argv/result validation, all preservation and partial-state cases. Capture structured output from isolated end-to-end temp binaries without touching installed tools.
-- [ ] Update bilingual command/help/installation docs; describe one-command automatic behavior, scope limits, first upgrade from v0.1.0 and no automatic release publication. Cross-check help/links.
-- [ ] Run `rtk proxy env GOTOOLCHAIN=go1.26.5 go test -race -count=1 ./...`, `go vet ./...` with the same toolchain, and fresh-build/offline smoke. Avoid toolchain downloads into the smoke's disposable HOME by using the already installed Go toolchain bin directory with `GOTOOLCHAIN=local`.
-- [ ] Parent reviews full branch diff against the design, verifies checks, commits and merges before Task 2.
+- [x] Write updater regression tests before implementation: staged/new binary supplies skills, all four existing known scope/agent targets, absent targets untouched, unknown/modified preflight refusal and CLI byte preservation, default same/newer version behavior, malformed versions/redirects, failed download/checksum/version, unsafe target/lock contention, cancellation and late partial completion. Keep test hooks internal and deterministic.
+- [x] Run focused tests RED; retain output and check failures concern missing updater behavior.
+- [x] Embed and reuse the checked-in installer; implement bounded latest-tag resolution, same-filesystem private staging, verified new-binary preflight, locked atomic replacement and actual new-process skill installation. No generic updater framework or recursive skill search.
+- [x] Implement `pitstop update [--version vX.Y.Z] [--json]`, inheriting `--repo`. Outside implicit non-Git cwd refresh user skills only; explicit invalid repo blocks before changes. Return 0/2/130 per spec; blocked dry-run action is not success; JSON progress stays on stderr.
+- [x] Run focused updater/CLI tests GREEN; validate actual subprocess argv/result validation, all preservation and partial-state cases. Capture structured output from isolated end-to-end temp binaries without touching installed tools.
+- [x] Update bilingual command/help/installation docs; describe one-command automatic behavior, scope limits, first upgrade from v0.1.0 and no automatic release publication. Cross-check help/links.
+- [x] Run `rtk proxy env GOTOOLCHAIN=go1.26.5 go test -race -count=1 ./...`, `go vet ./...` with the same toolchain, and fresh-build/offline smoke. Avoid toolchain downloads into the smoke's disposable HOME by using the already installed Go toolchain bin directory with `GOTOOLCHAIN=local`.
+- [x] Parent reviews full branch diff against the design, verifies checks, commits and merges before Task 2.
 
 ## Task 2 — Testcontainers runner
 
@@ -83,4 +83,4 @@
 ## Progress
 
 - Design approved; user explicitly chose `luna_worker` implementation on 2026-10-28.
-- Implementation tasks not started when this plan was created. Mark steps and record commits/checks as work completes.
+- Task 1 verified with full race/vet/offline smoke plus real compiled CLI/installer acceptance; [evidence](../../evidence/self-update/README.md). Separate existing-test timing fix: `feature/captured-config-test`, commit `1678567`. Task 1 is ready for parent merge; Tasks 2–3 remain pending.

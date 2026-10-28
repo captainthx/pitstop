@@ -1,0 +1,6 @@
+Go test: 0 passed, 1 failed in 1 packages
+
+update [build failed]
+  internal/update/update_test.go:13:15: undefined: parseStableVersion
+  internal/update/update_test.go:22:16: undefined: parseStableVersion
+[full output: "$HOME/Library/Application Support/rtk/tee/1793174380_go_test.log"]

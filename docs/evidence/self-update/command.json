@@ -1,0 +1,9 @@
+[
+  "/private/var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T/pitstop-self-update-acceptance-5nhebj2s/verified/custom bin with spaces/pitstop",
+  "update",
+  "--version",
+  "v1.2.3",
+  "--repo",
+  "/private/var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T/pitstop-self-update-acceptance-5nhebj2s/verified/project with spaces",
+  "--json"
+]

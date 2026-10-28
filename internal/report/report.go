@@ -68,6 +68,7 @@ func Human(w io.Writer, e model.Envelope) error {
 		}
 		switch e.Result.(type) {
 		case model.RunReport, model.ValidateResult, model.SkillInstallResult:
+		case model.UpdateResult:
 		default:
 			return nil
 		}
@@ -129,6 +130,17 @@ func Human(w io.Writer, e model.Envelope) error {
 		}
 		for _, warning := range r.Warnings {
 			if _, err := fmt.Fprintln(w, "warning:", DisplayMessage(warning)); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	if r, ok := e.Result.(model.UpdateResult); ok {
+		if _, err := fmt.Fprintf(w, "update: cli=%s previous=%s target=%s executable=%s partial=%t\n", DisplayMessage(r.CLIStatus), DisplayMessage(r.PreviousVersion), DisplayMessage(r.TargetVersion), displayPath(r.ExecutablePath), r.Partial); err != nil {
+			return err
+		}
+		for _, target := range r.Targets {
+			if _, err := fmt.Fprintf(w, "  %s/%s: %s target=%s\n", DisplayMessage(target.Agent), DisplayMessage(target.Scope), DisplayMessage(target.Status), displayPath(target.TargetPath)); err != nil {
 				return err
 			}
 		}

@@ -326,6 +326,21 @@ type SkillInstallResult struct {
 	Installed     bool     `json:"installed"`
 	Warnings      []string `json:"warnings"`
 }
+type UpdateTarget struct {
+	Agent      string `json:"agent"`
+	Scope      string `json:"scope"`
+	TargetPath string `json:"targetPath"`
+	Status     string `json:"status"`
+	Message    string `json:"message,omitempty"`
+}
+type UpdateResult struct {
+	ExecutablePath  string         `json:"executablePath"`
+	PreviousVersion string         `json:"previousVersion"`
+	TargetVersion   string         `json:"targetVersion"`
+	CLIStatus       string         `json:"cliStatus"`
+	Partial         bool           `json:"partial"`
+	Targets         []UpdateTarget `json:"targets"`
+}
 type VersionResult struct {
 	Version   string  `json:"version"`
 	Commit    *string `json:"commit"`

@@ -1,0 +1,13 @@
+{
+  "case": "real compiled updater/new-bundle all-four scopes",
+  "release": "hypothetical v1.2.3, not a public release",
+  "download": "controlled curl fixture; real embedded installer/checksum/version",
+  "previousBinarySha256": "76dcd88b523aa1a9cf37d6979ab5da1df85538460e29f9ea650e29c4f97d474c",
+  "newBinarySha256": "4c8b0b4ce463ada1faf83cb10a230513edf9d989837dac8fc83cd8ae35669dfc",
+  "newManifestSha256": "71ae49efc42ef5f6f9a171ee462b3d597b7d1f3bf2b4cf41b965804bbe7ddfba",
+  "updatedTargets": 4,
+  "cliExit": 0,
+  "markerInstalledFromNewProcess": true,
+  "automaticLatest": "passed: real public latest metadata, newer binary preserved",
+  "modifiedAndUnknownFilesPreserved": true
+}

@@ -1,0 +1,17 @@
+?   	pitstop	[no test files]
+?   	pitstop/cmd/pitstop	[no test files]
+ok  	pitstop/internal/agentassets	1.506s
+ok  	pitstop/internal/cli	6.024s
+ok  	pitstop/internal/config	3.496s
+ok  	pitstop/internal/dockerchecks	2.233s
+ok  	pitstop/internal/model	1.384s
+ok  	pitstop/internal/report	1.849s
+--- FAIL: TestExecuteRejectsInvalidCapturedConfigBeforePrepare (1.04s)
+    run_test.go:94: envelope=model.Envelope{SchemaVersion:1, Command:"run", ExitCode:2, Result:interface {}(nil), Error:(*model.ErrorInfo)(0xc0001b6660)} err=DOCKER_UNAVAILABLE: cannot inspect Docker image: configured image is not present locally
+FAIL
+FAIL	pitstop/internal/run	2.019s
+ok  	pitstop/internal/skill	7.928s
+ok  	pitstop/internal/snapshot	2.180s
+ok  	pitstop/internal/update	7.922s
+ok  	pitstop/scripts	7.462s
+FAIL

@@ -241,7 +241,7 @@ Private registry ใช้การ login ของ Docker CLI บน host ก�
 
 ## คำสั่งและ flags
 
-`--repo string` เป็น persistent global flag ของทุกคำสั่ง ค่าเริ่มต้น `.` และ resolve เป็น Git root; Pitstop อ่าน `.pitstop.json` จาก root นี้และไม่ค้นหา config ที่อื่น ใช้ quotes เมื่อ path มีช่องว่าง คำสั่ง `skill install` ใช้ `--repo` เฉพาะ `--scope project`; ถ้าเป็น `--scope user` อย่าส่ง `--repo` แบบ explicit เพราะจะถูกปฏิเสธ
+`--repo string` เป็น persistent global flag ของทุกคำสั่ง ค่าเริ่มต้น `.`; คำสั่งตรวจโปรเจกต์ resolve เป็น Git root และอ่าน `.pitstop.json` จาก root นี้ ส่วน `update` ใช้เลือก project skills และถ้า cwd นอก Git โดยไม่ระบุ repo จะเลือกเฉพาะ user skills ใช้ quotes เมื่อ path มีช่องว่าง คำสั่ง `skill install` ใช้ `--repo` เฉพาะ `--scope project`; ถ้าเป็น `--scope user` อย่าส่ง `--repo` แบบ explicit เพราะจะถูกปฏิเสธ
 
 | คำสั่ง | หน้าที่ | Flags เพิ่มเติม |
 | --- | --- | --- |
@@ -251,6 +251,7 @@ Private registry ใช้การ login ของ Docker CLI บน host ก�
 | `pitstop doctor` | ตรวจ repository/config, Git/Docker และ image readiness | `--json` |
 | `pitstop list` | แสดง checks ทั้งหมดพร้อม selected/excluded จาก config; ไม่ต้องเปิด Docker | `--json` |
 | `pitstop run` | รัน checks ตาม selection | `--job`, `--timeout`, `--arch`, `--json` |
+| `pitstop update` | อัปเดต CLI และ skills ที่ติดตั้งอยู่ใน user/selected project | `--version`, `--json` |
 | `pitstop version` | แสดง version และ build information เมื่อมี | `--json` |
 | `pitstop skill` | จัดการ agent skills ที่ติดตั้ง | ใช้ subcommand `install` |
 | `pitstop skill install` | ติดตั้ง portable Pitstop config skill ให้ agent | `--agent`, `--scope`, `--dry-run`, `--force`, `--json` |
@@ -274,7 +275,7 @@ pitstop skill --help
 | --- | --- | --- | --- |
 | `--repo` | `string` | `"."` | global ทุกคำสั่ง; resolve เป็น Git root |
 | `--help`, `-h` | `bool` | `false` | global help ของคำสั่งปัจจุบัน |
-| `--json` | `bool` | `false` | `init`, `validate`, `doctor`, `list`, `run`, `version`, `skill install` |
+| `--json` | `bool` | `false` | `init`, `validate`, `doctor`, `list`, `run`, `version`, `update`, `skill install` |
 | `--dry-run` | `bool` | `false` | `init`, `skill install`; preview โดยไม่เขียน |
 | `--force` | `bool` | `false` | `skill install`; แทนที่ได้เฉพาะ bundle ที่เป็นของ Pitstop |
 | `--no-descriptions` | `bool` | `false` | completion ของ `bash`, `zsh`, `fish`, `powershell` |
@@ -286,6 +287,7 @@ pitstop skill --help
 | `--arch` | `string` | ค่าว่าง | `init`, `validate`, `run`; init เดาจาก host ส่วน validate/run ใช้ค่าใน config เมื่อไม่ override |
 | `--job` | `strings` | ไม่มีค่า | `validate`, `run`; ส่งซ้ำหรือคั่น comma ได้ และใช้ `jobs` ใน config เมื่อไม่ระบุ |
 | `--timeout` | `duration` | `20m0s` | `run`; timeout ต่อ check ต้องมากกว่า 0 |
+| `--version` | `string` | ไม่ระบุ = stable ล่าสุด | `update`; ระบุ stable tag `vMAJOR.MINOR.PATCH` เพื่อ pin/reinstall/downgrade โดยชัดแจ้ง |
 
 ```sh
 pitstop help run
@@ -327,6 +329,19 @@ pitstop completion bash --no-descriptions > pitstop.bash
 Ctrl+C หรือ SIGTERM ยกเลิก run การ stop/remove มีเวลาจำกัดแยกจาก timeout จึงอาจใช้เวลาเพิ่มก่อนคำสั่งจบ หาก daemon ไม่ตอบให้ดู `CLEANUP_INCOMPLETE` ใน warnings
 
 `doctor` ไม่ pull image และไม่รัน commands; image ที่ยังไม่มีอาจขึ้น `ready` พร้อมข้อความว่าจะ pull ตอน run `ready` ไม่รับประกัน network, dependencies หรือผล tests
+
+### อัปเดต CLI และ skills
+
+```sh
+pitstop update
+pitstop update --repo "/path/to/project" --json
+```
+
+`pitstop update` เช็ก stable ล่าสุดเอง อัปเดต binary ที่กำลังใช้งานอยู่ และ refresh เฉพาะ Codex/Claude skills ที่ติดตั้งไว้แล้วใน user scope กับ Git root ที่เลือก ไม่สร้าง skill ที่ยังไม่มีและไม่ค้นทุกโปรเจกต์ ถ้า CLI ล่าสุดแล้วจะคง binary เดิมและยังตรวจ skills ต่อ `--version` เป็นการเลือก tag อย่างชัดแจ้ง รวม reinstall/downgrade จึงใช้เมื่อจำเป็นเท่านั้น
+
+ถ้าไม่ได้ระบุ `--repo` และ cwd ไม่ใช่ Git repo จะอัปเดตเฉพาะ user skills; ถ้าระบุ repo ผิดอย่างชัดแจ้งจะ fail ก่อนเปลี่ยนไฟล์ ตรวจ checksum/version และ preflight skills ก่อนแทน binary ไม่เขียนทับ skill ที่แก้เองหรือไม่รู้จัก หากอัปเดต CLI แล้วแต่ skill บางตัวล้มเหลวจะรายงาน partial แทนการอ้างว่าทั้งหมดสำเร็จ JSON อยู่ stdout, progress อยู่ stderr; exit `0` คือเสร็จ/ล่าสุดแล้ว, `2` คือ blocked/failed/partial และ `130` คือยกเลิก
+
+คำสั่งนี้ต้องใช้ source build ใหม่หรือ binary release ที่มี `update`; published v0.1.0 ยังไม่มีคำสั่งนี้ ดู[คู่มือติดตั้ง](install.md#อัปเกรด--upgrade) สำหรับการอัปเกรดครั้งแรก
 
 ### Docker endpoint
 

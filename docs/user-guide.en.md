@@ -241,7 +241,7 @@ Log in to private registries with the host Docker CLI before running. Host crede
 
 ## Commands and flags
 
-`--repo string` is a persistent global flag on every command. It defaults to `.` and resolves to the Git root; Pitstop reads `.pitstop.json` there and does not search elsewhere. Quote paths containing spaces. `skill install` accepts `--repo` only with `--scope project`; for `--scope user`, do not pass `--repo` explicitly because it is rejected.
+`--repo string` is a persistent global flag on every command. It defaults to `.`; repository check commands resolve it to the Git root and read `.pitstop.json` there. `update` uses it to select existing project skills, and an implicit non-Git cwd selects user skills only. Quote paths containing spaces. `skill install` accepts `--repo` only with `--scope project`; for `--scope user`, do not pass `--repo` explicitly because it is rejected.
 
 | Command | Purpose | Additional flags |
 | --- | --- | --- |
@@ -251,6 +251,7 @@ Log in to private registries with the host Docker CLI before running. Host crede
 | `pitstop doctor` | Probe repository/config, Git/Docker and image readiness | `--json` |
 | `pitstop list` | List selected/excluded checks from config; does not require Docker | `--json` |
 | `pitstop run` | Execute selected checks | `--job`, `--timeout`, `--arch`, `--json` |
+| `pitstop update` | Update the CLI and installed user/selected-project skills | `--version`, `--json` |
 | `pitstop version` | Version and build information when available | `--json` |
 | `pitstop skill` | Manage installed agent skills | Use the `install` subcommand |
 | `pitstop skill install` | Install the portable Pitstop config skill for an agent | `--agent`, `--scope`, `--dry-run`, `--force`, `--json` |
@@ -274,7 +275,7 @@ This table uses the types and defaults shown by Cobra help. Boolean flags defaul
 | --- | --- | --- | --- |
 | `--repo` | `string` | `"."` | global on every command; resolves to the Git root |
 | `--help`, `-h` | `bool` | `false` | help for the current command |
-| `--json` | `bool` | `false` | `init`, `validate`, `doctor`, `list`, `run`, `version`, `skill install` |
+| `--json` | `bool` | `false` | `init`, `validate`, `doctor`, `list`, `run`, `version`, `update`, `skill install` |
 | `--dry-run` | `bool` | `false` | `init`, `skill install`; preview without writing |
 | `--force` | `bool` | `false` | `skill install`; replaces only an owned Pitstop bundle |
 | `--no-descriptions` | `bool` | `false` | `bash`, `zsh`, `fish`, `powershell` completion |
@@ -286,6 +287,7 @@ This table uses the types and defaults shown by Cobra help. Boolean flags defaul
 | `--arch` | `string` | empty | `init`, `validate`, `run`; init derives host architecture, while validate/run use config when omitted |
 | `--job` | `strings` | none | `validate`, `run`; repeat or comma-separate IDs, falling back to configured `jobs` |
 | `--timeout` | `duration` | `20m0s` | `run`; positive timeout per check |
+| `--version` | `string` | omitted = latest stable | `update`; explicit stable `vMAJOR.MINOR.PATCH` pins/reinstalls/downgrades intentionally |
 
 ```sh
 pitstop help run
@@ -327,6 +329,19 @@ Repeat `--job` or separate IDs with commas; IDs must be unique and in the config
 Ctrl+C or SIGTERM cancels the run. Bounded stop/remove can take additional time after a timeout. Check warnings for `CLEANUP_INCOMPLETE` when the daemon cannot respond.
 
 `doctor` does not pull images or execute project commands. A missing image may be `ready` with a message that run will pull it. Readiness does not guarantee registry access, dependencies or passing tests.
+
+### Update the CLI and skills
+
+```sh
+pitstop update
+pitstop update --repo "/path/to/project" --json
+```
+
+`pitstop update` resolves the latest stable release automatically, updates the executable currently running and refreshes only existing Codex/Claude skills in user scope and the selected Git root. It creates no missing skills and does not scan other projects. An already-current CLI keeps its binary and still checks skills. `--version` explicitly selects a stable tag, including reinstall/downgrade, so use it only when intentional.
+
+An implicit non-Git cwd selects user skills only; an explicitly invalid `--repo` fails before changes. Checksums/version and every skill destination are preflighted before binary replacement. Modified/unknown skills are preserved. If a skill fails after CLI publication, the result reports partial completion rather than claiming rollback or total success. JSON stays on stdout and progress on stderr; exit `0` means completed/already current, `2` blocked/failed/partial, and `130` cancellation.
+
+This command requires a fresh source build or a release that includes it; published v0.1.0 has no `update` command. See [installation guidance](install.md#อัปเกรด--upgrade) for that first upgrade.
 
 ### Docker endpoint
 
