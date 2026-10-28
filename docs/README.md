@@ -5,6 +5,7 @@
 | เอกสาร / Document | ไทย | English |
 | --- | --- | --- |
 | ติดตั้งและเริ่มใช้งาน / Install and quick start | [README](../README.th.md) | [README](../README.md) |
+| ติดตั้ง อัปเกรด และ release / Install, upgrade and release | [คู่มือติดตั้ง](install.md) | [Installation guide](install.md) |
 | คู่มือและ config reference / User guide and configuration | [คู่มือ](user-guide.md) | [Guide](user-guide.en.md) |
 | ข้อกำหนดและขอบเขต / Requirements and scope | [ข้อกำหนด](requirements.md) | [Requirements](requirements.en.md) |
 | การตั้งค่าโดย AI agent / AI-agent configuration | [คู่มือ AI agent](ai-agent.md) | [AI-agent guide](ai-agent.en.md) |
@@ -19,7 +20,7 @@
 
 Updated 2026-10-23: [installation and release procedure](install.md), [approved design](superpowers/specs/2026-10-20-release-install-design.md), [implementation plan](superpowers/plans/2026-10-20-release-install.md), and [validation evidence](evidence/release-install.md). The source includes macOS/Linux arm64/amd64 assets, checksum verification and a draft-only release workflow. [v0.1.0 is published](https://github.com/captainthx/pitstop/releases/tag/v0.1.0); see [publication and live-install evidence](evidence/release-v0.1.0.md). The repository is public; [anonymous HTTPS installation](install.md#public-repository-https-route) requires no GitHub CLI.
 
-## งาน config/agent ปัจจุบัน / Current config-agent work
+## งาน config/agent และ engineering records / Config-agent work and engineering records
 
 Updated 2026-10-09: `init`, `validate` and `skill install` are present in the current checkout. The [config-agent validation evidence](evidence/config-agent-validation.md) records current runtime and focused package-manager checks; the [config-agent trial evidence](evidence/config-agent-trials/README.md) records 23 independent evaluator attempts and their prerequisite findings. The design and plan remain the contract record; use the current guides for command behavior and the roadmap for deferred work.
 

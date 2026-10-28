@@ -1,44 +1,21 @@
 # Pitstop
 
-[English](README.md) | **ไทย**
+[English](README.md) · **ไทย**
 
-รัน lint, test และ build ของโปรเจกต์ใน Linux container ก่อน commit หรือ push โดยใช้ไฟล์ที่กำลังแก้บนเครื่อง แล้วเก็บ log กับรายงานผลไว้ให้ตรวจย้อนหลัง
+รัน lint, test และ build ของโปรเจกต์ใน Linux container ใหม่ โดยใช้ไฟล์ที่กำลังแก้บนเครื่อง แล้วเก็บ log กับ report ไว้ตรวจสอบก่อน commit หรือ push
 
-**เริ่มต้น:** ติดตั้ง CLI → ใช้ `pitstop init --dry-run --json` หรือคัดลอกตัวอย่างไปยัง repo เป้าหมาย → ตรวจด้วย `pitstop validate --json` → `pitstop doctor` → `pitstop run`
-
-**สถานะเครื่องมือ config (2026-10-09):** checkout ปัจจุบันมี `init`, `validate` และ `skill install` พร้อม starter สำหรับ Node, Go, Python, Java, .NET, Rust, PHP และ Ruby รวมถึง portable `pitstop-config` skill สำหรับ Codex และ Claude Code มีบันทึก trial ด้าน mapping/prerequisite 23 ครั้งใน [ดัชนีหลักฐาน config-agent](docs/evidence/config-agent-trials/README.md); ผล runtime ที่เลือกสำหรับ Node/Go/Python/Rust และ focused pnpm/Yarn Berry อยู่ใน [หลักฐาน local validation](docs/evidence/config-agent-validation.md) ส่วน findings ที่ตรวจพบปิดครบแล้วใน [สถานะ review ปัจจุบัน](docs/evidence/config-agent-review.md) รวมถึง [ผลติดตามข้อค้าง test](docs/evidence/config-agent-test-gaps.md) ผล local นี้ยังไม่ยืนยัน remote CI หรือ workflow parity ดู [คู่มือปัจจุบัน](docs/user-guide.md), [คู่มือ AI agent](docs/ai-agent.md) และ [แนวทางพัฒนาต่อ](docs/roadmap.md)
+**เส้นทางสั้น:** ติดตั้ง CLI → เตรียม `.pitstop.json` → validate → ตรวจความพร้อม → run
 
 ## Pitstop ทำอะไรให้
 
-คุณกำหนด **environment** ผ่าน Docker image และ **คำสั่งตรวจ** ผ่าน config ส่วน Pitstop จัดการขั้นตอนที่เหลือ:
-
-```text
-working tree → snapshot → container ใหม่ต่อ check → รัน steps → เก็บผล → cleanup
-```
-
-- ตรวจไฟล์ที่แก้แล้วแต่ยังไม่ commit รวมถึงไฟล์ใหม่ที่ไม่ถูก ignore และไฟล์ที่ลบ
-- รันเครื่องมือของโปรเจกต์ใน container; step ที่เขียนไฟล์จะไม่แก้ repo ต้นฉบับ
-- รัน steps ตามลำดับ แชร์ไฟล์ภายใน check เดียวกัน และแยก filesystem ของแต่ละ check
-- จัดการ timeout, Ctrl+C, log และ JSON report พร้อมหลักฐานแต่ละ step
-
-CLI นี้รันคำสั่งใน `.pitstop.json` โดยตรง ดูขอบเขตการรองรับใน [คู่มือ](docs/user-guide.md#ขอบเขตที่รองรับ)
+คุณเลือก Docker image และ checks เอง ส่วน Pitstop จะ snapshot working tree, สร้าง container ใหม่ต่อ check, รัน steps ตามลำดับ, เก็บหลักฐาน และ cleanup ไฟล์ที่แก้แล้วแต่ยังไม่ commit ไฟล์ใหม่ที่ไม่ถูก ignore และไฟล์ที่ลบจะถูกรวมด้วย คำสั่งของโปรเจกต์รันใน container และไม่เขียนกลับ repo ต้นฉบับ
 
 ## 1. ติดตั้ง CLI
 
-ติดตั้งจาก [GitHub Releases](https://github.com/captainthx/pitstop/releases) บน macOS/Linux arm64/amd64 โดยไม่ต้องมี Go ตัวติดตั้งเลือก stable release ล่าสุด หรือเลือก build จาก source ด้านล่างได้
-
-ตัวเลือกการติดตั้ง:
-
-- [ติดตั้งผ่าน curl](#ติดตั้งผ่าน-curl) — คัดลอกคำสั่งด้านล่างไปรัน ไม่ต้องมี Go หรือ GitHub CLI
-- [ดาวน์โหลดตัวติดตั้งเวอร์ชันล่าสุด (install.sh)](https://github.com/captainthx/pitstop/releases/latest/download/install.sh) — ไม่ต้องมี Go หรือ GitHub CLI อ่าน script แล้วรันด้วย `sh`
-- [ติดตั้งผ่าน GitHub CLI](docs/install.md#authenticated-github-cli-route)
-- [Build จาก source](#build-from-source)
-
-### ติดตั้งผ่าน curl
-
-คัดลอกคำสั่งนี้ไปรันใน terminal เพื่อดาวน์โหลดตัวติดตั้งผ่าน curl อ่าน script ก่อนรัน และหยุดหากดาวน์โหลดล้มเหลว:
+binary ที่เผยแพร่รองรับ macOS/Linux arm64/amd64 วิธีหลักใช้ installer ผ่าน HTTPS สาธารณะ ต้องมี curl กับเครื่องมือ SHA-256 แต่ไม่ต้องมี Go หรือ GitHub CLI อ่าน installer ก่อนใช้ และหยุดทันทีหากดาวน์โหลดไม่สำเร็จ:
 
 ```sh
+set -eu
 PITSTOP_INSTALLER="$(mktemp "${TMPDIR:-/tmp}/pitstop-installer.XXXXXXXX")"
 curl --disable --fail --show-error --location --proto '=https' --proto-redir '=https' \
   --connect-timeout 15 --max-time 180 --output "$PITSTOP_INSTALLER" \
@@ -46,136 +23,106 @@ curl --disable --fail --show-error --location --proto '=https' --proto-redir '=h
 cat "$PITSTOP_INSTALLER"
 ```
 
+อ่าน script แล้วจึงรัน block ถัดไป:
+
 ```sh
 sh "$PITSTOP_INSTALLER"
 export PATH="$HOME/.local/bin:$PATH"
 pitstop version
 ```
 
-ใช้ GitHub CLI เป็นทางเลือกได้ ดู [คู่มือติดตั้ง](docs/install.md#authenticated-github-cli-route)
-
-ตัวติดตั้งตรวจ checksum และเวอร์ชันก่อนแทนที่ binary ไฟล์เดิมต้องอนุญาตด้วย `--force` ไม่ใช้ sudo หรือแก้ shell profile ดู [วิธีติดตั้ง อัปเกรด ลบ และขอบเขตความเชื่อถือ](docs/install.md) การรัน checks ยังต้องมี Git และ Docker; checksum ไม่ป้องกันแหล่งเผยแพร่ที่ถูกยึด และ binary macOS ยังไม่ notarize
+[ลิงก์ `install.sh` โดยตรง](https://github.com/captainthx/pitstop/releases/latest/download/install.sh) ใช้ script เดียวกัน ส่วน [ติดตั้งผ่าน GitHub CLI](docs/install.md#authenticated-github-cli-route) และ [build จาก source](#build-from-source) เป็นทางเลือก ดูรายละเอียดติดตั้ง อัปเกรด และขอบเขตความเชื่อถือใน [docs/install.md](docs/install.md) ตัวติดตั้งตรวจ checksum/เวอร์ชันก่อนแทนที่ ไม่ใช้ sudo ไม่แก้ shell profile และต้องใช้ `--force` เมื่อจะแทนที่ binary เดิม
 
 ### Build from source
 
-ใน checkout ของ Pitstop ใช้ Git, Go **1.26.5** ตาม `go.mod` และ Docker CLI/daemon สำหรับรัน checks:
+ใช้ Git และ Go **1.26.5** ตาม `go.mod`:
 
 ```sh
 mkdir -p "$HOME/.local/bin"
 go build -trimpath -o "$HOME/.local/bin/pitstop" ./cmd/pitstop
 export PATH="$HOME/.local/bin:$PATH"
 pitstop version
-pitstop -h
+pitstop --help
 ```
 
-เพิ่มบรรทัด `export PATH="$HOME/.local/bin:$PATH"` ในไฟล์ตั้งค่า shell หากต้องการให้ใช้ได้ใน terminal ครั้งถัดไป วิธี build จาก source ใช้ได้ก่อนเผยแพร่ release และเป็นทางเลือกแทน binary สำเร็จรูป
+Go บน host ใช้ build Pitstop เท่านั้น เครื่องมือที่ checks ใช้ต้องอยู่ใน Docker image ดู [สิ่งที่ต้องเตรียม](docs/user-guide.md#สิ่งที่ต้องเตรียม)
 
-Go บน host ใช้ build ตัว Pitstop เท่านั้น เครื่องมือที่ check ใช้ เช่น Node, Java หรือ Go ต้องอยู่ใน Docker image [รายละเอียดสิ่งที่ต้องเตรียม](docs/user-guide.md#สิ่งที่ต้องเตรียม)
+## 2. ตั้งค่า repo เป้าหมาย
 
-## 2. สร้าง config ครั้งเดียวต่อ repo
-
-ใช้ `pitstop init` เพื่อสร้าง starter หรือให้ skill อ่านหลักฐานของ repo แล้วร่าง config `init` จะไม่เขียนทับ `.pitstop.json` ที่มีอยู่ ใช้ `--dry-run --json` เพื่อตรวจ starter ก่อนเขียน
-
-รันจาก checkout ของ Pitstop โดยเปลี่ยน path เป็น repo ที่ต้องการตรวจ:
+กำหนด path แล้ว preview ก่อนเขียนไฟล์:
 
 ```sh
-PITSTOP_SOURCE="$PWD"
 TARGET_REPO="/absolute/path/to/your/repo"
-if [ -e "$TARGET_REPO/.pitstop.json" ] || [ -L "$TARGET_REPO/.pitstop.json" ]; then
-  echo "เก็บ .pitstop.json เดิมไว้ ให้แก้ไขโดยตั้งใจ"
-else
-  cp "$PITSTOP_SOURCE/examples/docker-react.json" "$TARGET_REPO/.pitstop.json"
-fi
-```
-
-ถ้ามี config อยู่แล้ว ให้เก็บไฟล์เดิมและแก้โดยตั้งใจ เลือก preset ด้วย `--preset` หรือใช้ `custom` พร้อม `--image` และ `--command` อย่างน้อยหนึ่งครั้ง ชื่อ preset ทั้งหมดดูได้จาก `pitstop init -h` หากต้องการเส้นทาง manual ให้คัดลอก [ตัวอย่าง Node](examples/docker-react.json) หรือ [ตัวอย่าง Go](examples/docker-go.json) แล้วแก้ให้ตรงกับโปรเจกต์
-
-preview ของ base:
-
-```sh
 pitstop init --repo "$TARGET_REPO" --preset base --dry-run --json
 ```
 
-ตัวอย่าง Node คือ:
+ตรวจ preview แล้วเอา `--dry-run` ออกเพื่อเขียน starter:
 
-```json
-{
-  "schemaVersion": 2,
-  "runner": {"image": "node:22-bookworm", "architecture": "linux/arm64"},
-  "jobs": ["verify"],
-  "checks": [{"id": "verify", "steps": [
-    {"id": "install", "name": "Install dependencies", "run": "npm ci"},
-    {"id": "check", "name": "Run project checks", "run": "npm run check"}
-  ]}]
-}
+```sh
+pitstop init --repo "$TARGET_REPO" --preset base --json
 ```
 
-| ส่วน | ต้องตั้งอะไร |
-| --- | --- |
-| `runner.image` | image ที่มีเครื่องมือครบ เช่น Node สำหรับ `npm` |
-| `runner.architecture` | `linux/arm64` หรือ `linux/amd64` ให้ตรงกับ environment ที่จะใช้ |
-| `checks` | กลุ่มคำสั่งตรวจ แต่ละกลุ่มได้ container ใหม่ |
-| `checks[].steps` | คำสั่งในกลุ่ม รันตามลำดับ |
-| `jobs` | IDs ของ checks ที่จะรันโดยปริยาย และลำดับการรัน |
+`base` เป็น starter ที่มี failure placeholder แก้ `.pitstop.json` ให้เป็น verify command จริงก่อน validate หรือ run preset ที่มีให้ครอบคลุม Node, Go, Python, Java, .NET, Rust, PHP และ Ruby ส่วน `custom` ต้องมี `--image` และ `--command` อย่างน้อยหนึ่งครั้ง ถ้ามี `.pitstop.json` อยู่แล้ว `init` จะรักษาไฟล์เดิม ใช้ [ตัวอย่าง Node](examples/docker-react.json) หรือ [ตัวอย่าง Go](examples/docker-go.json) เมื่อต้องแก้เอง
 
-ตัวอย่าง Node ต้องมี `package-lock.json` และ script `check` ใน `package.json` ถ้าโปรเจกต์ใช้คำสั่งอื่น ให้แก้ `run` เช่น `npm test` หรือ `sh scripts/check.sh` ตัวอย่างไม่สร้าง project scripts ให้
+ตัวอย่าง preset ยังต้องมี prerequisite ของโปรเจกต์ เช่น Node example ต้องมี `package-lock.json`, image ที่มี Node และ script ที่อ้างถึงใน `package.json` การ run checks ต้องมี Git, Docker CLI และ daemon ที่เชื่อมต่อได้ repo เป้าหมายต้องมี Git `HEAD` ก่อน `run` ตรวจ architecture ของ Docker daemon ด้วย `docker version --format '{{.Server.Arch}}'` แล้วเลือก `linux/arm64` หรือ `linux/amd64` ให้ตรง
 
-ตรวจ architecture ของ Docker daemon ด้วย `docker version --format '{{.Server.Arch}}'`: `arm64`/`aarch64` ใช้ `linux/arm64`; `amd64`/`x86_64` ใช้ `linux/amd64` repo ต้องมี commit อย่างน้อยหนึ่งรายการก่อน `run` แนะนำ commit config และ shared scripts เพื่อให้ทีมใช้เหมือนกัน
+## 3. Validate ตรวจความพร้อม แล้ว run
 
-## 3. Validate ตรวจความพร้อม แล้วรัน
-
-`validate` ตรวจ config และ jobs ที่เลือกโดยไม่ใช้ Docker, pull image, เขียน cache หรือรันคำสั่งของโปรเจกต์ ผล JSON มี envelope เดียวพร้อม `valid`, jobs, architecture, จำนวน checks/steps และ issue ที่จำกัดขนาด
+`validate` ตรวจ config แบบ offline ไม่ใช้ Docker ไม่ pull image ไม่เขียน cache และไม่ execute project commands จากนั้นใช้ `doctor` ตรวจ host/Docker/image readiness และใช้ `run` ตรวจจริง:
 
 ```sh
 pitstop validate --repo "$TARGET_REPO" --json
-```
-
-`doctor` ตรวจ Git, Docker และความพร้อมของ image ส่วน `run` รัน checks ใน container การผ่าน validation ไม่ได้ยืนยันว่า command, image, dependencies หรือ workflow CI จะทำงานสำเร็จ
-
-```sh
 pitstop doctor --repo "$TARGET_REPO"
-pitstop list --repo "$TARGET_REPO"
-pitstop run --repo "$TARGET_REPO"
+pitstop list --repo "$TARGET_REPO" --json
+pitstop run --repo "$TARGET_REPO" --json > result.json 2> progress.log
 ```
 
-`doctor` ตรวจ config, Docker และ image โดยไม่ pull หรือเปิด container ส่วน `run` จะ pull image เมื่อจำเป็น แล้วรัน checks หาก image ยังไม่มี `doctor` อาจรายงานพร้อมพร้อมข้อความว่าจะ pull ตอน run; ไม่ได้ยืนยันว่า image มีคำสั่งของโปรเจกต์ครบ
+`run` ใช้ jobs ใน config เว้นแต่ `--job` จะเลือก IDs ที่มีอยู่ ค่า timeout เริ่มต้นคือ **20 นาทีต่อ check** `--arch` override เฉพาะครั้งนั้น Ctrl+C หรือ SIGTERM ยกเลิก run เมื่อใช้ `--json` ผลอยู่บน stdout และ progress อยู่บน stderr
 
-ติดตั้ง portable skill ในตำแหน่ง user หรือ project ที่แยกไว้:
+### ตารางคำสั่ง
+
+| คำสั่ง | หน้าที่ |
+| --- | --- |
+| `pitstop --help`, `pitstop -h` | แสดง root help |
+| `pitstop help [command]`, `<command> --help` | แสดง help ของคำสั่ง |
+| `pitstop init` | สร้าง config; รองรับ `--preset`, `--image`, `--command` ซ้ำได้, `--arch`, `--dry-run`, `--json` |
+| `pitstop validate` | ตรวจ config; รองรับ `--job`, `--arch`, `--json` |
+| `pitstop doctor` | ตรวจ repository, config, Git/Docker และ image; รองรับ `--json` |
+| `pitstop list` | แสดง checks และ selection; รองรับ `--json` |
+| `pitstop run` | รัน checks ที่เลือก; รองรับ `--job`, `--timeout`, `--arch`, `--json` |
+| `pitstop version` | แสดง version/build metadata; รองรับ `--json` |
+| `pitstop skill` | จัดการ agent skills ที่ติดตั้ง |
+| `pitstop skill install` | ติดตั้ง config skill แบบ optional; รองรับ `--agent`, `--scope`, `--dry-run`, `--force`, `--json` |
+| `pitstop completion bash\|zsh\|fish\|powershell` | สร้าง shell completion; แต่ละตัวรองรับ `--no-descriptions` |
+
+flags ที่พบบ่อยคือ `--repo string` (global ค่าเริ่มต้น `.`), `--json`, `--job`, `--arch`, `--timeout` (ค่าเริ่มต้น `20m0s`) และ `--help` ดู [reference คำสั่งและ flags ฉบับเต็ม](docs/user-guide.md#คำสั่งและ-flags) สำหรับชนิด ค่าเริ่มต้น และ error behavior
+
+## 4. จุดเริ่มต้นสำหรับ agent แบบ optional
+
+portable `pitstop-config` skill แยกจากการติดตั้ง CLI preview project install ก่อนเขียนไฟล์:
 
 ```sh
 pitstop skill install --agent codex --scope project --repo "$TARGET_REPO" --dry-run --json
+pitstop skill install --agent codex --scope project --repo "$TARGET_REPO" --json
 ```
 
-user scope ใช้ `~/.agents/skills/pitstop-config` สำหรับ Codex หรือ `~/.claude/skills/pitstop-config` สำหรับ Claude ส่วน project scope ใช้ directory ซ่อนที่ตรงกับ agent ใต้ Git root `--force` จะเปลี่ยนได้เฉพาะ bundle ของ Pitstop ที่ manifest ที่เชื่อถือได้ยืนยันความเป็นเจ้าของ
+คำสั่งแรกเป็น preview; เอา `--dry-run` ออกแล้วรันซ้ำเพื่อ install skill ปัจจุบันทำได้ด้าน config เท่านั้น: อ่านหลักฐานของ repo, รักษาหรือร่าง `.pitstop.json` และรัน `validate` ไม่ฝัง AI provider ไม่ execute workflow YAML และไม่อ้างว่า runtime ผ่าน ถ้าได้รับคำขอ “Use Pitstop to test this project” agent ควรตรวจ CLI/config ก่อน ขอให้ผู้ใช้ review commands แล้วจึงใช้ `doctor`/`run` และรายงานหลักฐานจริง user scope ติดตั้งใน directory ของ agent ส่วน project scope ติดตั้งใต้ Git root `--force` เปลี่ยนได้เฉพาะ Pitstop bundle ที่เป็นของเรา ดู [คู่มือ AI agent](docs/ai-agent.md)
 
-ตัวเลือกที่ใช้บ่อย:
+## 5. อ่านผลลัพธ์
 
-```sh
-pitstop run --repo "$TARGET_REPO" --job verify
-pitstop run --repo "$TARGET_REPO" --timeout 10m
-pitstop run --repo "$TARGET_REPO" --json > result.json 2> progress.log
-pitstop run -h
-```
+อ่าน `reportPath`, log ของแต่ละ check และ warnings ร่วมกัน:
 
-`--job` เลือกจาก IDs ใน `jobs` เท่านั้น ค่า timeout เริ่มต้น **20 นาทีต่อ check** กด Ctrl+C เพื่อยกเลิก ระบบพยายามหยุดและลบเฉพาะ container ของ run นั้น หาก cleanup ไม่สำเร็จให้ดู warning ใน report
-
-## 4. อ่านผล
-
-เมื่อเริ่มรัน checks แล้ว ผลจะมี `reportPath` และ log ของแต่ละ check รายงานเก็บใน user cache ส่วน snapshot และ scripts ชั่วคราวถูกลบ หาก config หรือ environment ผิดตั้งแต่ก่อนเริ่ม อาจได้ error โดยไม่มี run report
-
-| Exit code | ความหมาย |
+| Code | ความหมาย |
 | --- | --- |
-| `0` | ทุก check ที่เลือกผ่าน และไม่มีปัญหาที่ทำให้ผลไม่สมบูรณ์ |
-| `1` | มี check ล้มเหลว รวม timeout หรือ container runtime failure |
-| `2` | config/environment ไม่พร้อม ผลไม่ทราบแน่ชัด หรือมีปัญหา log/report/cleanup โดยไม่มี failed check |
-| `130` | ยกเลิกการทำงาน มีลำดับความสำคัญสูงสุด |
+| `0` | checks ที่เลือกผ่านทั้งหมด และผลสมบูรณ์ |
+| `1` | มี check ล้มเหลว รวม timeout หรือ runtime failure |
+| `2` | config/environment ไม่พร้อม, outcome ไม่ทราบ หรือ log/report/cleanup ไม่สมบูรณ์โดยไม่มี failed check |
+| `130` | ยกเลิก มีลำดับความสำคัญสูงสุด |
 
-ดู [วิธีอ่าน report และแก้ปัญหา](docs/user-guide.md#อ่าน-report-และ-log) ก่อนสรุปว่าทุก check ผ่าน
+ขอบเขตที่รองรับคือ Docker images ที่เตรียมไว้, snapshot, shell steps ตามลำดับ, selection, timeout/cancellation และ reports ส่วน workflow YAML, matrix, job dependencies, service containers, secret injection, cache volumes, auto-build image, artifact export และ native Windows ยังอยู่นอกขอบเขต ดู [คู่มือฉบับเต็ม](docs/user-guide.md) สำหรับรายงาน การแก้ปัญหา และข้อจำกัดทั้งหมด
 
 ## อ่านต่อ
 
-- [คู่มือครบ: config, shared scripts, custom image, commands, reports และ troubleshooting](docs/user-guide.md)
-- [ขอบเขตและข้อกำหนด](docs/requirements.md)
-- [การตั้งค่าโดย AI agent](docs/ai-agent.md)
-- [Design งาน config/agent](docs/superpowers/specs/2026-10-08-config-agent-design.md), [implementation plan](docs/superpowers/plans/2026-10-08-config-agent.md) และ [ขอบเขตที่เก็บไว้พัฒนาต่อ](docs/roadmap.md)
-- [สารบัญเอกสาร](docs/README.md) และ [หลักฐานทดสอบ Docker ปัจจุบัน](docs/evidence/docker-checks-validation.md)
+- [คู่มือใช้งานและ command reference](docs/user-guide.md)
+- [คู่มือการตั้งค่าโดย AI agent](docs/ai-agent.md)
+- [สารบัญเอกสารที่รวม requirements, engineering records และ evidence](docs/README.md)
