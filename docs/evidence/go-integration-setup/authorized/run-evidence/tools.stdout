@@ -1,0 +1,10 @@
+step: test test
+{"Time":"2026-10-28T13:23:48.761165346Z","Action":"start","Package":"example.com/pitstop-tools"}
+{"Time":"2026-10-28T13:23:48.765486096Z","Action":"run","Package":"example.com/pitstop-tools","Test":"TestTool"}
+{"Time":"2026-10-28T13:23:48.765525263Z","Action":"output","Package":"example.com/pitstop-tools","Test":"TestTool","Output":"=== RUN   TestTool\n"}
+{"Time":"2026-10-28T13:23:48.765616721Z","Action":"output","Package":"example.com/pitstop-tools","Test":"TestTool","Output":"    tool_test.go:3: nested module checked\n"}
+{"Time":"2026-10-28T13:23:48.765661138Z","Action":"output","Package":"example.com/pitstop-tools","Test":"TestTool","Output":"--- PASS: TestTool (0.00s)\n"}
+{"Time":"2026-10-28T13:23:48.765694804Z","Action":"pass","Package":"example.com/pitstop-tools","Test":"TestTool","Elapsed":0}
+{"Time":"2026-10-28T13:23:48.765720054Z","Action":"output","Package":"example.com/pitstop-tools","Output":"PASS\n"}
+{"Time":"2026-10-28T13:23:49.76737668Z","Action":"output","Package":"example.com/pitstop-tools","Output":"ok  \texample.com/pitstop-tools\t1.006s\n"}
+{"Time":"2026-10-28T13:23:49.767854555Z","Action":"pass","Package":"example.com/pitstop-tools","Elapsed":1.007}

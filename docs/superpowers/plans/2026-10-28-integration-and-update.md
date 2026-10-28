@@ -71,16 +71,18 @@
 
 **Interfaces:** The skill consumes the actual `update` and `run --allow-testcontainers` surfaces and optional per-check capability from Tasks 1–2. Bundle version becomes `3`; existing bundle-2 and actual v0.1.0 installs remain authenticated upgrade sources, not destination-supplied trust.
 
-- [ ] Preserve exact current bundle-2 manifest/changed bytes if no equivalent history exists. Write/run RED upgrade/protection tests before changing bundle content. Read skill-creator/writing-for-agents/writing-skills guidance.
-- [ ] Run a direct-read baseline on generic Go fixtures containing tagged tests, external/env skips, nested-module evidence, and an existing unit-only config; preserve raw prompts and actual results without claiming a failure unless observed.
-- [ ] Extend instructions to inventory test groups/helpers/CI/build tags and compare requested versus configured coverage. Preserve existing checks while adding only evidence-backed authorized gaps. Keep the generic Go starter generic.
-- [ ] Teach Testcontainers opt-in and actual authorization requirement, no host/secret fallback, Go skip/empty-target reporting and separation of unit/integration/external-service results. Include installed-command compatibility and current-versus-released bundle notes.
-- [ ] Bump to bundle 3, update allowlist and regenerate manifest hashes in existing formatting. Run focused asset/ownership/upgrade tests GREEN.
-- [ ] Run isolated direct-read agent trials after the change, including real permitted Testcontainers execution, unit-only existing config, skipped external suite and refusal to silently elevate without capability authorization. Confirm original fixture tests/source stay unchanged.
-- [ ] Update docs and roadmap with actual evidence; run full race/vet, fresh-build/offline smoke and relevant runtime smoke after final changes. Check manifests, help, bilingual links/examples and public evidence contents.
+- [x] Preserve exact current bundle-2 manifest/changed bytes if no equivalent history exists. Write/run RED upgrade/protection tests before changing bundle content. Read skill-creator/writing-for-agents/writing-skills guidance.
+- [x] Run a direct-read baseline on generic Go fixtures containing tagged tests, external/env skips, nested-module evidence, and an existing unit-only config; preserve raw prompts and actual results without claiming a failure unless observed.
+- [x] Extend instructions to inventory test groups/helpers/CI/build tags and compare requested versus configured coverage. Preserve existing checks while adding only evidence-backed authorized gaps. Keep the generic Go starter generic.
+- [x] Teach Testcontainers opt-in and actual authorization requirement, no host/secret fallback, Go skip/empty-target reporting and separation of unit/integration/external-service results. Include installed-command compatibility and current-versus-released bundle notes.
+- [x] Bump to bundle 3, update allowlist and regenerate manifest hashes in existing formatting. Run focused asset/ownership/upgrade tests GREEN.
+- [x] Run isolated direct-read agent trials after the change, including real permitted Testcontainers execution, unit-only existing config, skipped external suite and refusal to silently elevate without capability authorization. Confirm original fixture tests/source stay unchanged.
+- [x] Update docs and roadmap with actual evidence; run full race/vet, fresh-build/offline smoke and relevant runtime smoke after final changes. Check manifests, help, bilingual links/examples and public evidence contents.
 - [ ] Parent reviews the final change and evidence, commits/merges, pushes the completed work to main and checks CI. No binary release is created.
 
 ## Progress
 
 - Design approved; user explicitly chose `luna_worker` implementation on 2026-10-28.
 - Task 1 verified with full race/vet/offline smoke plus real compiled CLI/installer acceptance; [evidence](../../evidence/self-update/README.md). Separate existing-test timing fix: `feature/captured-config-test`, commit `1678567`. Task 1 merged locally in commit `333e131`; Task 2 passed full race/vet, offline/Docker smoke and all eight real ARM64 Testcontainers cases; [evidence](../../evidence/testcontainers/README.md). Parent review has no remaining findings. Task 3 remains pending.
+
+- Task 2 merged locally as `eed3d67`. Task 3 bundle-3 upgrade, full race/vet/offline checks and actual direct-read Go execution trials passed; [evidence](../../evidence/go-integration-setup/README.md). Final commit/merge/push/CI remains.

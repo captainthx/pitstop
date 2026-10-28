@@ -1,0 +1,13 @@
+?   	pitstop	[no test files]
+?   	pitstop/cmd/pitstop	[no test files]
+ok  	pitstop/internal/agentassets	1.500s
+ok  	pitstop/internal/cli	6.475s
+ok  	pitstop/internal/config	3.834s
+ok  	pitstop/internal/dockerchecks	4.299s
+ok  	pitstop/internal/model	1.880s
+ok  	pitstop/internal/report	1.849s
+ok  	pitstop/internal/run	2.804s
+ok  	pitstop/internal/skill	9.441s
+ok  	pitstop/internal/snapshot	1.735s
+ok  	pitstop/internal/update	11.880s
+ok  	pitstop/scripts	9.821s

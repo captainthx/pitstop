@@ -18,7 +18,7 @@ import (
 
 func TestTrustedBundlesIncludeCurrentAndHistoricalBundles(t *testing.T) {
 	manifests := agentassets.TrustedBundles()
-	if len(manifests) != 6 {
+	if len(manifests) != 7 {
 		t.Fatalf("trusted manifest registry = %d entries or lacks distinct history", len(manifests))
 	}
 	for i := range manifests {
@@ -38,6 +38,37 @@ func TestTrustedBundlesIncludeCurrentAndHistoricalBundles(t *testing.T) {
 		}
 		if err := json.Unmarshal(data, &manifest); err != nil || manifest.Owner != "pitstop" || len(manifest.Files) == 0 {
 			t.Fatalf("manifest %d invalid: %v", i, err)
+		}
+	}
+}
+
+func TestBundleV2FixturePreservesExactManifestAndChangedBytes(t *testing.T) {
+	manifestPath := filepath.Join("testdata", "bundle-v2", "manifest.json")
+	manifestBytes, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hash := sha256.Sum256(manifestBytes)
+	if got := hex.EncodeToString(hash[:]); got != "377b932a688d9290818a19af74fe8ae4722783c75a57a51b21424f572fff696b" {
+		t.Fatalf("archived bundle v2 manifest hash = %s", got)
+	}
+	if !trustedManifestContains(manifestBytes) {
+		t.Fatal("archived bundle v2 manifest is not trusted for force upgrades")
+	}
+	for _, fixture := range []struct {
+		path string
+		hash string
+	}{
+		{"SKILL.md", "3539389d48c3f46af852ac291b4450d3f4a5482f8b84263b0aa8cfe2d6f96dde"},
+		{"references/config-reference.md", "28ab48bb18125e0e61a76cced8f165a3ca5efb0b396c33a1e93310319c940a0c"},
+	} {
+		data, err := os.ReadFile(filepath.Join("testdata", "bundle-v2", filepath.FromSlash(fixture.path)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		hash := sha256.Sum256(data)
+		if got := hex.EncodeToString(hash[:]); got != fixture.hash {
+			t.Fatalf("archived bundle v2 %s hash = %s", fixture.path, got)
 		}
 	}
 }

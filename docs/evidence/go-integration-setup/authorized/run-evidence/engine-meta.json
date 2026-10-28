@@ -1,0 +1,17 @@
+{
+  "daemonId": "cc8d8c2fa84acc822a643c1494509004ff0f048a875162da1a52883000a55441",
+  "daemonIds": [
+    "cc8d8c2fa84acc822a643c1494509004ff0f048a875162da1a52883000a55441"
+  ],
+  "dockerHost": "unix:///Users/thanyatab/.orbstack/run/docker.sock",
+  "label": "com.pitstop.run=1793193745404086000",
+  "networkId": "82cc81188d8a8075a06dd55e436112b4c2ad856ae323dcf7f45683c57b8f3561",
+  "networkIds": [
+    "82cc81188d8a8075a06dd55e436112b4c2ad856ae323dcf7f45683c57b8f3561"
+  ],
+  "testcontainers": true,
+  "volumeName": "pitstop-1793193745404086000-integration-dind-data",
+  "volumeNames": [
+    "pitstop-1793193745404086000-integration-dind-data"
+  ]
+}

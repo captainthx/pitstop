@@ -442,6 +442,34 @@ func TestInstallForceUpgradesKnownHistoricalBundle(t *testing.T) {
 	}
 }
 
+func TestInstallForceUpgradesBundleV2ToCurrent(t *testing.T) {
+	repo := skillTestRepo(t)
+	resolvedRepo, _ := filepath.EvalSymlinks(repo)
+	target := filepath.Join(resolvedRepo, ".agents", "skills", "pitstop-config")
+	if err := os.MkdirAll(target, 0700); err != nil {
+		t.Fatal(err)
+	}
+	previousManifest := writeBundleV2Fixture(t, target)
+	result, err := Install(context.Background(), Options{Agent: "codex", Scope: "project", Repo: repo, Force: true})
+	if err != nil || !result.Installed {
+		t.Fatalf("bundle v2 upgrade result=%#v err=%v", result, err)
+	}
+	if result.BundleVersion != "3" {
+		t.Fatalf("candidate bundle version=%q, want 3", result.BundleVersion)
+	}
+	currentManifest, err := agentassets.ReadFile("manifest.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Equal(currentManifest, previousManifest) {
+		t.Fatal("candidate manifest is still the bundle v2 manifest")
+	}
+	installedManifest, err := os.ReadFile(filepath.Join(target, "manifest.json"))
+	if err != nil || !bytes.Equal(installedManifest, currentManifest) {
+		t.Fatalf("force upgrade did not publish current manifest: err=%v", err)
+	}
+}
+
 func TestInstallForceUpgradesReleasedV010BundleToCurrent(t *testing.T) {
 	repo := skillTestRepo(t)
 	resolvedRepo, _ := filepath.EvalSymlinks(repo)
@@ -455,8 +483,8 @@ func TestInstallForceUpgradesReleasedV010BundleToCurrent(t *testing.T) {
 	if err != nil || !result.Installed {
 		t.Fatalf("released v0.1.0 upgrade result=%#v err=%v", result, err)
 	}
-	if result.BundleVersion != "2" {
-		t.Fatalf("candidate bundle version=%q, want 2", result.BundleVersion)
+	if result.BundleVersion != "3" {
+		t.Fatalf("candidate bundle version=%q, want 3", result.BundleVersion)
 	}
 	currentManifest, err := agentassets.ReadFile("manifest.json")
 	if err != nil {
@@ -572,6 +600,45 @@ func writeReleasedV010Fixture(t *testing.T, target string) []byte {
 		t.Fatal(err)
 	}
 	return manifest
+}
+
+func writeBundleV2Fixture(t *testing.T, target string) []byte {
+	t.Helper()
+	fixtureRoot := filepath.Join("..", "agentassets", "testdata", "bundle-v2")
+	manifest, err := os.ReadFile(filepath.Join(fixtureRoot, "manifest.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := parseManifest(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range m.Files {
+		data, readErr := os.ReadFile(filepath.Join(fixtureRoot, filepath.FromSlash(entry.Path)))
+		if errors.Is(readErr, os.ErrNotExist) {
+			data, readErr = agentassets.ReadFile(entry.Path)
+		}
+		if readErr != nil {
+			t.Fatalf("bundle v2 fixture %s: %v", entry.Path, readErr)
+		}
+		if got := hashBytes(data); got != entry.SHA256 {
+			t.Fatalf("bundle v2 fixture %s hash=%s want=%s", entry.Path, got, entry.SHA256)
+		}
+		writeFixtureFile(t, target, entry.Path, data)
+	}
+	writeFixtureFile(t, target, "manifest.json", manifest)
+	return manifest
+}
+
+func writeFixtureFile(t *testing.T, target, path string, data []byte) {
+	t.Helper()
+	fullPath := filepath.Join(target, filepath.FromSlash(path))
+	if err := os.MkdirAll(filepath.Dir(fullPath), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(fullPath, data, 0600); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestInstallForceUpgradesTask6Bundle(t *testing.T) {

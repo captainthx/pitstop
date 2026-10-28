@@ -22,7 +22,7 @@ Updated 2026-10-23: [installation and release procedure](install.md), [approved 
 
 ## งาน config/agent และ engineering records / Config-agent work and engineering records
 
-Updated 2026-10-28: `init`, `validate`, `list`, `doctor`, `run` and `skill install` are present in the current checkout. The embedded candidate skill is bundle version 2: a fresh binary is required to receive it; published v0.1.0 binaries remain bundle version 1 and are not changed by this checkout. The [config-agent validation evidence](evidence/config-agent-validation.md) records current runtime and focused package-manager checks; the [config-agent trial evidence](evidence/config-agent-trials/README.md) records 23 independent evaluator attempts and their prerequisite findings. The design and plan remain the contract record; use the current guides for command behavior and the roadmap for deferred work.
+Updated 2026-10-28: `init`, `validate`, `list`, `doctor`, `run`, `update` and `skill install` are present in the current checkout. The embedded candidate skill is bundle version 3: a fresh binary is required to receive it; published v0.1.0 binaries remain bundle version 1 and are not changed by this checkout. The [config-agent validation evidence](evidence/config-agent-validation.md) records current runtime and focused package-manager checks; the [config-agent trial evidence](evidence/config-agent-trials/README.md) records 23 independent evaluator attempts and their prerequisite findings. The design and plan remain the contract record; use the current guides for command behavior and the roadmap for deferred work.
 
 - [Config initialization, validation and agent skill design](superpowers/specs/2026-10-08-config-agent-design.md)
 - [Implementation plan with validation/security acceptance checks](superpowers/plans/2026-10-08-config-agent.md)
@@ -39,7 +39,7 @@ Current source builds include `pitstop update`: resolve the latest stable versio
 
 ## Agent testing workflow — 2026-10-28
 
-README และคู่มือคำสั่งไทย/อังกฤษจัดใหม่แล้ว source builds ฝัง skill bundle v2 สำหรับ `validate` → `list` → `doctor` → `run` และอ่าน report/logs ก่อนสรุป ส่วน released v0.1.0 ยังคง bundle v1 / Fresh source builds embed workflow bundle v2; released v0.1.0 remains unchanged.
+README และคู่มือคำสั่งไทย/อังกฤษจัดใหม่แล้ว source builds ฝัง skill bundle v3 สำหรับ `validate` → `list` → `doctor` → `run` และอ่าน report/logs ก่อนสรุป ส่วน released v0.1.0 ยังคง bundle v1 / Fresh source builds embed workflow bundle v3; released v0.1.0 remains unchanged.
 
 - [Sequential implementation plan and completion status](superpowers/plans/2026-10-23-agent-testing-workflow.md)
 - [Direct-read agent trials, real Docker failure cases and bundle-upgrade verification](evidence/agent-testing-trials/README.md)
@@ -56,3 +56,6 @@ README และคู่มือคำสั่งไทย/อังกฤษ
 - [Earlier review](evidence/final-review.md)
 
 - [Go Testcontainers: setup, authorization and runtime requirements](testcontainers.md)
+
+- [Go integration setup and installed bundle 3 evidence](evidence/go-integration-setup/README.md)
+- [Dedicated Testcontainers lifecycle evidence](evidence/testcontainers/README.md)

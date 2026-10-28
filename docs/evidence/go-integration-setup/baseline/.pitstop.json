@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 2,
+  "runner": {
+    "image": "golang:1.26.5",
+    "architecture": "linux/arm64"
+  },
+  "jobs": [
+    "unit",
+    "integration",
+    "tools"
+  ],
+  "checks": [
+    {
+      "id": "unit",
+      "steps": [
+        {
+          "id": "test",
+          "run": "go test -race -json ./..."
+        }
+      ]
+    },
+    {
+      "id": "integration",
+      "steps": [
+        {
+          "id": "test",
+          "run": "go test -race -tags integration -json ./..."
+        }
+      ]
+    },
+    {
+      "id": "tools",
+      "steps": [
+        {
+          "id": "test",
+          "run": "go -C tools test -race -json ./..."
+        }
+      ]
+    }
+  ]
+}

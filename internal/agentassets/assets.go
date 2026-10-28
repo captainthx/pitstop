@@ -7,7 +7,7 @@ import (
 	"io/fs"
 )
 
-const BundleVersion = "2"
+const BundleVersion = "3"
 
 var ErrNotFound = errors.New("agent asset not found")
 
@@ -74,9 +74,9 @@ var bundleFiles = []string{
 func TrustedBundles() [][]byte {
 	current, err := ReadFile("manifest.json")
 	if err != nil {
-		return [][]byte{append([]byte(nil), historicalManifestBDEB767...), append([]byte(nil), historicalManifestD21a0af...), append([]byte(nil), historicalManifest21cd1c2...), append([]byte(nil), historicalDraftManifestFF87a16...), append([]byte(nil), historicalManifestV010...)}
+		return [][]byte{append([]byte(nil), historicalManifestBDEB767...), append([]byte(nil), historicalManifestD21a0af...), append([]byte(nil), historicalManifest21cd1c2...), append([]byte(nil), historicalDraftManifestFF87a16...), append([]byte(nil), historicalManifestV010...), append([]byte(nil), historicalManifestV2...)}
 	}
-	return [][]byte{append([]byte(nil), current...), append([]byte(nil), historicalManifestBDEB767...), append([]byte(nil), historicalManifestD21a0af...), append([]byte(nil), historicalManifest21cd1c2...), append([]byte(nil), historicalDraftManifestFF87a16...), append([]byte(nil), historicalManifestV010...)}
+	return [][]byte{append([]byte(nil), current...), append([]byte(nil), historicalManifestBDEB767...), append([]byte(nil), historicalManifestD21a0af...), append([]byte(nil), historicalManifest21cd1c2...), append([]byte(nil), historicalDraftManifestFF87a16...), append([]byte(nil), historicalManifestV010...), append([]byte(nil), historicalManifestV2...)}
 }
 
 func Preset(name string) ([]byte, error) {

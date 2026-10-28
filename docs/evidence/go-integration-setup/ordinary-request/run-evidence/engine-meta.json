@@ -1,0 +1,4 @@
+{
+  "dockerHost": "unix:///Users/thanyatab/.orbstack/run/docker.sock",
+  "label": "com.pitstop.run=1793193754191626000"
+}

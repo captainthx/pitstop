@@ -14,7 +14,7 @@ Inspect these prerequisites without executing project commands while configuring
 | pnpm | A pinned `packageManager`, Corepack bootstrap, and lockfile; use `pnpm install --frozen-lockfile`. |
 | Yarn Classic | A pinned Yarn 1 `packageManager`, Corepack bootstrap, and lockfile; use `--frozen-lockfile`. |
 | Yarn Berry | A pinned Yarn 4 `packageManager`, Corepack bootstrap, and lockfile; use `--immutable`. |
-| Go | The module's selected Go toolchain and real vet, test, and build targets. |
+| Go | The module's selected Go toolchain and real vet, test, and build targets; inspect build tags, nested modules, wrappers, CI jobs, and test helpers before claiming coverage. |
 | Python pip | A requirements or project dependency file declaring `pytest` and any lint dependencies; pin versions or hashes when reproducibility is required. |
 | Python uv | A locked `uv.lock`, project test dependencies, and `uv sync --locked` before `uv run`. |
 | Maven / Gradle | A checked-in `mvnw` or `gradlew` wrapper and project test task. |
@@ -36,7 +36,8 @@ pitstop init --repo <path> [--preset <name>] [--image <ref>] [--command <shell-c
 pitstop validate --repo <path> [--job <id> ...] [--arch linux/arm64|linux/amd64] [--json]
 pitstop list --repo <path> [--json]
 pitstop doctor --repo <path> [--json]
-pitstop run --repo <path> [--job <id> ...] [--timeout <duration>] [--arch linux/arm64|linux/amd64] [--json]
+pitstop run --repo <path> [--job <id> ...] [--timeout <duration>] [--arch linux/arm64|linux/amd64] [--allow-testcontainers] [--json]
+pitstop update [--version vX.Y.Z] [--repo <path>] [--json]
 pitstop skill install --agent codex|claude --scope user|project [--repo <path>] [--dry-run] [--force] [--json]
 ```
 
@@ -93,6 +94,16 @@ pitstop skill install --agent codex --scope project --repo /work/app --dry-run -
 ```
 
 The result contains `agent`, `scope`, `targetPath`, `bundleVersion`, sorted bundle-relative `files`, `dryRun`, `action`, `installed`, and `warnings`. Use exit `0` for a planned or completed install and exit `2` for invalid flags, `SKILL_EXISTS`, unsafe destinations, or installation/recovery failures. No install path edits `AGENTS.md`, `CLAUDE.md`, workflows, or project scripts.
+
+`pitstop update` is user-requested only. With no flags it automatically updates the actual running CLI and existing owned Codex/Claude skill targets from the latest stable release; `--version` optionally pins a stable target. It does not recursively discover projects or create missing skills, and default latest does not downgrade a newer stable binary. v0.1.0 has no update command, so its first upgrade still uses the existing installer; a future release or source build is needed before that command exists. Report the installed bundle version separately from the released version.
+
+## Go coverage and Testcontainers capability
+
+Before configuring Go checks, inventory `go.mod`, `go.work`, nested modules, test files/build tags, Makefile or shared-script wrappers, CI jobs, and test helpers. Compare that evidence with the requested scope and configured checks. Preserve a valid existing check, and add only an evidence-backed missing check when authorized. The generic Go starter is intentionally unit-oriented; do not add `-tags integration` to every Go project.
+
+Separate unit, tagged integration, external-service, and environment-gated suites. Read Go JSON/log output for skipped tests and empty targets even when the shell exits 0, and report incomplete external-service coverage rather than calling it passed.
+
+Set `testcontainers: true` only when the selected check's helpers require Testcontainers. This capability requires the user's explicit `--allow-testcontainers` on `run`; an ordinary test request is not authorization. Without it, the check is blocked before resources are allocated. Never use host sockets, forward secrets or Docker credentials, or silently fall back to host execution.
 
 ## Limits and trust boundary
 

@@ -1,0 +1,48 @@
+step: test test
+{"Time":"2026-10-28T13:23:22.287835375Z","Action":"start","Package":"pitstop-testcontainers-smoke"}
+{"Time":"2026-10-28T13:23:22.30594225Z","Action":"run","Package":"pitstop-testcontainers-smoke","Test":"TestExternalService"}
+{"Time":"2026-10-28T13:23:22.305988542Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestExternalService","Output":"=== RUN   TestExternalService\n"}
+{"Time":"2026-10-28T13:23:22.306207708Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestExternalService","Output":"    external_test.go:12: external service URL is not configured\n"}
+{"Time":"2026-10-28T13:23:22.306290542Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestExternalService","Output":"--- SKIP: TestExternalService (0.00s)\n"}
+{"Time":"2026-10-28T13:23:22.30637Z","Action":"skip","Package":"pitstop-testcontainers-smoke","Test":"TestExternalService","Elapsed":0}
+{"Time":"2026-10-28T13:23:22.306427167Z","Action":"run","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip"}
+{"Time":"2026-10-28T13:23:22.306430292Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"=== RUN   TestServiceRoundTrip\n"}
+{"Time":"2026-10-28T13:23:22.343286583Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"2026/10/28 13:23:22 github.com/testcontainers/testcontainers-go - Connected to docker: \n"}
+{"Time":"2026-10-28T13:23:22.343333958Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"  Server Version: 29.8.2\n"}
+{"Time":"2026-10-28T13:23:22.343337542Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"  API Version: 1.55\n"}
+{"Time":"2026-10-28T13:23:22.343339125Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"  Operating System: Alpine Linux v3.24\n"}
+{"Time":"2026-10-28T13:23:22.343341042Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"  Total Memory: 8003 MB\n"}
+{"Time":"2026-10-28T13:23:22.343342292Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"  Testcontainers for Go Version: v0.44.0\n"}
+{"Time":"2026-10-28T13:23:22.343343542Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"  Resolved Docker Host: tcp://pitstop-dind:2375\n"}
+{"Time":"2026-10-28T13:23:22.343344875Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"  Resolved Docker Socket Path: /var/run/docker.sock\n"}
+{"Time":"2026-10-28T13:23:22.343346625Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"  Test SessionID: 21a0e7149fcb3bfcb0d4f5aecaa733b60f203d15db4c4a323029c7ee30284d8c\n"}
+{"Time":"2026-10-28T13:23:22.343348Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"  Test ProcessID: 7635c7ec-2b3b-44e6-99bc-1f6e48aaf6f7\n"}
+{"Time":"2026-10-28T13:23:22.351620292Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"2026/10/28 13:23:22 No image auth found for https://index.docker.io/v1/. Setting empty credentials for the image: busybox:1.37. This is expected for public images. Details: credentials not found in native keychain\n"}
+{"Time":"2026-10-28T13:23:26.513743169Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"2026/10/28 13:23:26 🐳 Creating container for image busybox:1.37\n"}
+{"Time":"2026-10-28T13:23:26.580084544Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"2026/10/28 13:23:26 No image auth found for https://index.docker.io/v1/. Setting empty credentials for the image: testcontainers/ryuk:0.14.0. This is expected for public images. Details: credentials not found in native keychain\n"}
+{"Time":"2026-10-28T13:23:29.845981087Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"2026/10/28 13:23:29 🐳 Creating container for image testcontainers/ryuk:0.14.0\n"}
+{"Time":"2026-10-28T13:23:29.878630962Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"2026/10/28 13:23:29 ✅ Container created: b594fa00eb77\n"}
+{"Time":"2026-10-28T13:23:29.878820629Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"2026/10/28 13:23:29 🐳 Starting container: b594fa00eb77\n"}
+{"Time":"2026-10-28T13:23:29.979022712Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"2026/10/28 13:23:29 ✅ Container started: b594fa00eb77\n"}
+{"Time":"2026-10-28T13:23:29.979079212Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"2026/10/28 13:23:29 ⏳ Waiting for container id b594fa00eb77 image: testcontainers/ryuk:0.14.0. Waiting for: all of: [log message \"Started\", port 8080/tcp to be listening]\n"}
+{"Time":"2026-10-28T13:23:30.114102296Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"2026/10/28 13:23:30 Shell not found in container\n"}
+{"Time":"2026-10-28T13:23:30.114215796Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"2026/10/28 13:23:30 🔔 Container is ready: b594fa00eb77\n"}
+{"Time":"2026-10-28T13:23:30.117070546Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"2026/10/28 13:23:30 ✅ Container created: 246fe6251700\n"}
+{"Time":"2026-10-28T13:23:30.117120671Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"2026/10/28 13:23:30 🐳 Starting container: 246fe6251700\n"}
+{"Time":"2026-10-28T13:23:30.162868462Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"2026/10/28 13:23:30 ✅ Container started: 246fe6251700\n"}
+{"Time":"2026-10-28T13:23:30.162939254Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"2026/10/28 13:23:30 ⏳ Waiting for container id 246fe6251700 image: busybox:1.37. Waiting for: HTTP GET request on port 8080 path \"/\"\n"}
+{"Time":"2026-10-28T13:23:30.269872879Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"2026/10/28 13:23:30 🔔 Container is ready: 246fe6251700\n"}
+{"Time":"2026-10-28T13:23:30.278787754Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"    integration_test.go:58: mapped service round-trip succeeded at http://pitstop-dind:32769\n"}
+{"Time":"2026-10-28T13:23:30.278855087Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"2026/10/28 13:23:30 🐳 Stopping container: 246fe6251700\n"}
+{"Time":"2026-10-28T13:23:40.380272259Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"2026/10/28 13:23:40 ✅ Container stopped: 246fe6251700\n"}
+{"Time":"2026-10-28T13:23:40.380562175Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"2026/10/28 13:23:40 🐳 Terminating container: 246fe6251700\n"}
+{"Time":"2026-10-28T13:23:40.390329342Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"2026/10/28 13:23:40 🚫 Container terminated: 246fe6251700\n"}
+{"Time":"2026-10-28T13:23:40.39051055Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Output":"--- PASS: TestServiceRoundTrip (18.08s)\n"}
+{"Time":"2026-10-28T13:23:40.390543009Z","Action":"pass","Package":"pitstop-testcontainers-smoke","Test":"TestServiceRoundTrip","Elapsed":18.08}
+{"Time":"2026-10-28T13:23:40.390590175Z","Action":"run","Package":"pitstop-testcontainers-smoke","Test":"TestUnit"}
+{"Time":"2026-10-28T13:23:40.390600884Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestUnit","Output":"=== RUN   TestUnit\n"}
+{"Time":"2026-10-28T13:23:40.390690967Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestUnit","Output":"--- PASS: TestUnit (0.00s)\n"}
+{"Time":"2026-10-28T13:23:40.390696467Z","Action":"pass","Package":"pitstop-testcontainers-smoke","Test":"TestUnit","Elapsed":0}
+{"Time":"2026-10-28T13:23:40.39075155Z","Action":"output","Package":"pitstop-testcontainers-smoke","Output":"PASS\n"}
+{"Time":"2026-10-28T13:23:41.393481218Z","Action":"output","Package":"pitstop-testcontainers-smoke","Output":"ok  \tpitstop-testcontainers-smoke\t19.105s\n"}
+{"Time":"2026-10-28T13:23:41.394152051Z","Action":"pass","Package":"pitstop-testcontainers-smoke","Elapsed":19.106}

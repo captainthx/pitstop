@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 2,
+  "runner": {
+    "image": "golang:1.26.5",
+    "architecture": "linux/arm64"
+  },
+  "jobs": [
+    "unit",
+    "integration",
+    "external",
+    "tools"
+  ],
+  "checks": [
+    {
+      "id": "unit",
+      "steps": [
+        {
+          "id": "test",
+          "run": "go test -race -json ./..."
+        }
+      ]
+    },
+    {
+      "id": "integration",
+      "testcontainers": true,
+      "steps": [
+        {
+          "id": "test",
+          "run": "go test -race -tags integration -run '^TestServiceRoundTrip$' -json ./..."
+        }
+      ]
+    },
+    {
+      "id": "external",
+      "steps": [
+        {
+          "id": "test",
+          "run": "go test -race -tags integration -run '^TestExternalService$' -json ./..."
+        }
+      ]
+    },
+    {
+      "id": "tools",
+      "steps": [
+        {
+          "id": "test",
+          "run": "go -C tools test -race -json ./..."
+        }
+      ]
+    }
+  ]
+}

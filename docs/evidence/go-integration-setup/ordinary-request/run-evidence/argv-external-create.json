@@ -1,0 +1,1 @@
+["create","--name","pitstop-1793193754191626000-external","--label","com.pitstop.run=1793193754191626000","--platform","linux/arm64","--pull","never","--init","--user","0:0","--workdir","/workspace","--no-healthcheck","--entrypoint","/bin/sh","golang@sha256:705e964a93a2fd2e75c7d59bb7d781b57e30f12293ffde5175c69229e18fb678","/pitstop/run.sh"]

@@ -1,0 +1,36 @@
+{
+  "bundleVersion": "3",
+  "binarySha256": "148c5e9642f9a2229b591bcfa768abca09df69f6e37fdf1a86b721602b3f1516",
+  "manifestSha256": "9a06fa1a8f9300c2b6c3479cf8520dec97253a44794413033c45318ae4dda6cd",
+  "platform": "macOS ARM64, Docker29.8.2 LinuxARM64",
+  "trials": [
+    {
+      "case": "authorized",
+      "exitCode": 0,
+      "runId": "1793193745404086000",
+      "jobIds": [
+        "unit",
+        "integration",
+        "tools"
+      ],
+      "externalTest": "skipped: EXTERNAL_SERVICE_URL unset",
+      "testcontainers": "passed real mapped HTTP round-trip",
+      "ownedResourcesRemaining": 0,
+      "sourceTestsUnchanged": true
+    },
+    {
+      "case": "ordinary-request",
+      "exitCode": 0,
+      "runId": "1793193754191626000",
+      "jobIds": [
+        "unit",
+        "external",
+        "tools"
+      ],
+      "externalTest": "skipped: EXTERNAL_SERVICE_URL unset",
+      "testcontainers": "not run: explicit authorization absent",
+      "ownedResourcesRemaining": 0,
+      "sourceTestsUnchanged": true
+    }
+  ]
+}

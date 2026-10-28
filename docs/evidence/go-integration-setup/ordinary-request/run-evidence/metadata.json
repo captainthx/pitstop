@@ -1,0 +1,103 @@
+{
+  "argv": {
+    "argv-external-copy-scripts.json": [
+      "cp",
+      "/Users/thanyatab/Library/Caches/pitstop/runs/1793193754191626000/scripts-external/.",
+      "bdbb07e0ea1a485535b436976438f360a3ad822db53f0bdc3cc657ebeec2ce69:/pitstop"
+    ],
+    "argv-external-copy-source.json": [
+      "cp",
+      "/Users/thanyatab/Library/Caches/pitstop/runs/1793193754191626000/snapshot/.",
+      "bdbb07e0ea1a485535b436976438f360a3ad822db53f0bdc3cc657ebeec2ce69:/workspace"
+    ],
+    "argv-external-create.json": [
+      "create",
+      "--name",
+      "pitstop-1793193754191626000-external",
+      "--label",
+      "com.pitstop.run=1793193754191626000",
+      "--platform",
+      "linux/arm64",
+      "--pull",
+      "never",
+      "--init",
+      "--user",
+      "0:0",
+      "--workdir",
+      "/workspace",
+      "--no-healthcheck",
+      "--entrypoint",
+      "/bin/sh",
+      "golang@sha256:705e964a93a2fd2e75c7d59bb7d781b57e30f12293ffde5175c69229e18fb678",
+      "/pitstop/run.sh"
+    ],
+    "argv-tools-copy-scripts.json": [
+      "cp",
+      "/Users/thanyatab/Library/Caches/pitstop/runs/1793193754191626000/scripts-tools/.",
+      "64bba232b48197c58edbc99e28dfc635d5baf9aa178cc7b02484fe040ef8ffaf:/pitstop"
+    ],
+    "argv-tools-copy-source.json": [
+      "cp",
+      "/Users/thanyatab/Library/Caches/pitstop/runs/1793193754191626000/snapshot/.",
+      "64bba232b48197c58edbc99e28dfc635d5baf9aa178cc7b02484fe040ef8ffaf:/workspace"
+    ],
+    "argv-tools-create.json": [
+      "create",
+      "--name",
+      "pitstop-1793193754191626000-tools",
+      "--label",
+      "com.pitstop.run=1793193754191626000",
+      "--platform",
+      "linux/arm64",
+      "--pull",
+      "never",
+      "--init",
+      "--user",
+      "0:0",
+      "--workdir",
+      "/workspace",
+      "--no-healthcheck",
+      "--entrypoint",
+      "/bin/sh",
+      "golang@sha256:705e964a93a2fd2e75c7d59bb7d781b57e30f12293ffde5175c69229e18fb678",
+      "/pitstop/run.sh"
+    ],
+    "argv-unit-copy-scripts.json": [
+      "cp",
+      "/Users/thanyatab/Library/Caches/pitstop/runs/1793193754191626000/scripts-unit/.",
+      "fada5eb54bbfacc8a3bf61dce30163d53e390aedc5b6ba7c5de28e4490341999:/pitstop"
+    ],
+    "argv-unit-copy-source.json": [
+      "cp",
+      "/Users/thanyatab/Library/Caches/pitstop/runs/1793193754191626000/snapshot/.",
+      "fada5eb54bbfacc8a3bf61dce30163d53e390aedc5b6ba7c5de28e4490341999:/workspace"
+    ],
+    "argv-unit-create.json": [
+      "create",
+      "--name",
+      "pitstop-1793193754191626000-unit",
+      "--label",
+      "com.pitstop.run=1793193754191626000",
+      "--platform",
+      "linux/arm64",
+      "--pull",
+      "never",
+      "--init",
+      "--user",
+      "0:0",
+      "--workdir",
+      "/workspace",
+      "--no-healthcheck",
+      "--entrypoint",
+      "/bin/sh",
+      "golang@sha256:705e964a93a2fd2e75c7d59bb7d781b57e30f12293ffde5175c69229e18fb678",
+      "/pitstop/run.sh"
+    ]
+  },
+  "configSha256": "c621f4d482acd00101f315962bf71732837f5133531ca2425091fa5c85a11fc6",
+  "effectiveConfigSha256": "5caf43879425336a902559bac8d982b4bb513b2e392a1d3dbbec3a9277b0fa63",
+  "finishedAt": "2026-10-28T13:23:24.881091Z",
+  "runId": "1793193754191626000",
+  "snapshotSha256": "ab0a1325cefe0d0cde9a081d3131924af39fe34eb885c98ea1205cc6959fa9f9",
+  "startedAt": "2026-10-28T13:22:34.101002Z"
+}

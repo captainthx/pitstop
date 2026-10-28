@@ -1,0 +1,10 @@
+step: test test
+{"Time":"2026-10-28T13:23:12.717728871Z","Action":"start","Package":"pitstop-testcontainers-smoke"}
+{"Time":"2026-10-28T13:23:12.737455162Z","Action":"run","Package":"pitstop-testcontainers-smoke","Test":"TestExternalService"}
+{"Time":"2026-10-28T13:23:12.737598204Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestExternalService","Output":"=== RUN   TestExternalService\n"}
+{"Time":"2026-10-28T13:23:12.737616412Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestExternalService","Output":"    external_test.go:12: external service URL is not configured\n"}
+{"Time":"2026-10-28T13:23:12.737628621Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestExternalService","Output":"--- SKIP: TestExternalService (0.00s)\n"}
+{"Time":"2026-10-28T13:23:12.737640996Z","Action":"skip","Package":"pitstop-testcontainers-smoke","Test":"TestExternalService","Elapsed":0}
+{"Time":"2026-10-28T13:23:12.737660412Z","Action":"output","Package":"pitstop-testcontainers-smoke","Output":"PASS\n"}
+{"Time":"2026-10-28T13:23:13.739506579Z","Action":"output","Package":"pitstop-testcontainers-smoke","Output":"ok  \tpitstop-testcontainers-smoke\t1.021s\n"}
+{"Time":"2026-10-28T13:23:13.740078413Z","Action":"pass","Package":"pitstop-testcontainers-smoke","Elapsed":1.022}

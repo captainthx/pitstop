@@ -1,0 +1,29 @@
+step: test test
+{"Time":"2026-10-28T13:22:41.724087231Z","Action":"start","Package":"pitstop-testcontainers-smoke"}
+{"Time":"2026-10-28T13:22:41.729964897Z","Action":"run","Package":"pitstop-testcontainers-smoke","Test":"TestUnit"}
+{"Time":"2026-10-28T13:22:41.730065272Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestUnit","Output":"=== RUN   TestUnit\n"}
+{"Time":"2026-10-28T13:22:41.730168106Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestUnit","Output":"--- PASS: TestUnit (0.00s)\n"}
+{"Time":"2026-10-28T13:22:41.730203897Z","Action":"pass","Package":"pitstop-testcontainers-smoke","Test":"TestUnit","Elapsed":0}
+{"Time":"2026-10-28T13:22:41.730241231Z","Action":"output","Package":"pitstop-testcontainers-smoke","Output":"PASS\n"}
+{"Time":"2026-10-28T13:22:42.734919315Z","Action":"output","Package":"pitstop-testcontainers-smoke","Output":"ok  \tpitstop-testcontainers-smoke\t1.011s\n"}
+{"Time":"2026-10-28T13:22:42.735196106Z","Action":"pass","Package":"pitstop-testcontainers-smoke","Elapsed":1.011}
+step: test test
+{"Time":"2026-10-28T13:23:12.717728871Z","Action":"start","Package":"pitstop-testcontainers-smoke"}
+{"Time":"2026-10-28T13:23:12.737455162Z","Action":"run","Package":"pitstop-testcontainers-smoke","Test":"TestExternalService"}
+{"Time":"2026-10-28T13:23:12.737598204Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestExternalService","Output":"=== RUN   TestExternalService\n"}
+{"Time":"2026-10-28T13:23:12.737616412Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestExternalService","Output":"    external_test.go:12: external service URL is not configured\n"}
+{"Time":"2026-10-28T13:23:12.737628621Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestExternalService","Output":"--- SKIP: TestExternalService (0.00s)\n"}
+{"Time":"2026-10-28T13:23:12.737640996Z","Action":"skip","Package":"pitstop-testcontainers-smoke","Test":"TestExternalService","Elapsed":0}
+{"Time":"2026-10-28T13:23:12.737660412Z","Action":"output","Package":"pitstop-testcontainers-smoke","Output":"PASS\n"}
+{"Time":"2026-10-28T13:23:13.739506579Z","Action":"output","Package":"pitstop-testcontainers-smoke","Output":"ok  \tpitstop-testcontainers-smoke\t1.021s\n"}
+{"Time":"2026-10-28T13:23:13.740078413Z","Action":"pass","Package":"pitstop-testcontainers-smoke","Elapsed":1.022}
+step: test test
+{"Time":"2026-10-28T13:23:23.394289084Z","Action":"start","Package":"example.com/pitstop-tools"}
+{"Time":"2026-10-28T13:23:23.398720209Z","Action":"run","Package":"example.com/pitstop-tools","Test":"TestTool"}
+{"Time":"2026-10-28T13:23:23.398752834Z","Action":"output","Package":"example.com/pitstop-tools","Test":"TestTool","Output":"=== RUN   TestTool\n"}
+{"Time":"2026-10-28T13:23:23.398846792Z","Action":"output","Package":"example.com/pitstop-tools","Test":"TestTool","Output":"    tool_test.go:3: nested module checked\n"}
+{"Time":"2026-10-28T13:23:23.398886459Z","Action":"output","Package":"example.com/pitstop-tools","Test":"TestTool","Output":"--- PASS: TestTool (0.00s)\n"}
+{"Time":"2026-10-28T13:23:23.398907959Z","Action":"pass","Package":"example.com/pitstop-tools","Test":"TestTool","Elapsed":0}
+{"Time":"2026-10-28T13:23:23.398930292Z","Action":"output","Package":"example.com/pitstop-tools","Output":"PASS\n"}
+{"Time":"2026-10-28T13:23:24.404280418Z","Action":"output","Package":"example.com/pitstop-tools","Output":"ok  \texample.com/pitstop-tools\t1.010s\n"}
+{"Time":"2026-10-28T13:23:24.404895626Z","Action":"pass","Package":"example.com/pitstop-tools","Elapsed":1.011}

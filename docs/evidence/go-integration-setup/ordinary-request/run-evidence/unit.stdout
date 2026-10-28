@@ -1,0 +1,9 @@
+step: test test
+{"Time":"2026-10-28T13:22:41.724087231Z","Action":"start","Package":"pitstop-testcontainers-smoke"}
+{"Time":"2026-10-28T13:22:41.729964897Z","Action":"run","Package":"pitstop-testcontainers-smoke","Test":"TestUnit"}
+{"Time":"2026-10-28T13:22:41.730065272Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestUnit","Output":"=== RUN   TestUnit\n"}
+{"Time":"2026-10-28T13:22:41.730168106Z","Action":"output","Package":"pitstop-testcontainers-smoke","Test":"TestUnit","Output":"--- PASS: TestUnit (0.00s)\n"}
+{"Time":"2026-10-28T13:22:41.730203897Z","Action":"pass","Package":"pitstop-testcontainers-smoke","Test":"TestUnit","Elapsed":0}
+{"Time":"2026-10-28T13:22:41.730241231Z","Action":"output","Package":"pitstop-testcontainers-smoke","Output":"PASS\n"}
+{"Time":"2026-10-28T13:22:42.734919315Z","Action":"output","Package":"pitstop-testcontainers-smoke","Output":"ok  \tpitstop-testcontainers-smoke\t1.011s\n"}
+{"Time":"2026-10-28T13:22:42.735196106Z","Action":"pass","Package":"pitstop-testcontainers-smoke","Elapsed":1.011}
