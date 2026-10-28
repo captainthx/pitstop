@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"pitstop/internal/model"
+	"pitstop/internal/snapshot"
 	"strings"
 	"testing"
 	"time"
@@ -64,19 +65,6 @@ func TestExecuteRejectsInvalidCapturedConfigBeforePrepare(t *testing.T) {
 		t.Fatal(string(out))
 	}
 	fakeBin := t.TempDir()
-	realGit, err := exec.LookPath("git")
-	if err != nil {
-		t.Fatal(err)
-	}
-	gitWrapper := filepath.Join(fakeBin, "git")
-	gitScript := "#!/bin/sh\n" +
-		"\"$PITSTOP_REAL_GIT\" \"$@\"\nstatus=$?\n" +
-		"clone=\nprev=\nlast=\nfor arg in \"$@\"; do\n  if [ \"$prev\" = \"-C\" ]; then clone=\"$arg\"; fi\n  prev=\"$arg\"\n  last=\"$arg\"\ndone\n" +
-		"if [ \"$1\" = clone ]; then clone=\"$last\"; case \"$clone\" in */snapshot) (while [ ! -f \"$clone/../manifest.txt\" ]; do :; done; i=0; while [ $i -lt 10000 ]; do printf '%s\\n' \"$PITSTOP_INVALID_CONFIG\" > \"$clone/.pitstop.json\"; i=$((i+1)); done) </dev/null >/dev/null 2>&1 &;; esac; fi\n" +
-		"exit $status\n"
-	if err := os.WriteFile(gitWrapper, []byte(gitScript), 0700); err != nil {
-		t.Fatal(err)
-	}
 	dockerLog := filepath.Join(d, "docker.log")
 	docker := filepath.Join(fakeBin, "docker")
 	dockerScript := "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$PITSTOP_DOCKER_LOG\"\ncase \"$*\" in *'version --format'*) printf '25.0\\n';; esac\n"
@@ -84,8 +72,18 @@ func TestExecuteRejectsInvalidCapturedConfigBeforePrepare(t *testing.T) {
 		t.Fatal(err)
 	}
 	invalidCaptured := strings.Replace(valid, `"run":"true"`, `"run":"echo\u0000captured"`, 1)
-	t.Setenv("PITSTOP_REAL_GIT", realGit)
-	t.Setenv("PITSTOP_INVALID_CONFIG", invalidCaptured)
+	previousCapture := captureSnapshot
+	t.Cleanup(func() { captureSnapshot = previousCapture })
+	captureSnapshot = func(ctx context.Context, repo, runDir string) (model.Snapshot, error) {
+		snap, captureErr := snapshot.CaptureContext(ctx, repo, runDir)
+		if captureErr == nil {
+			if writeErr := os.WriteFile(filepath.Join(snap.Path, ".pitstop.json"), []byte(invalidCaptured), 0600); writeErr != nil {
+				_ = snapshot.Remove(snap)
+				return model.Snapshot{}, writeErr
+			}
+		}
+		return snap, captureErr
+	}
 	t.Setenv("PITSTOP_DOCKER_LOG", dockerLog)
 	t.Setenv("DOCKER_HOST", "unix:///chosen.sock")
 	t.Setenv("PATH", fakeBin+string(os.PathListSeparator)+os.Getenv("PATH"))

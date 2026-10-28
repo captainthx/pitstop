@@ -27,6 +27,9 @@ type Options struct {
 }
 type lock struct{ f *os.File }
 
+// Keep captured-config validation tests deterministic without a racing writer.
+var captureSnapshot = snapshot.CaptureContext
+
 func (l *lock) Release() {
 	if l != nil && l.f != nil {
 		_ = l.f.Close()
@@ -103,7 +106,7 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 			_ = dockerchecks.Cleanup(c, runDir)
 		}
 	}()
-	snap, err := snapshot.CaptureContext(ctx, repo, runDir)
+	snap, err := captureSnapshot(ctx, repo, runDir)
 	if err != nil {
 		return fail(err)
 	}
