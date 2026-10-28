@@ -22,7 +22,7 @@ Updated 2026-10-23: [installation and release procedure](install.md), [approved 
 
 ## งาน config/agent และ engineering records / Config-agent work and engineering records
 
-Updated 2026-10-09: `init`, `validate` and `skill install` are present in the current checkout. The [config-agent validation evidence](evidence/config-agent-validation.md) records current runtime and focused package-manager checks; the [config-agent trial evidence](evidence/config-agent-trials/README.md) records 23 independent evaluator attempts and their prerequisite findings. The design and plan remain the contract record; use the current guides for command behavior and the roadmap for deferred work.
+Updated 2026-10-28: `init`, `validate`, `list`, `doctor`, `run` and `skill install` are present in the current checkout. The embedded candidate skill is bundle version 2: a fresh binary is required to receive it; published v0.1.0 binaries remain bundle version 1 and are not changed by this checkout. The [config-agent validation evidence](evidence/config-agent-validation.md) records current runtime and focused package-manager checks; the [config-agent trial evidence](evidence/config-agent-trials/README.md) records 23 independent evaluator attempts and their prerequisite findings. The design and plan remain the contract record; use the current guides for command behavior and the roadmap for deferred work.
 
 - [Config initialization, validation and agent skill design](superpowers/specs/2026-10-08-config-agent-design.md)
 - [Implementation plan with validation/security acceptance checks](superpowers/plans/2026-10-08-config-agent.md)

@@ -112,6 +112,8 @@ pitstop skill install --agent claude --scope user --dry-run --json
 
 user install ของ Codex อยู่ที่ `~/.agents/skills/pitstop-config` และของ Claude อยู่ที่ `~/.claude/skills/pitstop-config` ส่วน project install อยู่ใน directory ซ่อนของ agent ใต้ Git root การติดตั้งไม่แก้ `AGENTS.md`, `CLAUDE.md`, workflow หรือ project scripts ดูขั้นตอนและ prompt fallback ใน [คู่มือ AI agent](ai-agent.md)
 
+Fresh source build มี skill bundle v2 สำหรับ flow `validate` → `list` → `doctor` → `run` ตามคำขอ พร้อมตรวจ report/logs ส่วน binary v0.1.0 ที่เผยแพร่ยังฝัง bundle v1 ดูการติดตั้งและ direct-read fallback ใน[คู่มือ AI agent](ai-agent.md)
+
 ## Config reference
 
 ทุก field ด้านล่างจำเป็น ยกเว้น `name` ไม่มีค่า image/architecture/jobs เริ่มต้นให้

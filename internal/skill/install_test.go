@@ -442,6 +442,138 @@ func TestInstallForceUpgradesKnownHistoricalBundle(t *testing.T) {
 	}
 }
 
+func TestInstallForceUpgradesReleasedV010BundleToCurrent(t *testing.T) {
+	repo := skillTestRepo(t)
+	resolvedRepo, _ := filepath.EvalSymlinks(repo)
+	target := filepath.Join(resolvedRepo, ".agents", "skills", "pitstop-config")
+	if err := os.MkdirAll(target, 0700); err != nil {
+		t.Fatal(err)
+	}
+	releasedManifest := writeReleasedV010Fixture(t, target)
+
+	result, err := Install(context.Background(), Options{Agent: "codex", Scope: "project", Repo: repo, Force: true})
+	if err != nil || !result.Installed {
+		t.Fatalf("released v0.1.0 upgrade result=%#v err=%v", result, err)
+	}
+	if result.BundleVersion != "2" {
+		t.Fatalf("candidate bundle version=%q, want 2", result.BundleVersion)
+	}
+	currentManifest, err := agentassets.ReadFile("manifest.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Equal(currentManifest, releasedManifest) {
+		t.Fatal("candidate manifest is still the released v0.1.0 manifest; upgrade test would only reinstall identical bytes")
+	}
+	installedManifest, err := os.ReadFile(filepath.Join(target, "manifest.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(installedManifest, currentManifest) {
+		t.Fatal("force upgrade did not publish the current embedded manifest")
+	}
+}
+
+func TestInstallReleasedV010BundleRequiresForceAndPreservesModifiedOrUnknownDestination(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		mutate func(t *testing.T, target string)
+	}{
+		{
+			name: "unknown file",
+			mutate: func(t *testing.T, target string) {
+				if err := os.WriteFile(filepath.Join(target, "user-not-owned.txt"), []byte("keep me"), 0600); err != nil {
+					t.Fatal(err)
+				}
+			},
+		},
+		{
+			name: "modified owned file",
+			mutate: func(t *testing.T, target string) {
+				if err := os.WriteFile(filepath.Join(target, "SKILL.md"), []byte("user edit"), 0600); err != nil {
+					t.Fatal(err)
+				}
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := skillTestRepo(t)
+			resolvedRepo, _ := filepath.EvalSymlinks(repo)
+			target := filepath.Join(resolvedRepo, ".agents", "skills", "pitstop-config")
+			if err := os.MkdirAll(target, 0700); err != nil {
+				t.Fatal(err)
+			}
+			releasedManifest := writeReleasedV010Fixture(t, target)
+			tc.mutate(t, target)
+			expectedSkill, err := os.ReadFile(filepath.Join(target, "SKILL.md"))
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			result, err := Install(context.Background(), Options{Agent: "codex", Scope: "project", Repo: repo})
+			var installErr *model.Error
+			if err == nil || result.Installed || result.Action != "blocked" || !errors.As(err, &installErr) || installErr.Code != "SKILL_EXISTS" {
+				t.Fatalf("without force result=%#v err=%v", result, err)
+			}
+			manifest, readErr := os.ReadFile(filepath.Join(target, "manifest.json"))
+			if readErr != nil || !bytes.Equal(manifest, releasedManifest) {
+				t.Fatalf("without force changed released manifest: readErr=%v", readErr)
+			}
+
+			result, err = Install(context.Background(), Options{Agent: "codex", Scope: "project", Repo: repo, Force: true})
+			if err == nil || result.Installed || result.Action != "blocked" || !errors.As(err, &installErr) || installErr.Code != "SKILL_INSTALL_FAILED" {
+				t.Fatalf("modified/unknown destination accepted: result=%#v err=%v", result, err)
+			}
+			manifest, readErr = os.ReadFile(filepath.Join(target, "manifest.json"))
+			if readErr != nil || !bytes.Equal(manifest, releasedManifest) {
+				t.Fatalf("rejected destination manifest changed: readErr=%v", readErr)
+			}
+			if got, readErr := os.ReadFile(filepath.Join(target, "SKILL.md")); readErr != nil || !bytes.Equal(got, expectedSkill) {
+				t.Fatalf("owned file changed unexpectedly: readErr=%v", readErr)
+			}
+		})
+	}
+}
+
+func writeReleasedV010Fixture(t *testing.T, target string) []byte {
+	t.Helper()
+	// The release manifest and every file changed by this candidate are archived
+	// under testdata/released-v0.1.0. Unchanged bytes come from the canonical
+	// assets and are checked against the exact release hashes below.
+	fixtureRoot := filepath.Join("..", "agentassets", "testdata", "released-v0.1.0")
+	manifest, err := os.ReadFile(filepath.Join(fixtureRoot, "manifest.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := parseManifest(manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range m.Files {
+		data, readErr := os.ReadFile(filepath.Join(fixtureRoot, filepath.FromSlash(entry.Path)))
+		if errors.Is(readErr, os.ErrNotExist) {
+			data, readErr = agentassets.ReadFile(entry.Path)
+		}
+		if readErr != nil {
+			t.Fatalf("released fixture %s: %v", entry.Path, readErr)
+		}
+		if got := hashBytes(data); got != entry.SHA256 {
+			t.Fatalf("released fixture %s hash=%s want=%s", entry.Path, got, entry.SHA256)
+		}
+		path := filepath.Join(target, filepath.FromSlash(entry.Path))
+		if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, data, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.WriteFile(filepath.Join(target, "manifest.json"), manifest, 0600); err != nil {
+		t.Fatal(err)
+	}
+	return manifest
+}
+
 func TestInstallForceUpgradesTask6Bundle(t *testing.T) {
 	repo := skillTestRepo(t)
 	resolvedRepo, _ := filepath.EvalSymlinks(repo)

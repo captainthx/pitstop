@@ -112,6 +112,8 @@ pitstop skill install --agent claude --scope user --dry-run --json
 
 Codex user installs live at `~/.agents/skills/pitstop-config`; Claude user installs live at `~/.claude/skills/pitstop-config`. Project installs use the matching hidden directory under the Git root. Installation never edits `AGENTS.md`, `CLAUDE.md`, workflow files, or project scripts. See the [AI-agent guide](ai-agent.en.md) for the workflow and manual prompt fallback.
 
+Fresh source builds include skill bundle v2 for the requested `validate` → `list` → `doctor` → `run` workflow and report/log inspection. Published v0.1.0 still embeds bundle v1; see the [AI-agent guide](ai-agent.en.md) for installation and direct-read use.
+
 ## Configuration reference
 
 All fields below are required except `name`. Image, architecture and jobs have no automatic defaults.

@@ -1,6 +1,6 @@
 # แนวทางพัฒนา Pitstop / Development roadmap
 
-**Updated:** 2026-10-23 (Asia/Bangkok). This is planning guidance, not a release promise or a list of installed CLI features.
+**Updated:** 2026-10-28 (Asia/Bangkok). This is planning guidance, not a release promise or a list of installed CLI features.
 
 [Current docs / เอกสารปัจจุบัน](README.md) · [Requirements / ข้อกำหนด](requirements.md) · [English requirements](requirements.en.md)
 
@@ -8,9 +8,9 @@
 
 AI-agent-led configuration, manual starters, strict shared validation and CLI installation of a portable skill are implemented in the current checkout and documented by the [design](superpowers/specs/2026-10-08-config-agent-design.md) and [implementation plan](superpowers/plans/2026-10-08-config-agent.md).
 
-`pitstop init`, `pitstop validate` และ `pitstop skill install` มีใน CLI ปัจจุบัน พร้อม starter และ portable skill หลายภาษา หลักฐาน agent trial ด้าน mapping/prerequisite 23 ครั้งอยู่ใน [ดัชนีหลักฐาน](evidence/config-agent-trials/README.md) และหลักฐาน runtime ของ Node, Go, Python และ Rust อยู่ใน [หลักฐาน config-agent validation](evidence/config-agent-validation.md) ส่วน release publication ยังไม่ยืนยัน
+`pitstop init`, `pitstop validate`, `pitstop list`, `pitstop doctor`, `pitstop run` และ `pitstop skill install` มีใน CLI ปัจจุบัน พร้อม starter และ portable skill หลายภาษา candidate bundle version 2 อยู่ใน embedded assets และต้อง build binary ใหม่จึงจะได้ skill นี้; published v0.1.0 ยังเป็น bundle version 1 หลักฐาน agent trial ด้าน mapping/prerequisite 23 ครั้งอยู่ใน [ดัชนีหลักฐาน](evidence/config-agent-trials/README.md) และหลักฐาน runtime ของ Node, Go, Python และ Rust อยู่ใน [หลักฐาน config-agent validation](evidence/config-agent-validation.md) ส่วน release publication ของ candidate ยังไม่ยืนยัน
 
-The commands and portable bundle are present in the current checkout. Agent mapping/prerequisite trials are recorded in the [trial evidence index](evidence/config-agent-trials/README.md), and local runtime evidence for Node, Go, Python, and Rust is recorded in [config-agent validation](evidence/config-agent-validation.md). This evidence covers four selected toolchains; it does not claim every preset or language, and release publication remains unverified.
+The commands and portable bundle are present in the current checkout. The embedded candidate is bundle version 2 and requires a fresh binary; the published v0.1.0 bundle remains version 1. Agent mapping/prerequisite trials are recorded in the [trial evidence index](evidence/config-agent-trials/README.md), and local runtime evidence for Node, Go, Python, and Rust is recorded in [config-agent validation](evidence/config-agent-validation.md). This evidence covers four selected toolchains; it does not claim every preset or language, and candidate release publication remains unverified.
 
 Release installation now has a macOS/Linux arm64/amd64 build script, checksum-validating installer and draft-only workflow in this checkout. See [installation/release guidance](install.md) and [verification evidence](evidence/release-install.md). [v0.1.0 is published](https://github.com/captainthx/pitstop/releases/tag/v0.1.0), with [remote CI and live installation evidence](evidence/release-v0.1.0.md). The repository is public; anonymous HTTPS installation is available.
 

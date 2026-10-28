@@ -1,6 +1,6 @@
 # Config reference
 
-Pitstop configs use `schemaVersion: 2`, one Linux runner image, selected `jobs`, and ordered shell `steps`. The image must be an explicit supported tag or digest; parsing does not prove registry availability. Commands are executable shell text and require human review before `pitstop run`.
+Pitstop configs use `schemaVersion: 2`, one Linux runner image, selected `jobs`, and ordered shell `steps`. The image must be an explicit supported tag or digest; parsing does not prove registry availability. Commands are executable shell text: show the selected commands and run them only when the user's request authorizes execution.
 
 Use the starter matching project evidence, then replace its commands with the project's real lockfile and test scripts. `base` is an intentional starter: its configure step exits 2 until a project check is defined. `custom` is supplied through init flags and has no placeholder template.
 
@@ -34,7 +34,32 @@ Inspect help from the installed binary before relying on a flag. The current com
 ```sh
 pitstop init --repo <path> [--preset <name>] [--image <ref>] [--command <shell-code> ...] [--arch linux/arm64|linux/amd64] [--dry-run] [--json]
 pitstop validate --repo <path> [--job <id> ...] [--arch linux/arm64|linux/amd64] [--json]
+pitstop list --repo <path> [--json]
+pitstop doctor --repo <path> [--json]
+pitstop run --repo <path> [--job <id> ...] [--timeout <duration>] [--arch linux/arm64|linux/amd64] [--json]
 pitstop skill install --agent codex|claude --scope user|project [--repo <path>] [--dry-run] [--force] [--json]
+```
+
+If `pitstop` is missing, use the public installer only for the current local request: download it to a temporary file, inspect it, and install into a fresh temporary directory so an existing binary and profile remain untouched. Use the resulting absolute path for every command; do not pass `--force` or install into a real home directory.
+
+```sh
+set -eu
+PITSTOP_INSTALLER="$(mktemp "${TMPDIR:-/tmp}/pitstop-installer.XXXXXXXX")"
+curl --disable --fail --show-error --location --proto '=https' --proto-redir '=https' \
+  --connect-timeout 15 --max-time 180 \
+  --output "$PITSTOP_INSTALLER" \
+  https://github.com/captainthx/pitstop/releases/latest/download/install.sh
+cat "$PITSTOP_INSTALLER"  # inspect before executing
+```
+
+After inspecting the downloaded script, run it in a separate shell block:
+
+```sh
+set -eu
+PITSTOP_BIN_DIR="$(mktemp -d "${TMPDIR:-/tmp}/pitstop-bin.XXXXXXXX")"
+sh "$PITSTOP_INSTALLER" --bin-dir "$PITSTOP_BIN_DIR"
+PITSTOP_BIN="$PITSTOP_BIN_DIR/pitstop"
+"$PITSTOP_BIN" version
 ```
 
 `init` defaults to `base`; supported presets are `base`, `node-npm`, `node-pnpm`, `node-yarn-classic`, `node-yarn-berry`, `go`, `python-pip`, `python-uv`, `java-maven`, `java-gradle`, `dotnet`, `rust`, `php-composer`, `ruby-bundler`, and `custom`. Repeated `--command` values replace all `verify` steps in order. `custom` requires `--image` and at least one `--command`. `--dry-run` writes nothing, including when `.pitstop.json` already exists. Init never overwrites an existing destination; a failure after exclusive creation can leave a partial file for inspection, and a retry reports `CONFIG_EXISTS` until it is handled manually. An architecture omitted from `--arch` defaults from the host runtime; it does not detect a remote Docker daemon.
@@ -51,6 +76,14 @@ The base result includes `written: false`, `destinationExists: false`, and warni
 
 ```sh
 pitstop validate --repo /work/app --json
+```
+
+`list` reads configured check IDs and marks which are selected; use its JSON output instead of inventing a job ID. `doctor` checks repository/config/Docker/image readiness and returns `ready: false` with reason codes when a prerequisite is blocked. Neither command executes project steps. `run` selects configured IDs, defaults to all configured jobs, applies a 20-minute timeout per check, and writes progress to stderr when `--json` is used. Its stdout is one final JSON envelope containing the report, job statuses, reason codes, log paths, report path, coverage, and warnings. Read that report and the referenced logs before summarizing. A nonzero test command is a failed job; timeout, cancellation, unknown engine evidence, or incomplete cleanup is not a pass. Use exit `1` for a failed selected check, `2` for an untrustworthy/incomplete run or setup error, and `130` for cancellation.
+
+```sh
+pitstop list --repo /work/app --json
+pitstop doctor --repo /work/app --json
+pitstop run --repo /work/app --job verify --json >run.json 2>run.progress.log
 ```
 
 `skill install` copies the complete bundle from embedded assets. Codex user scope is `~/.agents/skills/pitstop-config`; Claude user scope is `~/.claude/skills/pitstop-config`; project scope uses the matching hidden directory under the Git root. User scope does not accept `--repo`. `--dry-run` reports the planned files and action without creating directories or locks. Existing installs require `--force`, and force replaces only a bundle authenticated by the current or explicitly trusted historical Pitstop manifest. Unknown historical content requires manual migration; a destination-provided owner or hash declaration is not proof of ownership.

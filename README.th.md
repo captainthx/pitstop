@@ -106,7 +106,7 @@ pitstop skill install --agent codex --scope project --repo "$TARGET_REPO" --dry-
 pitstop skill install --agent codex --scope project --repo "$TARGET_REPO" --json
 ```
 
-คำสั่งแรกเป็น preview; เอา `--dry-run` ออกแล้วรันซ้ำเพื่อ install skill ปัจจุบันทำได้ด้าน config เท่านั้น: อ่านหลักฐานของ repo, รักษาหรือร่าง `.pitstop.json` และรัน `validate` ไม่ฝัง AI provider ไม่ execute workflow YAML และไม่อ้างว่า runtime ผ่าน ถ้าได้รับคำขอ “Use Pitstop to test this project” agent ควรตรวจ CLI/config ก่อน ขอให้ผู้ใช้ review commands แล้วจึงใช้ `doctor`/`run` และรายงานหลักฐานจริง user scope ติดตั้งใน directory ของ agent ส่วน project scope ติดตั้งใต้ Git root `--force` เปลี่ยนได้เฉพาะ Pitstop bundle ที่เป็นของเรา ดู [คู่มือ AI agent](docs/ai-agent.md)
+คำสั่งแรกเป็น preview; เอา `--dry-run` ออกแล้วรันซ้ำเพื่อ install skill ปัจจุบัน skill อ่านหลักฐานของ repo, รักษาหรือร่าง `.pitstop.json`, ตรวจด้วย `validate`/`list`/`doctor` และรันเฉพาะ checks ที่ผู้ใช้ขอ ไม่ฝัง AI provider ไม่ execute workflow YAML และไม่อ้างว่า runtime ผ่านโดยไม่มีหลักฐาน ถ้าได้รับคำขอ “Use Pitstop to test this project” agent ควรตรวจ CLI/config ก่อน แสดง commands ที่เลือก รัน scope ที่ขอโดยไม่ถามยืนยันซ้ำ แล้วอ่าน report และ log ของแต่ละ check ก่อนสรุป user scope ติดตั้งใน directory ของ agent ส่วน project scope ติดตั้งใต้ Git root `--force` เปลี่ยนได้เฉพาะ Pitstop bundle ที่เป็นของเรา binary ที่เผยแพร่ใน v0.1.0 ฝัง skill bundle v1 ส่วน bundle v2 ใน checkout นี้ต้อง fresh source build จนกว่าจะมี release ใหม่ ดู [คู่มือ AI agent](docs/ai-agent.md)
 
 ## 5. อ่านผลลัพธ์
 

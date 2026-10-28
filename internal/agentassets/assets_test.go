@@ -18,7 +18,7 @@ import (
 
 func TestTrustedBundlesIncludeCurrentAndHistoricalBundles(t *testing.T) {
 	manifests := agentassets.TrustedBundles()
-	if len(manifests) != 5 {
+	if len(manifests) != 6 {
 		t.Fatalf("trusted manifest registry = %d entries or lacks distinct history", len(manifests))
 	}
 	for i := range manifests {
@@ -73,6 +73,21 @@ func TestBDEB767FixtureMatchesArchivedManifestAndTrustedHistory(t *testing.T) {
 		if got := hex.EncodeToString(hash[:]); got != entry.SHA256 {
 			t.Fatalf("archived fixture %s hash=%s want=%s", entry.Path, got, entry.SHA256)
 		}
+	}
+}
+
+func TestReleasedV010ManifestIsArchivedAndTrusted(t *testing.T) {
+	manifestPath := filepath.Join("testdata", "released-v0.1.0", "manifest.json")
+	manifestBytes, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	hash := sha256.Sum256(manifestBytes)
+	if got := hex.EncodeToString(hash[:]); got != "8a903c994e2a571818dba7cb47d0ca7790a8efa3f3b2425e173a3e984e28a8a2" {
+		t.Fatalf("archived v0.1.0 manifest hash = %s", got)
+	}
+	if !trustedManifestContains(manifestBytes) {
+		t.Fatal("archived v0.1.0 manifest is not trusted for force upgrades")
 	}
 }
 

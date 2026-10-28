@@ -106,7 +106,7 @@ pitstop skill install --agent codex --scope project --repo "$TARGET_REPO" --dry-
 pitstop skill install --agent codex --scope project --repo "$TARGET_REPO" --json
 ```
 
-The first command previews; repeat without `--dry-run` to install. The current skill is configuration-only: it reads repository evidence, preserves or drafts `.pitstop.json`, and runs `validate`; it does not embed an AI provider, execute workflow YAML, or claim runtime success. For a request such as “Use Pitstop to test this project”, the agent should inspect the CLI/config first, ask for review before executing project checks, then use `doctor`/`run` and report actual evidence. User scope installs to the agent's user directory; project scope installs under the Git root. `--force` replaces only an owned Pitstop bundle. See the [AI-agent guide](docs/ai-agent.en.md).
+The first command previews; repeat without `--dry-run` to install. The current skill reads repository evidence, preserves or drafts `.pitstop.json`, validates and inspects it with `list`/`doctor`, and runs only the requested checks; it does not embed an AI provider, execute workflow YAML, or claim runtime success without evidence. For a request such as “Use Pitstop to test this project”, the agent should inspect the CLI/config first, show the selected commands, run the requested scope without redundant confirmation, then read the final report and per-check logs before summarizing. User scope installs to the agent's user directory; project scope installs under the Git root. `--force` replaces only an owned Pitstop bundle. Published v0.1.0 binaries embed skill bundle v1; this checkout's bundle v2 requires a fresh source build until a future release. See the [AI-agent guide](docs/ai-agent.en.md).
 
 ## 5. Read the result
 

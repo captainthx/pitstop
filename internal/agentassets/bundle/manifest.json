@@ -1,8 +1,8 @@
 {
   "owner": "pitstop",
-  "bundleVersion": "1",
+  "bundleVersion": "2",
   "files": [
-    {"path":"SKILL.md","sha256":"deee3d266953d3674d77a2df0c9a1b097e6bc786e251323ccc57f1d64f1e9a6c"},
+    {"path":"SKILL.md","sha256":"3539389d48c3f46af852ac291b4450d3f4a5482f8b84263b0aa8cfe2d6f96dde"},
     {"path":"assets/examples/base.json","sha256":"1a8c148300b3cc52f7b1f4cd562bde19f450caf6f7536a9a4cbc26d3209a6159"},
     {"path":"assets/examples/custom-image.json","sha256":"b383958f3046b596861f8eca49599e7f0e982a26cddf99a55db66e483c31c603"},
     {"path":"assets/examples/dotnet.json","sha256":"960f2fdfb6e82f536819402e21815c13cb16f42d46e1c30be97e5f045796d78d"},
@@ -44,7 +44,7 @@
     {"path":"assets/workflows/python-pytest.yml","sha256":"b854f4f2980d78bffbd4e67a1af2a939d9971f8ad9cd8298da090dd0d6b9fab4"},
     {"path":"assets/workflows/rust-cargo.yml","sha256":"e5b40c07274a3affe1c60eef1d1e8519a2bdcef399eba69c5ce758f850fd7f3f"},
     {"path":"assets/workflows/shared-script.yml","sha256":"dda08de0b098fbade50abd3f6a2ceb474449bbcff7d9d4e9ad23743a18a132a8"},
-    {"path":"references/config-reference.md","sha256":"b2ac9bbcc0b62abc79b7763ce23ecfa032ac9b881c367b958f472e0b80ae34d3"},
+    {"path":"references/config-reference.md","sha256":"28ab48bb18125e0e61a76cced8f165a3ca5efb0b396c33a1e93310319c940a0c"},
     {"path":"references/examples.md","sha256":"cb2abc5b1944c46ea98096534603b38a6bd5217e6570ed05bfb125cdd1ff06ea"},
     {"path":"references/workflow-mapping.md","sha256":"8f6f9105b8be15bd8805fafb411d48e5fda6cab1003303775d0e68dd7f665eb3"}
   ]
