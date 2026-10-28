@@ -91,7 +91,7 @@ pitstop run --repo "$TARGET_REPO" --json > result.json 2> progress.log
 | `pitstop validate` | Validate config; supports `--job`, `--arch`, `--json` |
 | `pitstop doctor` | Check repository, config, Git/Docker and image readiness; supports `--json` |
 | `pitstop list` | List configured checks and selection; supports `--json` |
-| `pitstop run` | Execute selected checks; supports `--job`, `--timeout`, `--arch`, `--json` |
+| `pitstop run` | Execute selected checks; supports `--job`, `--timeout`, `--arch`, `--allow-testcontainers`, `--json` |
 | `pitstop update` | Check latest stable, then update the CLI and existing skills; supports `--version`, `--json` |
 | `pitstop version` | Show version/build metadata; supports `--json` |
 | `pitstop skill` | Manage installed agent skills |
@@ -122,10 +122,12 @@ Use `reportPath`, per-check log paths and warnings together. Exit codes are:
 | `2` | Invalid config/environment, unknown outcome, or incomplete log/report/cleanup without a failed check |
 | `130` | Cancellation; takes precedence |
 
-Supported scope includes prebuilt Docker images, snapshots, ordered shell steps, selection, timeout/cancellation and reports. Workflow YAML execution, matrices, job dependencies, service containers, secret injection, cache volumes, automatic image builds, artifact export and native Windows support are outside the current scope. See the [full guide](docs/user-guide.en.md) for reports, troubleshooting and the exact limitations.
+Supported scope includes prebuilt Docker images, snapshots, ordered shell steps, selection, timeout/cancellation and reports. Workflow YAML execution, matrices, job dependencies, generic workflow service containers, secret injection, cache volumes, automatic image builds, artifact export and native Windows support are outside the current scope. See the [full guide](docs/user-guide.en.md) for reports, troubleshooting and the exact limitations.
 
 ## Further reading
 
 - [Full user guide and command reference](docs/user-guide.en.md)
 - [AI-agent guide](docs/ai-agent.en.md)
 - [Documentation index with requirements, engineering records and evidence](docs/README.md)
+
+Testcontainers suites can opt into a dedicated DinD daemon: see [configuration and requirements](docs/testcontainers.md) for `checks[].testcontainers` and `run --allow-testcontainers`. Privileged execution requires authorization for each invocation.

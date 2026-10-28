@@ -24,6 +24,31 @@ func TestExecuteMissingConfigIsActionable(t *testing.T) {
 	}
 }
 
+func TestExecuteBlocksTestcontainersBeforeDocker(t *testing.T) {
+	d := t.TempDir()
+	if out, err := exec.Command("git", "init", "-q", d).CombinedOutput(); err != nil {
+		t.Fatal(string(out))
+	}
+	marker := filepath.Join(d, "docker-called")
+	fakeBin := t.TempDir()
+	docker := filepath.Join(fakeBin, "docker")
+	if err := os.WriteFile(docker, []byte("#!/bin/sh\nprintf called > '"+marker+"'\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", fakeBin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	config := `{"schemaVersion":2,"runner":{"image":"alpine:3.22","architecture":"linux/arm64"},"jobs":["unit","integration"],"checks":[{"id":"unit","steps":[{"id":"check","run":"true"}]},{"id":"integration","testcontainers":true,"steps":[{"id":"check","run":"true"}]}]}`
+	if err := os.WriteFile(filepath.Join(d, ".pitstop.json"), []byte(config), 0600); err != nil {
+		t.Fatal(err)
+	}
+	e, err := Execute(context.Background(), Options{Repo: d, Jobs: []string{"unit", "integration"}})
+	if err == nil || e.ExitCode != 2 || e.Error == nil || e.Error.Code != "TESTCONTAINERS_AUTH_REQUIRED" {
+		t.Fatalf("envelope=%#v err=%v", e, err)
+	}
+	if _, statErr := os.Stat(marker); statErr == nil {
+		t.Fatal("Docker was invoked before Testcontainers authorization")
+	}
+}
+
 func TestExecuteRejectsInvalidOriginalBeforeDocker(t *testing.T) {
 	d := t.TempDir()
 	if out, err := exec.Command("git", "init", "-q", d).CombinedOutput(); err != nil {

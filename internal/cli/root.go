@@ -275,6 +275,7 @@ func runCmd(ctx context.Context, out, errOut io.Writer, repo *string) *cobra.Com
 	var jobs []string
 	var timeout time.Duration
 	var arch string
+	var allowTestcontainers bool
 	c := &cobra.Command{Use: "run", Short: "Run selected checks in isolated Docker containers", Long: "Run configured checks from the current working-tree snapshot. Each selected check gets a fresh container; steps within a check share /workspace. The timeout applies per check and Ctrl+C cancels the run.", Example: "  pitstop run --repo /path/to/repo\n  pitstop run --repo /path/to/repo --job verify\n  pitstop run --repo /path/to/repo --timeout 10m\n  pitstop run --repo /path/to/repo --json > result.json 2> progress.log", RunE: func(cmd *cobra.Command, _ []string) error {
 		if timeout <= 0 {
 			return model.Err("CONFIG_INVALID", "timeout must be positive", nil)
@@ -283,7 +284,7 @@ func runCmd(ctx context.Context, out, errOut io.Writer, repo *string) *cobra.Com
 		if jsonOut {
 			progress = errOut
 		}
-		e, err := run.Execute(ctx, run.Options{Repo: *repo, Jobs: jobs, Timeout: timeout, Architecture: arch, Progress: progress})
+		e, err := run.Execute(ctx, run.Options{Repo: *repo, Jobs: jobs, Timeout: timeout, Architecture: arch, AllowTestcontainers: allowTestcontainers, Progress: progress})
 		if werr := writeCommandResult(out, e, jsonOut); werr != nil {
 			return werr
 		}
@@ -299,5 +300,6 @@ func runCmd(ctx context.Context, out, errOut io.Writer, repo *string) *cobra.Com
 	c.Flags().StringSliceVar(&jobs, "job", nil, "configured check ID (repeatable or comma-separated)")
 	c.Flags().DurationVar(&timeout, "timeout", 20*time.Minute, "per-check timeout")
 	c.Flags().StringVar(&arch, "arch", "", "override configured container architecture (linux/arm64 or linux/amd64)")
+	c.Flags().BoolVar(&allowTestcontainers, "allow-testcontainers", false, "allow selected checks to start a dedicated privileged Docker-in-Docker daemon")
 	return c
 }

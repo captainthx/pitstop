@@ -1,0 +1,94 @@
+{
+  "platform": "macOS ARM64; Linux ARM64 Docker 29.8.2",
+  "binarySha256": "7c28c83a06ffe97e7ca19d8f3f2acc3b9da6928b03b0050af110adc127130a73",
+  "cases": [
+    {
+      "case": "assertion-failed",
+      "exitCode": 1,
+      "runId": "1793177452527598000",
+      "jobs": [
+        {
+          "id": "integration-9jbbh5ab",
+          "status": "failed",
+          "reasonCode": null
+        }
+      ]
+    },
+    {
+      "case": "authorization-blocked",
+      "exitCode": 2
+    },
+    {
+      "case": "cancelled",
+      "exitCode": 130,
+      "runId": "1793177551431085000",
+      "jobs": [
+        {
+          "id": "integration-9jbbh5ab",
+          "status": "skipped",
+          "reasonCode": "CANCELLED"
+        }
+      ]
+    },
+    {
+      "case": "daemon-start-failed",
+      "exitCode": 2,
+      "runId": "1793177569604441000",
+      "jobs": [
+        {
+          "id": "integration-9jbbh5ab",
+          "status": "skipped",
+          "reasonCode": "TESTCONTAINERS_DAEMON_NOT_READY"
+        }
+      ]
+    },
+    {
+      "case": "passed",
+      "exitCode": 0,
+      "runId": "1793177398024909000",
+      "jobs": [
+        {
+          "id": "integration-9jbbh5ab",
+          "status": "passed",
+          "reasonCode": null
+        }
+      ]
+    },
+    {
+      "case": "provision-timeout",
+      "exitCode": 1,
+      "runId": "1793177502615092000",
+      "jobs": [
+        {
+          "id": "integration-9jbbh5ab",
+          "status": "failed",
+          "reasonCode": "TIMEOUT"
+        }
+      ]
+    },
+    {
+      "case": "runtime-timeout",
+      "exitCode": 1,
+      "runId": "1793177505352195000",
+      "jobs": [
+        {
+          "id": "integration-9jbbh5ab",
+          "status": "failed",
+          "reasonCode": "TIMEOUT"
+        }
+      ]
+    },
+    {
+      "case": "source-copy-failed",
+      "exitCode": 2,
+      "runId": "1793177570899677000",
+      "jobs": [
+        {
+          "id": "integration-9jbbh5ab",
+          "status": "skipped",
+          "reasonCode": "ENGINE_OUTCOME_UNKNOWN"
+        }
+      ]
+    }
+  ]
+}

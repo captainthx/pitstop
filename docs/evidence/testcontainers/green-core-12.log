@@ -1,0 +1,4 @@
+ok  	pitstop/internal/dockerchecks	1.202s
+ok  	pitstop/internal/run	0.662s
+ok  	pitstop/internal/config	(cached)
+ok  	pitstop/internal/cli	3.313s

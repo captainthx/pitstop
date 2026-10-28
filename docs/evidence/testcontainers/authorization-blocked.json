@@ -1,0 +1,1 @@
+{"schemaVersion":1,"command":"run","exitCode":2,"error":{"code":"TESTCONTAINERS_AUTH_REQUIRED","message":"TESTCONTAINERS_AUTH_REQUIRED: selected check integration-9jbbh5ab requires --allow-testcontainers"}}

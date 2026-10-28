@@ -102,6 +102,35 @@ func TestParsePreservesRun(t *testing.T) {
 	}
 }
 
+func TestParseOptionalTestcontainersShape(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		input string
+		want  bool
+		ok    bool
+	}{
+		{"omitted", validConfig, false, true},
+		{"false", strings.Replace(validConfig, `"id":"verify"`, `"id":"verify","testcontainers":false`, 1), false, true},
+		{"true", strings.Replace(validConfig, `"id":"verify"`, `"id":"verify","testcontainers":true`, 1), true, true},
+		{"null", strings.Replace(validConfig, `"id":"verify"`, `"id":"verify","testcontainers":null`, 1), false, false},
+		{"wrong type", strings.Replace(validConfig, `"id":"verify"`, `"id":"verify","testcontainers":"true"`, 1), false, false},
+		{"unknown", strings.Replace(validConfig, `"id":"verify"`, `"id":"verify","testcontainers":true,"testContainers":true`, 1), false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := Parse([]byte(tc.input))
+			if tc.ok {
+				if err != nil || got.Checks[0].Testcontainers != tc.want {
+					t.Fatalf("config=%#v err=%v", got, err)
+				}
+				return
+			}
+			if err == nil || !reflect.DeepEqual(got, model.Config{}) {
+				t.Fatalf("accepted invalid testcontainers shape: %#v err=%v", got, err)
+			}
+		})
+	}
+}
+
 func TestParseV1MigrationSkipsV2ShapeRequirements(t *testing.T) {
 	for _, input := range []string{`{"schemaVersion":1,"ſteps":0}`, `{"schemaVersion":1,"workflow":null}`} {
 		if _, err := Parse([]byte(input)); err == nil || !strings.Contains(err.Error(), "schemaVersion 1") {

@@ -19,11 +19,12 @@ import (
 )
 
 type Options struct {
-	Repo         string
-	Jobs         []string
-	Timeout      time.Duration
-	Architecture string
-	Progress     io.Writer
+	Repo                string
+	Jobs                []string
+	Timeout             time.Duration
+	Architecture        string
+	AllowTestcontainers bool
+	Progress            io.Writer
 }
 type lock struct{ f *os.File }
 
@@ -71,11 +72,6 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 	if err != nil {
 		return fail(err)
 	}
-	l, err := acquireLock(repo)
-	if err != nil {
-		return fail(err)
-	}
-	defer l.Release()
 	cfg, err := config.Load(repo)
 	if err != nil {
 		return fail(err)
@@ -85,6 +81,18 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 	if err != nil {
 		return fail(err)
 	}
+	for _, id := range cfg.Jobs {
+		for _, check := range cfg.Checks {
+			if check.ID == id && check.Testcontainers && !o.AllowTestcontainers {
+				return fail(model.Err("TESTCONTAINERS_AUTH_REQUIRED", "selected check "+id+" requires --allow-testcontainers", nil))
+			}
+		}
+	}
+	l, err := acquireLock(repo)
+	if err != nil {
+		return fail(err)
+	}
+	defer l.Release()
 	env, err := dockerchecks.Check(ctx)
 	if err != nil {
 		return fail(err)
@@ -154,7 +162,8 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 		if e != nil {
 			runWarnings = append(runWarnings, e.Error())
 			cancelledResult := r.Status == "skipped" && r.ReasonCode != nil && *r.ReasonCode == "CANCELLED"
-			if r.Status == "failed" || r.Status == "passed" || cancelledResult {
+			blockedTestcontainers := r.Status == "skipped" && r.ReasonCode != nil && (*r.ReasonCode == "TESTCONTAINERS_PROVISION_FAILED" || *r.ReasonCode == "TESTCONTAINERS_DAEMON_NOT_READY")
+			if r.Status == "failed" || r.Status == "passed" || cancelledResult || blockedTestcontainers {
 				results = append(results, r)
 				continue
 			}
@@ -166,7 +175,7 @@ func Execute(ctx context.Context, o Options) (model.Envelope, error) {
 			if len(r.Steps) == 0 {
 				r.Steps = []model.StepResult{}
 			}
-			r = model.JobResult{ID: id, Status: "skipped", Provenance: "unknown", ReasonCode: &code, Reason: &msg, Steps: r.Steps, LogPath: filepath.Join(runDir, id+".stdout")}
+			r = model.JobResult{ID: id, Status: "skipped", Provenance: "unknown", ReasonCode: &code, Reason: &msg, Steps: r.Steps, LogPath: filepath.Join(runDir, id+".stdout"), Testcontainers: r.Testcontainers}
 			if ctx.Err() != nil {
 				results = append(results, r)
 				for _, rest := range cfg.Jobs[i+1:] {

@@ -126,6 +126,7 @@ All fields below are required except `name`. Image, architecture and jobs have n
 | `jobs` | Nonempty, unique default selection of IDs defined in `checks`; determines execution order |
 | `checks` | Nonempty array with unique check IDs |
 | `checks[].id` | Check ID referenced by `jobs` and `--job` |
+| `checks[].testcontainers` | optional boolean, default `false`; dedicated DinD requires `run --allow-testcontainers` |
 | `checks[].steps` | Nonempty array, executed in order |
 | `steps[].id` | Step ID, unique within its check |
 | `steps[].name` | Optional readable log/report name; defaults to the ID |
@@ -250,7 +251,7 @@ Log in to private registries with the host Docker CLI before running. Host crede
 | `pitstop validate` | Validate config without running checks | `--job`, `--arch`, `--json` |
 | `pitstop doctor` | Probe repository/config, Git/Docker and image readiness | `--json` |
 | `pitstop list` | List selected/excluded checks from config; does not require Docker | `--json` |
-| `pitstop run` | Execute selected checks | `--job`, `--timeout`, `--arch`, `--json` |
+| `pitstop run` | Execute selected checks | `--job`, `--timeout`, `--arch`, `--allow-testcontainers`, `--json` |
 | `pitstop update` | Update the CLI and installed user/selected-project skills | `--version`, `--json` |
 | `pitstop version` | Version and build information when available | `--json` |
 | `pitstop skill` | Manage installed agent skills | Use the `install` subcommand |
@@ -286,6 +287,7 @@ This table uses the types and defaults shown by Cobra help. Boolean flags defaul
 | `--command` | `stringArray` | none | `init`; repeatable verify commands that replace the preset steps |
 | `--arch` | `string` | empty | `init`, `validate`, `run`; init derives host architecture, while validate/run use config when omitted |
 | `--job` | `strings` | none | `validate`, `run`; repeat or comma-separate IDs, falling back to configured `jobs` |
+| `--allow-testcontainers` | `bool` | `false` | `run`; authorize privileged dedicated DinD for marked checks |
 | `--timeout` | `duration` | `20m0s` | `run`; positive timeout per check |
 | `--version` | `string` | omitted = latest stable | `update`; explicit stable `vMAJOR.MINOR.PATCH` pins/reinstalls/downgrades intentionally |
 
@@ -324,7 +326,7 @@ Human `version` output is `pitstop <version>`. With `--json`, the envelope conta
 
 `completion bash`, `zsh`, `fish` and `powershell` generate a script for the named shell. `--no-descriptions` disables completion descriptions. PowerShell here means a generated completion script only; this subcommand does not claim native Windows support because the CLI uses Unix file locking and current validation does not cover Windows.
 
-Repeat `--job` or separate IDs with commas; IDs must be unique and in the configured selection. `--arch` overrides this run without editing config. `--timeout` must be positive and covers each check's create/copy/start/execution phases; default 20 minutes. Image preparation and cleanup have separate budgets.
+Repeat `--job` or separate IDs with commas; IDs must be unique and in the configured selection. `--arch` overrides this run without editing config. `--timeout` must be positive and covers each check's daemon provisioning/create/copy/start/execution phases after image preparation; default 20 minutes. Image preparation and cleanup have separate budgets.
 
 Ctrl+C or SIGTERM cancels the run. Bounded stop/remove can take additional time after a timeout. Check warnings for `CLEANUP_INCOMPLETE` when the daemon cannot respond.
 
@@ -453,6 +455,8 @@ docker ps -a --filter "label=com.pitstop.run=RUN_ID"
 
 ## Supported scope
 
-Prebuilt Docker images, shell/shared scripts, ordered steps, selection, snapshots, timeout/cancellation and reports are supported. There is no workflow YAML executor, `uses:`/expression translation, matrix, job dependencies (`needs`), service containers, secret injection, cache volumes, automatic image builds, artifact export, self-hosted runner registration, automatic workflow conversion, or automatic manifest detection.
+Prebuilt Docker images, shell/shared scripts, ordered steps, selection, snapshots, timeout/cancellation and reports are supported. There is no workflow YAML executor, `uses:`/expression translation, matrix, job dependencies (`needs`), generic workflow service containers, secret injection, cache volumes, automatic image builds, artifact export, self-hosted runner registration, automatic workflow conversion, or automatic manifest detection.
 
 See [requirements](requirements.en.md) and [validation](evidence/docker-checks-validation.md). Earlier designs and evidence are listed as historical in the [documentation index](README.md).
+
+Testcontainers suites can opt into a dedicated DinD daemon: see [configuration and requirements](testcontainers.md) for `checks[].testcontainers` and `run --allow-testcontainers`. Privileged execution requires authorization for each invocation.

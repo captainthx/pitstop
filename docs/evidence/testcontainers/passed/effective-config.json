@@ -1,0 +1,1 @@
+{"schemaVersion":2,"jobs":["integration-9jbbh5ab"],"runner":{"image":"golang:1.26.5","architecture":"linux/arm64"},"checks":[{"id":"integration-9jbbh5ab","testcontainers":true,"steps":[{"id":"service","run":"go test -race -count=1 -tags integration -v ./..."}]}]}

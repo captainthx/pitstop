@@ -1,0 +1,37 @@
+step: service service
+=== RUN   TestServiceRoundTrip
+2026/10/28 08:51:21 github.com/testcontainers/testcontainers-go - Connected to docker: 
+  Server Version: 29.8.2
+  API Version: 1.55
+  Operating System: Alpine Linux v3.24
+  Total Memory: 8003 MB
+  Testcontainers for Go Version: v0.44.0
+  Resolved Docker Host: tcp://pitstop-dind:2375
+  Resolved Docker Socket Path: /var/run/docker.sock
+  Test SessionID: 2c4354f4037767e720e9791a9867249e2441afce6c12b220dc26f18cb5b39577
+  Test ProcessID: 28974102-e755-4bfe-ae92-7c31e750fb07
+2026/10/28 08:51:21 No image auth found for https://index.docker.io/v1/. Setting empty credentials for the image: busybox:1.37. This is expected for public images. Details: credentials not found in native keychain
+2026/10/28 08:51:27 🐳 Creating container for image busybox:1.37
+2026/10/28 08:51:27 No image auth found for https://index.docker.io/v1/. Setting empty credentials for the image: testcontainers/ryuk:0.14.0. This is expected for public images. Details: credentials not found in native keychain
+2026/10/28 08:51:30 🐳 Creating container for image testcontainers/ryuk:0.14.0
+2026/10/28 08:51:31 ✅ Container created: 089fc36f9058
+2026/10/28 08:51:31 🐳 Starting container: 089fc36f9058
+2026/10/28 08:51:31 ✅ Container started: 089fc36f9058
+2026/10/28 08:51:31 ⏳ Waiting for container id 089fc36f9058 image: testcontainers/ryuk:0.14.0. Waiting for: all of: [log message "Started", port 8080/tcp to be listening]
+2026/10/28 08:51:31 Shell not found in container
+2026/10/28 08:51:31 🔔 Container is ready: 089fc36f9058
+2026/10/28 08:51:31 ✅ Container created: aa76628387fa
+2026/10/28 08:51:31 🐳 Starting container: aa76628387fa
+2026/10/28 08:51:31 ✅ Container started: aa76628387fa
+2026/10/28 08:51:31 ⏳ Waiting for container id aa76628387fa image: busybox:1.37. Waiting for: HTTP GET request on port 8080 path "/"
+2026/10/28 08:51:31 🔔 Container is ready: aa76628387fa
+    integration_test.go:58: mapped service round-trip succeeded at http://pitstop-dind:32769
+    integration_test.go:60: intentional assertion failure after successful service round-trip
+2026/10/28 08:51:31 🐳 Stopping container: aa76628387fa
+2026/10/28 08:51:41 ✅ Container stopped: aa76628387fa
+2026/10/28 08:51:41 🐳 Terminating container: aa76628387fa
+2026/10/28 08:51:41 🚫 Container terminated: aa76628387fa
+--- FAIL: TestServiceRoundTrip (19.67s)
+FAIL
+FAIL	pitstop-testcontainers-smoke	19.671s
+FAIL

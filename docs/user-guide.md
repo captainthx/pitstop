@@ -126,6 +126,7 @@ Fresh source build มี skill bundle v2 สำหรับ flow `validate` →
 | `jobs` | array ของ check IDs ที่เลือกโดยปริยาย ต้องไม่ว่าง ไม่ซ้ำ และมีอยู่ใน `checks`; ใช้ลำดับนี้ตอนรัน |
 | `checks` | array ที่ไม่ว่าง; check IDs ต้องไม่ซ้ำ |
 | `checks[].id` | ID ของ check ใช้อ้างใน `jobs` และ `--job` |
+| `checks[].testcontainers` | optional boolean, default `false`; dedicated DinD requires `run --allow-testcontainers` |
 | `checks[].steps` | array ที่ไม่ว่าง รันตามลำดับ |
 | `steps[].id` | ID ของ step ต้องไม่ซ้ำภายใน check เดียวกัน |
 | `steps[].name` | ชื่อที่อ่านง่ายสำหรับ log/report; ไม่ใส่จะใช้ ID |
@@ -250,7 +251,7 @@ Private registry ใช้การ login ของ Docker CLI บน host ก�
 | `pitstop validate` | ตรวจ config โดยไม่รัน checks | `--job`, `--arch`, `--json` |
 | `pitstop doctor` | ตรวจ repository/config, Git/Docker และ image readiness | `--json` |
 | `pitstop list` | แสดง checks ทั้งหมดพร้อม selected/excluded จาก config; ไม่ต้องเปิด Docker | `--json` |
-| `pitstop run` | รัน checks ตาม selection | `--job`, `--timeout`, `--arch`, `--json` |
+| `pitstop run` | รัน checks ตาม selection | `--job`, `--timeout`, `--arch`, `--allow-testcontainers`, `--json` |
 | `pitstop update` | อัปเดต CLI และ skills ที่ติดตั้งอยู่ใน user/selected project | `--version`, `--json` |
 | `pitstop version` | แสดง version และ build information เมื่อมี | `--json` |
 | `pitstop skill` | จัดการ agent skills ที่ติดตั้ง | ใช้ subcommand `install` |
@@ -286,6 +287,7 @@ pitstop skill --help
 | `--command` | `stringArray` | ไม่มีค่า | `init`; คำสั่ง verify ที่ส่งซ้ำได้และแทนที่ steps เดิม |
 | `--arch` | `string` | ค่าว่าง | `init`, `validate`, `run`; init เดาจาก host ส่วน validate/run ใช้ค่าใน config เมื่อไม่ override |
 | `--job` | `strings` | ไม่มีค่า | `validate`, `run`; ส่งซ้ำหรือคั่น comma ได้ และใช้ `jobs` ใน config เมื่อไม่ระบุ |
+| `--allow-testcontainers` | `bool` | `false` | `run`; authorize privileged dedicated DinD for marked checks |
 | `--timeout` | `duration` | `20m0s` | `run`; timeout ต่อ check ต้องมากกว่า 0 |
 | `--version` | `string` | ไม่ระบุ = stable ล่าสุด | `update`; ระบุ stable tag `vMAJOR.MINOR.PATCH` เพื่อ pin/reinstall/downgrade โดยชัดแจ้ง |
 
@@ -324,7 +326,7 @@ pitstop completion bash --no-descriptions > pitstop.bash
 
 `completion bash`, `zsh`, `fish` และ `powershell` สร้าง script สำหรับ shell ตามชื่อ โดย `--no-descriptions` ปิดคำอธิบาย completion ได้ PowerShell เป็นเพียง generated completion script; การมี subcommand นี้ไม่ได้ยืนยันการรองรับ Pitstop แบบ native Windows เพราะ CLI ยังใช้ Unix file locking และการตรวจสอบปัจจุบันยังไม่ครอบคลุม Windows
 
-`--job` ใช้แบบซ้ำหรือคั่นด้วย comma ได้ แต่ IDs ต้องไม่ซ้ำและอยู่ใน config selection `--arch` override สำหรับ run นี้ ไม่แก้ไฟล์ config `--timeout` ต้องมากกว่า 0 และนับต่อ check ตั้งแต่ create/copy/start/run ค่าเริ่มต้น 20 นาที เวลาที่ใช้เตรียม image และ cleanup อยู่นอก budget นี้
+`--job` ใช้แบบซ้ำหรือคั่นด้วย comma ได้ แต่ IDs ต้องไม่ซ้ำและอยู่ใน config selection `--arch` override สำหรับ run นี้ ไม่แก้ไฟล์ config `--timeout` ต้องมากกว่า 0 และนับต่อ check ตั้งแต่ daemon provisioning/create/copy/start/run หลังเตรียม image ค่าเริ่มต้น 20 นาที เวลาที่ใช้เตรียม image และ cleanup อยู่นอก budget นี้
 
 Ctrl+C หรือ SIGTERM ยกเลิก run การ stop/remove มีเวลาจำกัดแยกจาก timeout จึงอาจใช้เวลาเพิ่มก่อนคำสั่งจบ หาก daemon ไม่ตอบให้ดู `CLEANUP_INCOMPLETE` ใน warnings
 
@@ -453,6 +455,8 @@ docker ps -a --filter "label=com.pitstop.run=RUN_ID"
 
 ## ขอบเขตที่รองรับ
 
-รองรับ Docker image ที่เตรียมไว้, shell/shared scripts, ordered steps, selection, snapshot, timeout/cancellation และ reports ไม่มี workflow YAML executor, การแปล `uses:`/expressions, matrix, dependencies ระหว่าง jobs (`needs`), service containers, secret injection, cache volumes, auto-build image, artifact export, self-hosted runner registration, automatic workflow conversion หรือ automatic manifest detection
+รองรับ Docker image ที่เตรียมไว้, shell/shared scripts, ordered steps, selection, snapshot, timeout/cancellation และ reports ไม่มี workflow YAML executor, การแปล `uses:`/expressions, matrix, dependencies ระหว่าง jobs (`needs`), generic workflow service containers, secret injection, cache volumes, auto-build image, artifact export, self-hosted runner registration, automatic workflow conversion หรือ automatic manifest detection
 
 ดู [ข้อกำหนด](requirements.md) และ [หลักฐานทดสอบ](evidence/docker-checks-validation.md) เอกสารออกแบบ/หลักฐานก่อนหน้าอยู่ในหมวดประวัติของ [สารบัญ](README.md)
+
+รองรับ Testcontainers ผ่าน DinD แบบ opt-in: ดู [การตั้งค่าและข้อกำหนด](testcontainers.md) สำหรับ `checks[].testcontainers` และ `run --allow-testcontainers` ต้องอนุญาต privileged daemon แยกในแต่ละครั้ง

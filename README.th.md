@@ -91,7 +91,7 @@ pitstop run --repo "$TARGET_REPO" --json > result.json 2> progress.log
 | `pitstop validate` | ตรวจ config; รองรับ `--job`, `--arch`, `--json` |
 | `pitstop doctor` | ตรวจ repository, config, Git/Docker และ image; รองรับ `--json` |
 | `pitstop list` | แสดง checks และ selection; รองรับ `--json` |
-| `pitstop run` | รัน checks ที่เลือก; รองรับ `--job`, `--timeout`, `--arch`, `--json` |
+| `pitstop run` | รัน checks ที่เลือก; รองรับ `--job`, `--timeout`, `--arch`, `--allow-testcontainers`, `--json` |
 | `pitstop update` | ตรวจ stable ล่าสุด แล้วอัปเดต CLI และ skills ที่ติดตั้งอยู่; รองรับ `--version`, `--json` |
 | `pitstop version` | แสดง version/build metadata; รองรับ `--json` |
 | `pitstop skill` | จัดการ agent skills ที่ติดตั้ง |
@@ -122,10 +122,12 @@ pitstop skill install --agent codex --scope project --repo "$TARGET_REPO" --json
 | `2` | config/environment ไม่พร้อม, outcome ไม่ทราบ หรือ log/report/cleanup ไม่สมบูรณ์โดยไม่มี failed check |
 | `130` | ยกเลิก มีลำดับความสำคัญสูงสุด |
 
-ขอบเขตที่รองรับคือ Docker images ที่เตรียมไว้, snapshot, shell steps ตามลำดับ, selection, timeout/cancellation และ reports ส่วน workflow YAML, matrix, job dependencies, service containers, secret injection, cache volumes, auto-build image, artifact export และ native Windows ยังอยู่นอกขอบเขต ดู [คู่มือฉบับเต็ม](docs/user-guide.md) สำหรับรายงาน การแก้ปัญหา และข้อจำกัดทั้งหมด
+ขอบเขตที่รองรับคือ Docker images ที่เตรียมไว้, snapshot, shell steps ตามลำดับ, selection, timeout/cancellation และ reports ส่วน workflow YAML, matrix, job dependencies, generic workflow service containers, secret injection, cache volumes, auto-build image, artifact export และ native Windows ยังอยู่นอกขอบเขต ดู [คู่มือฉบับเต็ม](docs/user-guide.md) สำหรับรายงาน การแก้ปัญหา และข้อจำกัดทั้งหมด
 
 ## อ่านต่อ
 
 - [คู่มือใช้งานและ command reference](docs/user-guide.md)
 - [คู่มือการตั้งค่าโดย AI agent](docs/ai-agent.md)
 - [สารบัญเอกสารที่รวม requirements, engineering records และ evidence](docs/README.md)
+
+รองรับ Testcontainers ผ่าน DinD แบบ opt-in: ดู [การตั้งค่าและข้อกำหนด](docs/testcontainers.md) สำหรับ `checks[].testcontainers` และ `run --allow-testcontainers` ต้องอนุญาต privileged daemon แยกในแต่ละครั้ง

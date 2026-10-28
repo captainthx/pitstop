@@ -53,15 +53,15 @@
 
 **Interfaces:** Optional `model.Check.Testcontainers bool` serialized as `testcontainers,omitempty`; `run.Options.AllowTestcontainers bool` bound to `run --allow-testcontainers`. Add optional per-job daemon identity/diagnostics metadata without changing ordinary results. Existing `dockerchecks.Run` receives the effective authorized check; authorization occurs before all runtime allocations in `run.Execute`.
 
-- [ ] Write/run RED parser tests for optional bool, omitted/false compatibility, null/wrong type/unknown fields; write/run RED authorization test asserting no Docker/resource calls for any selected flagged job without authorization, including mixed ordered selections.
-- [ ] Add the schema/flag/plumbing; preserve override selection semantics and ordinary checks. Document doctor readiness limitations without running privileged probes.
-- [ ] Write/run RED lifecycle tests for separate labelled network/service, private unpublished port, unprivileged runner/no host binds, fixed environment only, startup failure, copy failure, timeout/cancel and ownership-preserving cleanup.
-- [ ] Implement fixed `docker:29.8.2-dind` per-check provisioning, immutable platform image identity, fresh anonymous data, private network alias, bounded readiness and daemon diagnostics. Include provisioning in the per-check deadline and keep image preparation bounded separately.
-- [ ] Extend per-check cleanup and final label-based recovery for containers, anonymous volumes and networks. Record ownership before vulnerable operations. Preserve unrelated resources and current exit/coverage/warning precedence.
-- [ ] Run parser/run/CLI/engine tests GREEN. Add/run real Go Testcontainers service round-trip, passing and failing assertions, missing authorization, daemon-startup failure, timeout and SIGINT smoke; assert labelled containers/volumes/networks removed. Retain raw JSON/reports/diagnostics.
-- [ ] Add Linux amd64 CI smoke and document independently observed local ARM64 results. Update bilingual config/command/limits references, including privileged opt-in and public-image requirements.
-- [ ] Run full race/vet, fresh-build, existing offline/Docker smoke and the new Testcontainers smoke. Capture only generic fixture data in docs evidence.
-- [ ] Parent reviews failure paths and trust boundaries, verifies runtime evidence, commits and merges before Task 3.
+- [x] Write/run parser tests for optional bool, omitted/false compatibility, null/wrong type/unknown fields; write/run RED authorization test asserting no Docker/resource calls for any selected flagged job without authorization, including mixed ordered selections.
+- [x] Add the schema/flag/plumbing; preserve override selection semantics and ordinary checks. Document doctor readiness limitations without running privileged probes.
+- [x] Write/run lifecycle and recovery tests for separate labelled network/service, private unpublished port, unprivileged runner/no host binds, fixed environment only, startup failure, copy failure, timeout/cancel and ownership-preserving cleanup.
+- [x] Implement fixed `docker:29.8.2-dind` per-check provisioning, immutable platform image identity, fresh run-labelled ephemeral data, private network alias, bounded readiness and daemon diagnostics. Include provisioning in the per-check deadline and keep image preparation bounded separately.
+- [x] Extend per-check cleanup and final label-based recovery for containers, labelled ephemeral volumes and networks. Record ownership before vulnerable operations. Preserve unrelated resources and current exit/coverage/warning precedence.
+- [x] Run parser/run/CLI/engine tests GREEN. Add/run real Go Testcontainers service round-trip, passing and failing assertions, missing authorization, daemon-startup failure, timeout and SIGINT smoke; assert labelled containers/volumes/networks removed. Retain raw JSON/reports/diagnostics.
+- [x] Add Linux amd64 CI smoke and document independently observed local ARM64 results. Update bilingual config/command/limits references, including privileged opt-in and public-image requirements.
+- [x] Run full race/vet, fresh-build, existing offline/Docker smoke and the new Testcontainers smoke. Capture only generic fixture data in docs evidence.
+- [x] Parent reviews failure paths and trust boundaries, verifies runtime evidence, commits and merges before Task 3.
 
 ## Task 3 — Go integration setup and bundle 3
 
@@ -83,4 +83,4 @@
 ## Progress
 
 - Design approved; user explicitly chose `luna_worker` implementation on 2026-10-28.
-- Task 1 verified with full race/vet/offline smoke plus real compiled CLI/installer acceptance; [evidence](../../evidence/self-update/README.md). Separate existing-test timing fix: `feature/captured-config-test`, commit `1678567`. Task 1 is ready for parent merge; Tasks 2–3 remain pending.
+- Task 1 verified with full race/vet/offline smoke plus real compiled CLI/installer acceptance; [evidence](../../evidence/self-update/README.md). Separate existing-test timing fix: `feature/captured-config-test`, commit `1678567`. Task 1 merged locally in commit `333e131`; Task 2 passed full race/vet, offline/Docker smoke and all eight real ARM64 Testcontainers cases; [evidence](../../evidence/testcontainers/README.md). Parent review has no remaining findings. Task 3 remains pending.

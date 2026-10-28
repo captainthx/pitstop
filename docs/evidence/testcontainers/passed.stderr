@@ -1,0 +1,35 @@
+step: service service
+=== RUN   TestServiceRoundTrip
+2026/10/28 08:50:30 github.com/testcontainers/testcontainers-go - Connected to docker: 
+  Server Version: 29.8.2
+  API Version: 1.55
+  Operating System: Alpine Linux v3.24
+  Total Memory: 8003 MB
+  Testcontainers for Go Version: v0.44.0
+  Resolved Docker Host: tcp://pitstop-dind:2375
+  Resolved Docker Socket Path: /var/run/docker.sock
+  Test SessionID: 184e6f54acd44824256820acd3594f06f8f2f2e58a8fe9901f2eb30b504015a2
+  Test ProcessID: 01654041-b599-4667-a01f-f4be17f5e91d
+2026/10/28 08:50:30 No image auth found for https://index.docker.io/v1/. Setting empty credentials for the image: busybox:1.37. This is expected for public images. Details: credentials not found in native keychain
+2026/10/28 08:50:35 🐳 Creating container for image busybox:1.37
+2026/10/28 08:50:35 No image auth found for https://index.docker.io/v1/. Setting empty credentials for the image: testcontainers/ryuk:0.14.0. This is expected for public images. Details: credentials not found in native keychain
+2026/10/28 08:50:39 🐳 Creating container for image testcontainers/ryuk:0.14.0
+2026/10/28 08:50:39 ✅ Container created: 1eae7189b87d
+2026/10/28 08:50:39 🐳 Starting container: 1eae7189b87d
+2026/10/28 08:50:39 ✅ Container started: 1eae7189b87d
+2026/10/28 08:50:39 ⏳ Waiting for container id 1eae7189b87d image: testcontainers/ryuk:0.14.0. Waiting for: all of: [log message "Started", port 8080/tcp to be listening]
+2026/10/28 08:50:39 Shell not found in container
+2026/10/28 08:50:39 🔔 Container is ready: 1eae7189b87d
+2026/10/28 08:50:39 ✅ Container created: 18c4b1244303
+2026/10/28 08:50:39 🐳 Starting container: 18c4b1244303
+2026/10/28 08:50:39 ✅ Container started: 18c4b1244303
+2026/10/28 08:50:39 ⏳ Waiting for container id 18c4b1244303 image: busybox:1.37. Waiting for: HTTP GET request on port 8080 path "/"
+2026/10/28 08:50:39 🔔 Container is ready: 18c4b1244303
+    integration_test.go:58: mapped service round-trip succeeded at http://pitstop-dind:32769
+2026/10/28 08:50:39 🐳 Stopping container: 18c4b1244303
+2026/10/28 08:50:49 ✅ Container stopped: 18c4b1244303
+2026/10/28 08:50:49 🐳 Terminating container: 18c4b1244303
+2026/10/28 08:50:49 🚫 Container terminated: 18c4b1244303
+--- PASS: TestServiceRoundTrip (19.18s)
+PASS
+ok  	pitstop-testcontainers-smoke	20.190s

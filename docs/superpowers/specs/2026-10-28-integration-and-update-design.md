@@ -101,7 +101,7 @@ DinD still requires privileged execution and is not a hostile-code sandbox. That
 
 Preserve the existing working-tree snapshot, per-check filesystem, steps, timeout, cancellation and report semantics. Include provisioning/readiness within the check deadline; image preparation retains its separately bounded budget.
 
-Label and record ownership before subsequent operations can fail. Clean up runner, DinD service, its anonymous data volumes and the private network on success, test failure, timeout, cancellation, source-copy failure and startup failure. Removing the dedicated daemon removes its nested workload environment; do not enumerate or delete unrelated outer-daemon Testcontainers resources. Final label-based recovery handles this run's containers/networks only and verifies their ownership before removal.
+Label and record ownership before subsequent operations can fail. Clean up runner, DinD service, its uniquely named, run-labelled ephemeral data volume and the private network on success, test failure, timeout, cancellation, source-copy failure and startup failure. Removing the dedicated daemon removes its nested workload environment; do not enumerate or delete unrelated outer-daemon Testcontainers resources. Final label-based recovery handles this run's containers/volumes/networks only and verifies their ownership before removal.
 
 Retain ordinary config/run results for non-opted-in checks. Report daemon image identity and diagnostics for opted-in checks. Distinguish daemon readiness failure (no test executed), real test failure, timeout/cancellation, and incomplete cleanup. Preserve the current cancellation/failure/integrity exit-code precedence. Expose incomplete resource cleanup in warnings and persistent ownership evidence rather than declaring a trustworthy pass.
 
@@ -139,3 +139,5 @@ Implementation details such as helper names and internal file splits are left to
 - [Testcontainers Go configuration](https://golang.testcontainers.org/features/configuration/) and [networking](https://golang.testcontainers.org/features/networking/): Docker endpoint and host override affect daemon access and mapped-port connections.
 - [Running Testcontainers inside containers](https://golang.testcontainers.org/system_requirements/ci/dind_patterns/): the execution environment needs an appropriate Docker access pattern.
 - [Official Docker image documentation](https://github.com/docker-library/docs/blob/master/docker/README.md): DinD requires privileged mode and has explicit TLS configuration.
+
+Implementation ruling: use a uniquely named, run-labelled ephemeral volume for DinD data, so cleanup can recover it by ownership even after a partial container removal. It is neither shared nor retained as a cache.

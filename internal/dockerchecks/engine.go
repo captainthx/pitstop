@@ -98,13 +98,27 @@ type containerState struct {
 	Error     string
 }
 
+var prepareTestcontainersImageFn = prepareTestcontainersImage
+
+func startCheckDeadline(ctx context.Context, timeout time.Duration, prepare func() error) (context.Context, context.CancelFunc, error) {
+	if err := prepare(); err != nil {
+		return nil, nil, err
+	}
+	jobCtx, cancel := context.WithTimeout(ctx, timeout)
+	return jobCtx, cancel, nil
+}
+
 func Run(ctx context.Context, env Environment, snap model.Snapshot, check model.Check, runDir string, timeout time.Duration, progress io.Writer) (result model.JobResult, runErr error) {
 	start := time.Now()
 	if timeout <= 0 {
 		timeout = 20 * time.Minute
 	}
-	jobCtx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
+	var jobCtx context.Context
+	var cancel context.CancelFunc
+	if !check.Testcontainers {
+		jobCtx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+	}
 	result = model.JobResult{ID: check.ID, Provenance: "engine_exit", LogPath: filepath.Join(runDir, check.ID+".stdout")}
 	scriptsDir := filepath.Join(runDir, "scripts-"+check.ID)
 	evidenceDir := filepath.Join(runDir, "evidence-"+check.ID)
@@ -129,15 +143,71 @@ func Run(ctx context.Context, env Environment, snap model.Snapshot, check model.
 	defer stderrFile.Close()
 	label := "com.pitstop.run=" + filepath.Base(runDir)
 	name := "pitstop-" + filepath.Base(runDir) + "-" + check.ID
-	meta, _ := json.Marshal(map[string]string{"dockerHost": env.DockerHost, "label": label})
-	if err := os.WriteFile(filepath.Join(runDir, "engine-meta.json"), append(meta, '\n'), 0600); err != nil {
+	if err := writeEngineMeta(runDir, env.DockerHost, label); err != nil {
 		return result, err
+	}
+	var service *testcontainersService
+	if check.Testcontainers {
+		var prepared imageInspect
+		var prepareErr error
+		jobCtx, cancel, prepareErr = startCheckDeadline(ctx, timeout, func() error {
+			var err error
+			prepared, err = prepareTestcontainersImageFn(ctx, env, env.Info.Architecture)
+			return err
+		})
+		if prepareErr != nil {
+			result.Testcontainers = &model.TestcontainersResult{DaemonImage: testcontainersDaemonImage, NetworkAlias: testcontainersDaemonAlias, Readiness: "failed"}
+			if ctx.Err() != nil {
+				return cancelResult(result, check, ctx.Err(), start), nil
+			}
+			result.Status, result.Provenance = "skipped", "unknown"
+			result.ReasonCode, result.Reason = model.Reason("TESTCONTAINERS_PROVISION_FAILED"), model.Reason(prepareErr.Error())
+			return finishResult(result, start), prepareErr
+		}
+		defer cancel()
+		service, err = provisionTestcontainersWithImage(jobCtx, env, runDir, check.ID, env.Info.Architecture, prepared)
+		if service != nil {
+			result.Testcontainers = &service.result
+		}
+		if err != nil {
+			if service != nil && service.result.Diagnostics == "" {
+				service.result.Diagnostics = service.captureDiagnostics()
+				result.Testcontainers = &service.result
+			}
+			if ctx.Err() != nil {
+				return cancelResult(result, check, ctx.Err(), start), nil
+			}
+			if jobCtx.Err() == context.DeadlineExceeded {
+				return cancelResult(result, check, context.DeadlineExceeded, start), err
+			}
+			code := "TESTCONTAINERS_PROVISION_FAILED"
+			if service != nil && service.result.Readiness == "failed" {
+				code = "TESTCONTAINERS_DAEMON_NOT_READY"
+			}
+			result.Status, result.Provenance = "skipped", "unknown"
+			result.ReasonCode, result.Reason = model.Reason(code), model.Reason(err.Error())
+			return finishResult(result, start), err
+		}
+		defer func() {
+			if result.Status != "passed" && service.result.Diagnostics == "" {
+				service.result.Diagnostics = service.captureDiagnostics()
+			}
+			cleanupCtx, stop := context.WithTimeout(context.Background(), 10*time.Second)
+			if cleanupErr := service.cleanup(cleanupCtx); cleanupErr != nil {
+				if runErr == nil {
+					runErr = model.Err("CLEANUP_INCOMPLETE", "Testcontainers cleanup failed", cleanupErr)
+				} else {
+					runErr = model.Err("CLEANUP_INCOMPLETE", runErr.Error()+"; Testcontainers cleanup failed", cleanupErr)
+				}
+			}
+			stop()
+		}()
 	}
 	imageRef := env.Info.ImageID
 	if env.ImageReference != "" {
 		imageRef = env.ImageReference
 	}
-	createArgs := []string{"create", "--name", name, "--label", label, "--platform", env.Info.Architecture, "--pull", "never", "--init", "--user", "0:0", "--workdir", "/workspace", "--no-healthcheck", "--entrypoint", "/bin/sh", imageRef, "/pitstop/run.sh"}
+	createArgs := runnerCreateArgs(name, label, env.Info.Architecture, imageRef, service)
 	if err := saveArgv(runDir, check.ID+"-create", createArgs); err != nil {
 		return result, err
 	}
@@ -288,6 +358,14 @@ func Run(ctx context.Context, env Environment, snap model.Snapshot, check model.
 		return result, model.Err("LOG_CAPTURE_FAILED", "log capture failed", streamErr)
 	}
 	return finishResult(result, start), nil
+}
+
+func runnerCreateArgs(name, label, architecture, imageRef string, service *testcontainersService) []string {
+	args := []string{"create", "--name", name, "--label", label, "--platform", architecture, "--pull", "never", "--init", "--user", "0:0", "--workdir", "/workspace", "--no-healthcheck"}
+	if service != nil {
+		args = append(args, "--network", service.network, "--env", "DOCKER_HOST=tcp://"+testcontainersDaemonAlias+":2375", "--env", "DOCKER_TLS_CERTDIR=", "--env", "TESTCONTAINERS_HOST_OVERRIDE="+testcontainersDaemonAlias, "--env", "TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock")
+	}
+	return append(args, "--entrypoint", "/bin/sh", imageRef, "/pitstop/run.sh")
 }
 
 func finishResult(r model.JobResult, started time.Time) model.JobResult {

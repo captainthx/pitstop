@@ -25,7 +25,7 @@
 | Isolation | Container ใหม่ต่อ check; ไม่มี host bind mount, Docker socket mount หรือ privileged mode |
 | Steps | `/bin/sh -e`, cwd `/workspace`, user `0:0`; แชร์ files แต่เป็น shell ใหม่ทุก step |
 | Failure | step failed ทำให้ steps ที่เหลือใน check skipped; independent check ถัดไปรันต่อ |
-| Timeout | 20 นาทีต่อ check โดยปริยาย; override ด้วย positive `--timeout`; รวม create/copy/start/run |
+| Timeout | 20 นาทีต่อ check โดยปริยาย; override ด้วย positive `--timeout`; รวม daemon provisioning/create/copy/start/run หลังเตรียม image |
 | Cancellation | Ctrl+C/SIGTERM หยุด scheduling และพยายาม stop/remove owned containers ด้วย bounded cleanup |
 | Concurrency | ล็อก repo เดียวกัน; repo อื่นรันแยกได้ |
 | Evidence | Docker terminal state + exit records; success text อย่างเดียวไม่ถือว่าผ่าน |
@@ -43,7 +43,7 @@ Step durations เป็น `null` ส่วน check/run มี duration จร
 ## ขอบเขตที่ยังไม่มี
 
 - การอ่านและ execute `.github/workflows/*.yml`, แปล `uses:` หรือ expressions
-- Matrix, job dependencies (`needs`) และ service containers
+- Matrix, job dependencies (`needs`) และ generic workflow service containers
 - Secret/environment injection ผ่าน config, host environment forwarding หรือ cache volumes
 - Automatic image build, automatic workflow/config conversion และ automatic manifest/preset detection
 - Self-hosted runner registration หรือส่ง source ไป GitHub
@@ -62,3 +62,5 @@ Validation ใช้ acceptance pipeline เดียวกับ run/doctor/lis
 ## หลักฐานและการตรวจสอบ
 
 ดู [Docker validation ปัจจุบัน](evidence/docker-checks-validation.md) สำหรับ tests, smoke และข้อจำกัดของหลักฐานที่รันจริง GitHub CI มี smoke แต่ผล local ไม่ได้ยืนยันว่า remote CI รันผ่านแล้ว เอกสารในหมวดประวัติของ [สารบัญ](README.md) ไม่ใช่ขอบเขตของ CLI ปัจจุบัน
+
+รองรับ Testcontainers ผ่าน DinD แบบ opt-in: ดู [การตั้งค่าและข้อกำหนด](testcontainers.md) สำหรับ `checks[].testcontainers` และ `run --allow-testcontainers` ต้องอนุญาต privileged daemon แยกในแต่ละครั้ง

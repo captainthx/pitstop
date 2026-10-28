@@ -36,7 +36,7 @@ jobs:
   verify:
     name: Verify Pitstop
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -82,6 +82,9 @@ jobs:
 
       - name: Run Docker checks on a real daemon
         run: PITSTOP_BIN="$RUNNER_TEMP/pitstop" sh scripts/docker-smoke.sh
+
+      - name: Run Go Testcontainers on a dedicated nested daemon
+        run: PITSTOP_BIN="$RUNNER_TEMP/pitstop" sh scripts/testcontainers-smoke.sh
 
       - name: Check CLI JSON output
         run: '"$RUNNER_TEMP/pitstop" version --json | go run ./scripts/validate-json.go'

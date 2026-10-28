@@ -64,8 +64,9 @@ type RunnerConfig struct {
 	Architecture string `json:"architecture"`
 }
 type Check struct {
-	ID    string      `json:"id"`
-	Steps []CheckStep `json:"steps"`
+	ID             string      `json:"id"`
+	Testcontainers bool        `json:"testcontainers,omitempty"`
+	Steps          []CheckStep `json:"steps"`
 }
 type CheckStep struct {
 	ID   string `json:"id"`
@@ -226,16 +227,29 @@ type StepResult struct {
 	EvidenceRef string  `json:"evidenceRef,omitempty"`
 }
 type JobResult struct {
-	ID              string       `json:"id"`
-	Status          string       `json:"status"`
-	Provenance      string       `json:"provenance"`
-	DurationMs      int64        `json:"durationMs"`
-	EngineExitCode  *int         `json:"engineExitCode"`
-	FailureCategory *string      `json:"failureCategory"`
-	ReasonCode      *string      `json:"reasonCode"`
-	Reason          *string      `json:"reason"`
-	Steps           []StepResult `json:"steps"`
-	LogPath         string       `json:"logPath"`
+	ID              string                `json:"id"`
+	Status          string                `json:"status"`
+	Provenance      string                `json:"provenance"`
+	DurationMs      int64                 `json:"durationMs"`
+	EngineExitCode  *int                  `json:"engineExitCode"`
+	FailureCategory *string               `json:"failureCategory"`
+	ReasonCode      *string               `json:"reasonCode"`
+	Reason          *string               `json:"reason"`
+	Steps           []StepResult          `json:"steps"`
+	LogPath         string                `json:"logPath"`
+	Testcontainers  *TestcontainersResult `json:"testcontainers,omitempty"`
+}
+
+// TestcontainersResult records only resources owned by this check's nested daemon.
+type TestcontainersResult struct {
+	DaemonImage       string  `json:"daemonImage"`
+	DaemonImageID     string  `json:"daemonImageId,omitempty"`
+	DaemonImageDigest *string `json:"daemonImageDigest,omitempty"`
+	DaemonContainerID string  `json:"daemonContainerId,omitempty"`
+	NetworkID         string  `json:"networkId,omitempty"`
+	NetworkAlias      string  `json:"networkAlias,omitempty"`
+	Readiness         string  `json:"readiness"`
+	Diagnostics       string  `json:"diagnostics,omitempty"`
 }
 type Adjustment struct {
 	JobID     string `json:"jobId"`

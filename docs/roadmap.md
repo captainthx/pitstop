@@ -49,3 +49,7 @@ Explicit CLI/skill self-update is implemented in source as `pitstop update`; see
 - เมื่อเริ่มงาน ให้ทำ design/plan ของขอบเขตนั้นและตรวจ compatibility/security ก่อน / Plan that scope separately.
 - เมื่อส่งงาน ย้ายรายการไป current docs พร้อมหลักฐาน ไม่อ้างความสามารถจาก spec อย่างเดียว / Promote only verified behavior to current documentation.
 - เก็บ limitations ของ validator, AI mapping และ runtime ให้แยกกัน / Keep config validity, mapping coverage and execution safety distinct.
+
+## Integration and update work (2026-10-28)
+
+`pitstop update` now checks the latest official stable version and refreshes existing supported skills. Testcontainers checks use explicit per-run authorization and a dedicated nested daemon; see [runtime requirements](testcontainers.md). Go setup coverage and the next embedded skill bundle are tracked in the [implementation plan](superpowers/plans/2026-10-28-integration-and-update.md). These source changes do not replace the published v0.1.0 release.

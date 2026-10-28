@@ -25,7 +25,7 @@ This document defines current Docker checks behavior. Installation and runnable 
 | Isolation | Fresh container per check; no host bind mount, Docker socket mount or privileged mode |
 | Steps | `/bin/sh -e`, cwd `/workspace`, user `0:0`; shared files and a new shell per step |
 | Failure | Failed step skips the rest of that check; later independent checks still run |
-| Timeout | Default 20 minutes per check, positive `--timeout` override; covers create/copy/start/run |
+| Timeout | Default 20 minutes per check, positive `--timeout` override; covers provisioning/create/copy/start/run after image preparation |
 | Cancellation | Ctrl+C/SIGTERM stops scheduling and attempts bounded stop/removal of owned containers |
 | Concurrency | Per-repository lock; other repositories may run independently |
 | Evidence | Docker terminal state and step exit records; success text alone is insufficient |
@@ -43,7 +43,7 @@ Step durations are `null`; check/run durations are measured. Pre-execution error
 ## Unsupported features
 
 - Execution of `.github/workflows/*.yml`, `uses:` actions or expressions.
-- Matrix, job dependencies (`needs`) and service containers.
+- Matrix, job dependencies (`needs`) and generic workflow service containers.
 - Config-based secret/environment injection, host environment forwarding or cache volumes.
 - Automatic image builds, workflow/config conversion, and automatic manifest/preset detection.
 - Self-hosted runner registration or uploading source to GitHub.
@@ -62,3 +62,5 @@ Validation shares one acceptance pipeline with run/doctor/list, covering strict 
 ## Validation
 
 See [current Docker validation](evidence/docker-checks-validation.md) for tests, smoke and limits of the actual evidence. GitHub CI includes smoke; local validation does not establish remote CI success. Historical documents in the [index](README.md) do not define the current CLI's scope.
+
+Testcontainers suites can opt into a dedicated DinD daemon: see [configuration and requirements](testcontainers.md) for `checks[].testcontainers` and `run --allow-testcontainers`. Privileged execution requires authorization for each invocation.

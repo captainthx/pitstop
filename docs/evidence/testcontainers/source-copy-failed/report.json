@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "command": "run",
+  "exitCode": 2,
+  "result": {
+    "runId": "1793177570899677000",
+    "repo": "/private/var/folders/zr/34vf_kj17tn8k4jqs7qy5yz40000gn/T/pitstop-testcontainers-9jbbh5ab/fixture with spaces",
+    "source": {
+      "head": "d167a7e957f73c16441c85a786a317946a395c89",
+      "snapshotSha256": "3118487bff3e710454589b8d375b584341ec817dd987848e6c0b28d4a4796f93",
+      "dirty": true,
+      "excludedPaths": [],
+      "checkoutMode": "local-source-copy"
+    },
+    "engine": {
+      "name": "docker",
+      "version": "29.8.2",
+      "architecture": "linux/arm64",
+      "image": "golang:1.26.5",
+      "imageId": "sha256:04b188c2db8449ea15c09355dfab9ce9ed4ecf9414e94674104e316bda7d1996",
+      "imageDigest": "sha256:705e964a93a2fd2e75c7d59bb7d781b57e30f12293ffde5175c69229e18fb678"
+    },
+    "jobs": [
+      {
+        "id": "integration-9jbbh5ab",
+        "status": "skipped",
+        "provenance": "unknown",
+        "durationMs": 0,
+        "engineExitCode": null,
+        "failureCategory": null,
+        "reasonCode": "ENGINE_OUTCOME_UNKNOWN",
+        "reason": "ENGINE_OUTCOME_UNKNOWN: cannot copy source into container: exit status 72",
+        "steps": [
+          {
+            "id": "service",
+            "name": "service",
+            "status": "skipped",
+            "durationMs": null,
+            "evidenceRef": "/Users/thanyatab/Library/Caches/pitstop/runs/1793177570899677000/evidence-integration-9jbbh5ab/step-0.exit"
+          }
+        ],
+        "logPath": "/Users/thanyatab/Library/Caches/pitstop/runs/1793177570899677000/integration-9jbbh5ab.stdout",
+        "testcontainers": {
+          "daemonImage": "docker:29.8.2-dind",
+          "daemonImageId": "sha256:0cfe34780472229470f56736bbf85165a0f15e2da84a4798af89bed607f3ffc3",
+          "daemonImageDigest": "sha256:1e08cdb63405ca788aea94ef35b792d1e299607c667d33d7bcbcae1fd2611ced",
+          "daemonContainerId": "f755f59093142f12def51ca06fa2f3741a6ad3a335403d0ca24dd4e7c9eb32ba",
+          "networkId": "3ea5cf605938ce7b58584af89ad2bd4fab7737ae597563a08d8b5f3da7856237",
+          "networkAlias": "pitstop-dind",
+          "readiness": "ready",
+          "diagnostics": "/Users/thanyatab/Library/Caches/pitstop/runs/1793177570899677000/testcontainers-daemon-integration-9jbbh5ab.log"
+        }
+      }
+    ],
+    "selectedCoverage": "partial",
+    "workflowCoverage": "not_applicable",
+    "adjustments": [],
+    "warnings": [
+      "ENGINE_OUTCOME_UNKNOWN: cannot copy source into container: exit status 72"
+    ],
+    "durationMs": 17824,
+    "reportPath": "/Users/thanyatab/Library/Caches/pitstop/runs/1793177570899677000/report.json"
+  }
+}

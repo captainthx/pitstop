@@ -52,6 +52,24 @@ func TestCancelResultSkipsEveryStep(t *testing.T) {
 	}
 }
 
+func TestCheckDeadlineStartsAfterImagePreparation(t *testing.T) {
+	started := time.Now()
+	jobCtx, cancel, err := startCheckDeadline(context.Background(), 10*time.Millisecond, func() error {
+		time.Sleep(40 * time.Millisecond)
+		return nil
+	})
+	defer cancel()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if time.Since(started) < 40*time.Millisecond {
+		t.Fatal("preparation did not run before deadline creation")
+	}
+	if jobCtx.Err() != nil {
+		t.Fatalf("check deadline was consumed during preparation: %v", jobCtx.Err())
+	}
+}
+
 type shortWriter struct{}
 
 func (shortWriter) Write(p []byte) (int, error) {

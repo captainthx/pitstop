@@ -268,6 +268,11 @@ func validateV2Shape(root map[string]json.RawMessage) error {
 		if err := requiredField(check, "steps", checkPath+"/steps", "array"); err != nil {
 			return err
 		}
+		if raw, ok := check["testcontainers"]; ok {
+			if err := ensureType(raw, checkPath+"/testcontainers", "boolean"); err != nil {
+				return err
+			}
+		}
 		steps, _ := rawArray(check["steps"])
 		for j, stepRaw := range steps {
 			stepPath := checkPath + "/steps/" + strconv.Itoa(j)
@@ -325,6 +330,9 @@ func ensureType(raw json.RawMessage, path, kind string) error {
 	case "string":
 		var value string
 		ok = json.Unmarshal(raw, &value) == nil
+	case "boolean":
+		var value bool
+		ok = json.Unmarshal(raw, &value) == nil
 	default:
 		ok = false
 	}
@@ -363,7 +371,13 @@ func scanChecks(dec *json.Decoder, value any, path string) error {
 			return err
 		}
 		checkPath := path + "/" + strconv.Itoa(i)
-		if err := scanObject(dec, tok, checkPath, map[string]struct{}{"id": {}, "steps": {}}, func(key string, value any, fieldPath string) (bool, error) {
+		if err := scanObject(dec, tok, checkPath, map[string]struct{}{"id": {}, "testcontainers": {}, "steps": {}}, func(key string, value any, fieldPath string) (bool, error) {
+			if key == "testcontainers" {
+				if _, ok := value.(bool); !ok {
+					return false, issue("JSON_TYPE", fieldPath, "field has an invalid type")
+				}
+				return false, nil
+			}
 			if key != "steps" {
 				return false, nil
 			}

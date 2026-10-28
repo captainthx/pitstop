@@ -1,0 +1,6 @@
+ok  	pitstop/internal/config	0.755s
+--- FAIL: TestExecuteBlocksTestcontainersBeforeDocker (0.32s)
+    run_test.go:45: envelope=model.Envelope{SchemaVersion:1, Command:"run", ExitCode:2, Result:interface {}(nil), Error:(*model.ErrorInfo)(0x2bc903e980a0)} err=DOCKER_UNAVAILABLE: configured Docker context has no endpoint
+FAIL
+FAIL	pitstop/internal/run	1.329s
+FAIL

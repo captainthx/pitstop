@@ -1,0 +1,35 @@
+{
+  "argv": {
+    "argv-integration-9jbbh5ab-testcontainers-daemon-create.json": [
+      "create",
+      "--privileged",
+      "--name",
+      "pitstop-1793177502615092000-integration-9jbbh5ab-dind",
+      "--label",
+      "com.pitstop.run=1793177502615092000",
+      "--platform",
+      "linux/arm64",
+      "--network",
+      "pitstop-1793177502615092000-integration-9jbbh5ab-net",
+      "--network-alias",
+      "pitstop-dind",
+      "--pull",
+      "never",
+      "--mount",
+      "type=volume,source=pitstop-1793177502615092000-integration-9jbbh5ab-dind-data,destination=/var/lib/docker",
+      "--env",
+      "DOCKER_TLS_CERTDIR=",
+      "--entrypoint",
+      "dockerd",
+      "docker@sha256:1e08cdb63405ca788aea94ef35b792d1e299607c667d33d7bcbcae1fd2611ced",
+      "--host=tcp://0.0.0.0:2375",
+      "--host=unix:///var/run/docker.sock"
+    ]
+  },
+  "configSha256": "f568a47291e752cb957f7494c561aa9512ce82947d3e06b52283c0ce363b3bb3",
+  "effectiveConfigSha256": "f568a47291e752cb957f7494c561aa9512ce82947d3e06b52283c0ce363b3bb3",
+  "finishedAt": "2026-10-28T08:51:45.229569Z",
+  "runId": "1793177502615092000",
+  "snapshotSha256": "3118487bff3e710454589b8d375b584341ec817dd987848e6c0b28d4a4796f93",
+  "startedAt": "2026-10-28T08:51:42.557493Z"
+}

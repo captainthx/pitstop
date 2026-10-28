@@ -3,6 +3,7 @@ package dockerchecks
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -154,7 +155,14 @@ func Cleanup(ctx context.Context, runDir string) error {
 	if err != nil {
 		return err
 	}
-	var m struct{ DockerHost, Label string }
+	var m struct {
+		DockerHost, Label string
+		Testcontainers    bool     `json:"testcontainers"`
+		NetworkID         string   `json:"networkId"`
+		VolumeName        string   `json:"volumeName"`
+		NetworkIDs        []string `json:"networkIds"`
+		VolumeNames       []string `json:"volumeNames"`
+	}
 	if err := json.Unmarshal(b, &m); err != nil {
 		return err
 	}
@@ -204,5 +212,87 @@ func Cleanup(ctx context.Context, runDir string) error {
 			return model.Err("CLEANUP_INCOMPLETE", "owned runner cleanup failed", e)
 		}
 	}
+	if !m.Testcontainers && len(m.VolumeNames) == 0 && len(m.NetworkIDs) == 0 && m.VolumeName == "" && m.NetworkID == "" {
+		return nil
+	}
+	m.VolumeNames = appendUnique(m.VolumeNames, m.VolumeName)
+	volumeIDs, err := command(ctx, env, "volume", "ls", "-q", "--filter", "label="+m.Label).Output()
+	if err != nil {
+		return err
+	}
+	for _, name := range strings.Fields(string(volumeIDs)) {
+		m.VolumeNames = appendUnique(m.VolumeNames, name)
+	}
+	for _, name := range m.VolumeNames {
+		if name != "" {
+			if err := removeOwnedVolume(ctx, env, name, m.Label); err != nil && !resourceMissing(err) {
+				return err
+			}
+		}
+	}
+	m.NetworkIDs = appendUnique(m.NetworkIDs, m.NetworkID)
+	networkIDs, err := command(ctx, env, "network", "ls", "-q", "--filter", "label="+m.Label).Output()
+	if err != nil {
+		return err
+	}
+	for _, id := range strings.Fields(string(networkIDs)) {
+		m.NetworkIDs = appendUnique(m.NetworkIDs, id)
+	}
+	for _, id := range m.NetworkIDs {
+		if id != "" {
+			if err := removeOwnedNetwork(ctx, env, id, m.Label); err != nil && !resourceMissing(err) {
+				return err
+			}
+		}
+	}
 	return nil
+}
+
+func appendUnique(values []string, extra string) []string {
+	if extra == "" {
+		return values
+	}
+	for _, value := range values {
+		if value == extra {
+			return values
+		}
+	}
+	return append(values, extra)
+}
+
+func removeOwnedVolume(ctx context.Context, env Environment, name, label string) error {
+	out, err := command(ctx, env, "volume", "inspect", "--format", "{{index .Labels \"com.pitstop.run\"}}", name).Output()
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(string(out)) != strings.TrimPrefix(label, "com.pitstop.run=") {
+		return model.Err("CLEANUP_INCOMPLETE", "volume ownership changed during cleanup", nil)
+	}
+	if err := command(ctx, env, "volume", "rm", "--force", name).Run(); err != nil {
+		return model.Err("CLEANUP_INCOMPLETE", "owned Testcontainers volume cleanup failed", err)
+	}
+	return nil
+}
+
+func removeOwnedNetwork(ctx context.Context, env Environment, id, label string) error {
+	out, err := command(ctx, env, "network", "inspect", "--format", "{{index .Labels \"com.pitstop.run\"}}", id).Output()
+	if err != nil {
+		return err
+	}
+	if strings.TrimSpace(string(out)) != strings.TrimPrefix(label, "com.pitstop.run=") {
+		return model.Err("CLEANUP_INCOMPLETE", "network ownership changed during cleanup", nil)
+	}
+	if err := command(ctx, env, "network", "rm", id).Run(); err != nil {
+		return model.Err("CLEANUP_INCOMPLETE", "owned Testcontainers network cleanup failed", err)
+	}
+	return nil
+}
+
+func resourceMissing(err error) bool {
+	var exitErr *exec.ExitError
+	if !errors.As(err, &exitErr) {
+		return false
+	}
+	text := strings.ToLower(string(exitErr.Stderr))
+	return strings.Contains(text, "no such") || strings.Contains(text, "not found")
 }

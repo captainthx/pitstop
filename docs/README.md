@@ -54,3 +54,5 @@ README และคู่มือคำสั่งไทย/อังกฤษ
 - [Original implementation plan](design/pitstop-implementation-plan.md)
 - [Earlier validation](evidence/final-validation.md)
 - [Earlier review](evidence/final-review.md)
+
+- [Go Testcontainers: setup, authorization and runtime requirements](testcontainers.md)
