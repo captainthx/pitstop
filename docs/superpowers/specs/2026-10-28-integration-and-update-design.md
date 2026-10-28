@@ -1,6 +1,6 @@
 # Go integration coverage, Testcontainers, and self-update
 
-Date: 2026-10-28 (Asia/Bangkok). Status: design for review; not implemented.
+Date: 2026-10-28 (Asia/Bangkok). Status: approved by the user for sequential implementation with `luna_worker`; see the implementation plan for progress. Not a release announcement.
 
 ## Intent and evidence
 
