@@ -78,11 +78,11 @@
 - [x] Bump to bundle 3, update allowlist and regenerate manifest hashes in existing formatting. Run focused asset/ownership/upgrade tests GREEN.
 - [x] Run isolated direct-read agent trials after the change, including real permitted Testcontainers execution, unit-only existing config, skipped external suite and refusal to silently elevate without capability authorization. Confirm original fixture tests/source stay unchanged.
 - [x] Update docs and roadmap with actual evidence; run full race/vet, fresh-build/offline smoke and relevant runtime smoke after final changes. Check manifests, help, bilingual links/examples and public evidence contents.
-- [ ] Parent reviews the final change and evidence, commits/merges, pushes the completed work to main and checks CI. No binary release is created.
+- [x] Parent reviews the final change and evidence, commits/merges, pushes the completed work to main and checks CI. No binary release is created.
 
 ## Progress
 
 - Design approved; user explicitly chose `luna_worker` implementation on 2026-10-28.
 - Task 1 verified with full race/vet/offline smoke plus real compiled CLI/installer acceptance; [evidence](../../evidence/self-update/README.md). Separate existing-test timing fix: `feature/captured-config-test`, commit `1678567`. Task 1 merged locally in commit `333e131`; Task 2 passed full race/vet, offline/Docker smoke and all eight real ARM64 Testcontainers cases; [evidence](../../evidence/testcontainers/README.md). Parent review has no remaining findings. Task 3 remains pending.
 
-- Task 2 merged locally as `eed3d67`. Task 3 bundle-3 upgrade, full race/vet/offline checks and actual direct-read Go execution trials passed; [evidence](../../evidence/go-integration-setup/README.md). Final commit/merge/push/CI remains.
+- Task 2 merged locally as `eed3d67`. Task 3 bundle-3 upgrade, full race/vet/offline checks and actual direct-read Go execution trials passed; [evidence](../../evidence/go-integration-setup/README.md). Merged/pushed as `c530cf4`; [final CI](https://github.com/captainthx/pitstop/actions/runs/40696364818) passed Verify Pitstop (including real Linux amd64 Testcontainers) and both Linux/macOS installers. No release was created.
